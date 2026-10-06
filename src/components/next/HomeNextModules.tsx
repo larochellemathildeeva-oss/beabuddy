@@ -403,24 +403,12 @@ export function CustomizeHomeNext({ state }: { state: HomeState }) {
       }}
     >
       <SheetTrigger asChild>
-        <button type="button" data-guide="customize-home" className="hn-customize">
-          <img
-            src={bannerArtUrl("mountain")}
-            alt=""
-            className="art-dim pointer-events-none absolute inset-y-0 right-0 h-full w-[46%] object-cover [mask-image:linear-gradient(to_right,transparent,black_60%)]"
-          />
-          <span className="hn-customize-icon relative">
-            <LayoutGrid className="size-6" aria-hidden />
-          </span>
-          <span className="relative min-w-0 flex-1">
-            <span className="block font-display text-[20px] leading-tight">Customize home</span>
-            <span className="mt-0.5 block max-w-[19ch] text-[14px] leading-snug text-muted-foreground">
-              Choose and reorder modules to make this your own.
-            </span>
-          </span>
-          <span className="hn-module-btn relative">
-            <ArrowRight className="size-5" aria-hidden />
-          </span>
+        <button
+          type="button"
+          data-guide="customize-home"
+          className="mx-auto flex min-h-11 items-center gap-1.5 rounded-full px-4 text-[13.5px] font-medium text-muted-foreground transition-colors hover:text-foreground"
+        >
+          <LayoutGrid className="size-4" aria-hidden /> Customize home
         </button>
       </SheetTrigger>
       <SheetContent side="bottom" className="max-h-[88dvh] overflow-y-auto rounded-t-2xl">

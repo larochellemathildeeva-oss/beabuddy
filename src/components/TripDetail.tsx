@@ -1739,7 +1739,7 @@ export function TripDetail({
                         // The city's days, not a day from the city before.
                         setDayChoice(ALL_DAYS);
                       }}
-                      className="min-h-11 min-w-0 truncate rounded-full border border-border bg-elevated px-3 text-[14px] font-semibold text-foreground"
+                      className="min-h-11 min-w-0 truncate rounded-full border border-[var(--field-border)] bg-elevated px-3 text-[14px] font-semibold text-foreground"
                     >
                       <option value="">All cities</option>
                       {routeCities.map((c) => (
@@ -2932,12 +2932,13 @@ export function TripDetail({
                   You get a copy — ticking things off only affects this trip.
                 </p>
                 <select
+                  aria-label="Packing list to copy"
                   value={packTemplateId}
                   onChange={(e) => {
                     setPackTemplateId(e.target.value);
                     setPackMsg("");
                   }}
-                  className="mt-2 w-full rounded-xl border border-border bg-card px-3 py-2.5 text-[14.5px]"
+                  className="mt-2 w-full rounded-xl border border-[var(--field-border)] bg-card px-3 py-2.5 text-[14.5px]"
                 >
                   <option value="">Choose a list…</option>
                   {templates.packs.map((pk) => (

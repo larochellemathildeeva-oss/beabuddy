@@ -51,7 +51,7 @@ test("the master hero's two pills: what kind of moment, and when", () => {
     when: "Day 3 of 7",
   });
   assert.deepEqual(heroTags("2026-10-08", null, true, now), {
-    label: "Tentative dates",
+    label: "Upcoming trip",
     when: "In 12 days",
   });
   assert.deepEqual(heroTags(null, null, false, now), { label: "Planning", when: "" });

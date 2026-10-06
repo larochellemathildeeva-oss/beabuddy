@@ -703,7 +703,7 @@ function WorldPage() {
               onChange={(e) => setQuery(e.target.value)}
               placeholder="A city or country you've been to"
               aria-label="Search your world"
-              className="w-full rounded-full border border-border bg-background px-4 py-2.5 text-[15px] outline-none focus:border-primary"
+              className="w-full rounded-full border border-[var(--field-border)] bg-background px-4 py-2.5 text-[15px] outline-none focus:border-primary"
             />
             {query.trim() && (
               <ul className="divide-y divide-border">

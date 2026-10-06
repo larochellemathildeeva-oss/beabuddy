@@ -448,7 +448,7 @@ export function NearbyMapPin({ existing = [] }: { existing?: Pin[] }) {
             value={draft.name}
             onChange={(e) => setDraft({ ...draft, name: e.target.value })}
             placeholder="Little bakery on the corner"
-            className="mt-1 w-full rounded-xl border border-border bg-card px-3 py-2 text-[15px]"
+            className="mt-1 w-full rounded-xl border border-[var(--field-border)] bg-card px-3 py-2 text-[15px]"
           />
           <div className="mt-2 flex flex-wrap gap-2">
             {pinTypes.map((t) => (

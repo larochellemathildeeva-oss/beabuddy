@@ -57,7 +57,7 @@ function HomePreview() {
       <HomeUpcoming trip={trip} photos={[]} />
       <HomeTripStats trip={trip} glance={glances[trip.id]} />
       <HomeWhereNext />
-      <HomeSuggested trip={trip} />
+      <HomeSuggested trip={trip} here={{ city: "Hiroshima", stopCountry: "Japan" }} />
       <HomeWeather near={near} />
       <HomeYourTrips trips={later} photos={[]} />
     </div>

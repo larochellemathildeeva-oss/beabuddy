@@ -91,7 +91,7 @@ export function TripAgain({
   };
 
   const field =
-    "mt-1 w-full rounded-xl border border-input bg-card px-3 py-2.5 text-[14.5px] outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring";
+    "mt-1 w-full rounded-xl border border-[var(--field-border)] bg-card px-3 py-2.5 text-[14.5px] outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring";
 
   return (
     <div className="space-y-3">

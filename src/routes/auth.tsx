@@ -339,7 +339,11 @@ function AuthPage() {
               {error}
             </p>
           )}
-          {message && <p className="px-1 text-[13px] text-nexttime">{message}</p>}
+          {message && (
+            <p role="status" className="px-1 text-[13px] text-nexttime">
+              {message}
+            </p>
+          )}
           <button
             type="submit"
             disabled={busy || (signup && !consented)}
@@ -407,7 +411,7 @@ function PillField({
   children: ReactNode;
 }) {
   return (
-    <div className="flex h-[56px] items-center gap-3 rounded-2xl border border-transparent bg-card ps-5 pe-2 shadow-sm focus-within:border-primary">
+    <div className="flex h-[56px] items-center gap-3 rounded-2xl border border-[var(--field-border)] bg-card ps-5 pe-2 shadow-sm focus-within:border-primary">
       <Glyph className="size-5 shrink-0 text-muted-foreground" aria-hidden />
       {children}
     </div>

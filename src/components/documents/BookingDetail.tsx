@@ -77,7 +77,7 @@ export function BookingFields({
           onChange={(e) => onReferenceChange(e.target.value)}
           maxLength={referenceMax}
           placeholder="Confirmation or ticket number"
-          className="w-full rounded-xl border border-border bg-card px-3 py-2 text-[15px] tabular-nums"
+          className="w-full rounded-xl border border-[var(--field-border)] bg-card px-3 py-2 text-[15px] tabular-nums"
         />
       </label>
       <label className="block space-y-1">
@@ -88,7 +88,7 @@ export function BookingFields({
           maxLength={detailsMax}
           rows={3}
           placeholder={detailsPlaceholder}
-          className="w-full rounded-xl border border-border bg-card px-3 py-2 text-[15px]"
+          className="w-full rounded-xl border border-[var(--field-border)] bg-card px-3 py-2 text-[15px]"
         />
       </label>
     </div>

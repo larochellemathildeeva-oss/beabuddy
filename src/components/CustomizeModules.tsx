@@ -79,28 +79,13 @@ export function CustomizeModules<K extends string>({
         <Plus className="size-4" aria-hidden /> Add modules
       </button>
     ) : variant === "card" ? (
+      // A quiet link at the foot of the page, not a banner.
       <button
         type="button"
         data-guide={guide}
-        className="relative flex min-h-[104px] w-full items-center gap-4 overflow-hidden rounded-[var(--r-card)] border border-border bg-card p-4 text-left shadow-[0_4px_16px_rgb(0_0_0/0.06)]"
+        className="mx-auto flex min-h-11 items-center gap-1.5 rounded-full px-4 text-[13.5px] font-medium text-muted-foreground transition-colors hover:text-foreground"
       >
-        <img
-          src={bannerArtUrl("mountain")}
-          alt=""
-          className="art-dim pointer-events-none absolute inset-y-0 right-0 h-full w-1/2 object-cover opacity-70 [mask-image:linear-gradient(to_right,transparent,black_60%)]"
-        />
-        <span className="tile-fill-2 relative grid size-12 shrink-0 place-items-center rounded-2xl">
-          <LayoutGrid className="seq-text-2 size-6" aria-hidden />
-        </span>
-        <span className="relative min-w-0 flex-1">
-          <span className="block text-[16px] font-semibold">{title}</span>
-          <span className="mt-0.5 block max-w-[22ch] text-[13px] leading-snug text-muted-foreground">
-            Choose and reorder modules to make this your own.
-          </span>
-        </span>
-        <span className="relative grid size-11 shrink-0 place-items-center rounded-full bg-card shadow-sm">
-          <ArrowRight className="size-5" aria-hidden />
-        </span>
+        <LayoutGrid className="size-4" aria-hidden /> {title}
       </button>
     ) : variant === "list" ? (
       // A row in You's grouped lists: pastel bubble, title, one line, chevron.

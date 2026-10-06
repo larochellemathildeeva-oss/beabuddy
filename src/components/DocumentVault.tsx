@@ -134,7 +134,7 @@ export function VaultUnlock({
           autoComplete={v.hasVault ? "current-password" : "new-password"}
           placeholder="Passcode"
           aria-label="Passcode"
-          className="mt-4 w-full rounded-xl border border-border bg-card px-3 py-2.5 text-[15px]"
+          className="mt-4 w-full rounded-xl border border-[var(--field-border)] bg-card px-3 py-2.5 text-[15px]"
         />
         <KeyboardToggle keyboard={keyboard} set={setKeyboard} />
         {!v.hasVault && (
@@ -147,7 +147,7 @@ export function VaultUnlock({
             enterKeyHint="go"
             placeholder="Repeat passcode"
             aria-label="Repeat passcode"
-            className="mt-2 w-full rounded-xl border border-border bg-card px-3 py-2.5 text-[15px]"
+            className="mt-2 w-full rounded-xl border border-[var(--field-border)] bg-card px-3 py-2.5 text-[15px]"
           />
         )}
         {!v.hasVault && passcode.length > 0 && !check.valid && !error && (
@@ -241,7 +241,7 @@ function DeviceUnlockSetting({ v }: { v: Vault }) {
         autoComplete="current-password"
         placeholder="Passcode"
         aria-label="Passcode"
-        className="w-full rounded-xl border border-border bg-card px-3 py-2.5 text-[15px]"
+        className="w-full rounded-xl border border-[var(--field-border)] bg-card px-3 py-2.5 text-[15px]"
       />
       <KeyboardToggle keyboard={keyboard} set={setKeyboard} />
       {error && (
@@ -327,7 +327,7 @@ function StrongerPasscode({ v }: { v: Vault }) {
             autoComplete="current-password"
             placeholder="Current passcode"
             aria-label="Current passcode"
-            className="w-full rounded-xl border border-border bg-card px-3 py-2.5 text-[15px]"
+            className="w-full rounded-xl border border-[var(--field-border)] bg-card px-3 py-2.5 text-[15px]"
           />
           <KeyboardToggle keyboard={keyboard} set={setKeyboard} />
           {error && (
@@ -407,7 +407,7 @@ function StrongerPasscode({ v }: { v: Vault }) {
             autoComplete="new-password"
             placeholder="New passcode"
             aria-label="New passcode"
-            className="w-full rounded-xl border border-border bg-card px-3 py-2.5 text-[15px]"
+            className="w-full rounded-xl border border-[var(--field-border)] bg-card px-3 py-2.5 text-[15px]"
           />
           <KeyboardToggle keyboard={keyboard} set={setKeyboard} />
           <input
@@ -419,7 +419,7 @@ function StrongerPasscode({ v }: { v: Vault }) {
             enterKeyHint="go"
             placeholder="Repeat new passcode"
             aria-label="Repeat new passcode"
-            className="w-full rounded-xl border border-border bg-card px-3 py-2.5 text-[15px]"
+            className="w-full rounded-xl border border-[var(--field-border)] bg-card px-3 py-2.5 text-[15px]"
           />
           {passcode.length > 0 && !check.valid && !error && (
             <p className="text-[13px] text-muted-foreground">{check.message}</p>
@@ -601,20 +601,20 @@ export function ProtectedPanel({ v }: { v: Vault }) {
               onChange={(e) => setForm({ ...form, label: e.target.value })}
               placeholder="Label (e.g. My passport)"
               aria-label="Label"
-              className="w-full rounded-xl border border-border bg-card px-3 py-2.5 text-[15px]"
+              className="w-full rounded-xl border border-[var(--field-border)] bg-card px-3 py-2.5 text-[15px]"
             />
             <input
               value={form.number}
               onChange={(e) => setForm({ ...form, number: e.target.value })}
               placeholder="Number"
               aria-label="Number"
-              className="w-full rounded-xl border border-border bg-card px-3 py-2.5 text-[15px]"
+              className="w-full rounded-xl border border-[var(--field-border)] bg-card px-3 py-2.5 text-[15px]"
             />
             <input
               value={form.expires}
               onChange={(e) => setForm({ ...form, expires: e.target.value })}
               type="date"
-              className="w-full rounded-xl border border-border bg-card px-3 py-2.5 text-[15px]"
+              className="w-full rounded-xl border border-[var(--field-border)] bg-card px-3 py-2.5 text-[15px]"
               aria-label="Expiry date"
             />
             <textarea
@@ -623,7 +623,7 @@ export function ProtectedPanel({ v }: { v: Vault }) {
               placeholder="Notes"
               aria-label="Notes"
               rows={2}
-              className="w-full rounded-xl border border-border bg-card px-3 py-2.5 text-[15px]"
+              className="w-full rounded-xl border border-[var(--field-border)] bg-card px-3 py-2.5 text-[15px]"
             />
             <label className="block text-[13px] text-muted-foreground">
               {file ? `Attached: ${file.name}` : "Attach a scan or photo (optional)"}

@@ -167,7 +167,7 @@ export function MoveStopSheet({
               type="time"
               value={time}
               onChange={(e) => setTime(e.target.value)}
-              className="rounded-lg border border-border bg-card px-2 py-1 text-[14px] text-foreground"
+              className="rounded-lg border border-[var(--field-border)] bg-card px-2 py-1 text-[14px] text-foreground"
             />
             {time && (
               <button

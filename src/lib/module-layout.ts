@@ -28,6 +28,8 @@ export function readModules<K extends string>(
   raw: string | null,
   keys: readonly K[],
   defaults: readonly K[],
+  /** Modules a layout saved before they existed gets switched on (Home showed them already). */
+  newOn: readonly K[] = [],
 ): ModuleLayout<K> {
   const fallback = defaultModules(keys, defaults);
   if (!raw) return fallback;
@@ -44,8 +46,13 @@ export function readModules<K extends string>(
   const storedOn = obj["on"];
   if (Array.isArray(storedOrder) && Array.isArray(storedOn)) {
     const order = [...new Set(storedOrder.filter(known))];
-    for (const k of fallback.order) if (!order.includes(k)) order.push(k);
-    return { order, on: new Set(storedOn.filter(known)) };
+    const on = new Set(storedOn.filter(known));
+    for (const k of fallback.order)
+      if (!order.includes(k)) {
+        order.push(k);
+        if (newOn.includes(k)) on.add(k);
+      }
+    return { order, on };
   }
   // The first layouts were one switch per section, in a fixed order.
   const on = new Set<K>();

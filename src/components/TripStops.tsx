@@ -522,7 +522,7 @@ function StopDraftForm({
           onChange={(e) => setDraft({ ...draft, country: e.target.value })}
           placeholder="Country"
           aria-label="Country"
-          className="w-full rounded-xl border border-border bg-card px-3 py-2 text-[14.5px]"
+          className="w-full rounded-xl border border-[var(--field-border)] bg-card px-3 py-2 text-[14.5px]"
         />
       ) : (
         <p className="flex items-center gap-2 px-1 text-[12px] text-muted-foreground">
@@ -539,7 +539,7 @@ function StopDraftForm({
           aria-label="Arrive on"
           value={draft.arrive_on}
           onChange={(e) => setDraft({ ...draft, arrive_on: e.target.value })}
-          className="flex-1 rounded-xl border border-border bg-card px-3 py-2 text-[14.5px]"
+          className="flex-1 rounded-xl border border-[var(--field-border)] bg-card px-3 py-2 text-[14.5px]"
         />
         <input
           type="date"
@@ -547,14 +547,15 @@ function StopDraftForm({
           value={draft.depart_on}
           {...(draft.arrive_on ? { min: draft.arrive_on } : {})}
           onChange={(e) => setDraft({ ...draft, depart_on: e.target.value })}
-          className="flex-1 rounded-xl border border-border bg-card px-3 py-2 text-[14.5px]"
+          className="flex-1 rounded-xl border border-[var(--field-border)] bg-card px-3 py-2 text-[14.5px]"
         />
       </div>
       <input
+        aria-label={draft.kind === "layover" ? "Layover detail (e.g. 6h, terminal 2)" : "Note"}
         value={draft.notes}
         onChange={(e) => setDraft({ ...draft, notes: e.target.value })}
         placeholder={draft.kind === "layover" ? "Layover detail (e.g. 6h, terminal 2)" : "Note"}
-        className="w-full rounded-xl border border-border bg-card px-3 py-2 text-[14.5px]"
+        className="w-full rounded-xl border border-[var(--field-border)] bg-card px-3 py-2 text-[14.5px]"
       />
       {error && (
         <p role="alert" className="text-[14px] text-destructive">

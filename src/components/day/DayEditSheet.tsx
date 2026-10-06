@@ -391,7 +391,7 @@ export function DayEditSheet({
         rows={2}
         maxLength={DAY_EDIT_MAX_ASK}
         placeholder={placeholder}
-        className="w-full resize-none rounded-xl border border-border bg-card px-3 py-2 text-[16px]"
+        className="w-full resize-none rounded-xl border border-[var(--field-border)] bg-card px-3 py-2 text-[16px]"
       />
       <button
         type="submit"

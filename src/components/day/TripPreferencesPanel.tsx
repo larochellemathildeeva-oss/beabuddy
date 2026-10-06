@@ -82,7 +82,7 @@ export function TripPreferencesPanel({
           maxLength={80}
           placeholder="Travelling with Dad, a museum a day…"
           aria-label="Add your own"
-          className="min-w-0 flex-1 rounded-xl border border-input bg-card px-3 py-2.5 text-[14.5px] outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring"
+          className="min-w-0 flex-1 rounded-xl border border-[var(--field-border)] bg-card px-3 py-2.5 text-[14.5px] outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring"
         />
         <button
           type="submit"

@@ -457,7 +457,7 @@ export function TimelineEntryForm({
                 setDayTouched(true);
                 setDay(e.target.value);
               }}
-              className="mt-1 w-full rounded-xl border border-border bg-card px-3 py-2 text-[14.5px] text-foreground"
+              className="mt-1 w-full rounded-xl border border-[var(--field-border)] bg-card px-3 py-2 text-[14.5px] text-foreground"
             />
           </label>
           {outside && <p className="text-[12px] text-muted-foreground">{outside}</p>}
@@ -509,7 +509,7 @@ export function TimelineEntryForm({
                 setTime(e.target.value);
                 setFreeTime("");
               }}
-              className="mt-1 w-full rounded-xl border border-border bg-card px-3 py-2 text-[14.5px] text-foreground"
+              className="mt-1 w-full rounded-xl border border-[var(--field-border)] bg-card px-3 py-2 text-[14.5px] text-foreground"
             />
           </label>
           {!time && (
@@ -520,7 +520,7 @@ export function TimelineEntryForm({
                 onChange={(e) => setFreeTime(e.target.value)}
                 onBlur={() => setFreeTime(normalizeTimeLabel(freeTime))}
                 placeholder="after check-in"
-                className="mt-1 w-full rounded-xl border border-border bg-card px-3 py-2 text-[14.5px] text-foreground"
+                className="mt-1 w-full rounded-xl border border-[var(--field-border)] bg-card px-3 py-2 text-[14.5px] text-foreground"
               />
             </label>
           )}
@@ -550,7 +550,7 @@ export function TimelineEntryForm({
           }}
           placeholder="Anything worth remembering"
           aria-label="Note"
-          className="w-full rounded-xl border border-border bg-card px-3 py-2 text-[14.5px]"
+          className="w-full rounded-xl border border-[var(--field-border)] bg-card px-3 py-2 text-[14.5px]"
         />
       )}
 
@@ -645,7 +645,7 @@ export function TimelineEntryForm({
                   type="date"
                   aria-label="Day for the entry just added"
                   onChange={(e) => void scheduleJustAdded({ day_date: e.target.value })}
-                  className="w-full rounded-xl border border-border bg-card px-3 py-2 text-[14.5px]"
+                  className="w-full rounded-xl border border-[var(--field-border)] bg-card px-3 py-2 text-[14.5px]"
                 />
               )}
               <button
@@ -678,7 +678,7 @@ export function TimelineEntryForm({
                 type="time"
                 aria-label="Time for the entry just added"
                 onChange={(e) => void scheduleJustAdded({ time_label: e.target.value || null })}
-                className="rounded-xl border border-border bg-card px-2 py-1 text-[13px]"
+                className="rounded-xl border border-[var(--field-border)] bg-card px-2 py-1 text-[13px]"
               />
               <button
                 type="button"

@@ -23,7 +23,7 @@ export function AuthField({
         {...input}
         aria-invalid={error ? true : undefined}
         aria-describedby={error ? errorId : input["aria-describedby"]}
-        className={`h-[var(--h-input)] w-full rounded-[var(--r-input)] border border-input bg-card px-4 text-[15px] outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring ${className}`}
+        className={`h-[var(--h-input)] w-full rounded-[var(--r-input)] border border-[var(--field-border)] bg-card px-4 text-[15px] outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring ${className}`}
       />
       {error ? (
         <p id={errorId} role="alert" className="mt-1 text-[14px] text-destructive">

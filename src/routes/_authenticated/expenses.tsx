@@ -266,22 +266,25 @@ function ExpensesPage() {
 
           <div className="grid grid-cols-2 gap-2">
             <input
+              aria-label="Where you paid"
               value={merchant}
               onChange={(e) => setMerchant(e.target.value)}
               placeholder="Where you paid"
-              className="rounded-xl border border-border bg-card px-3 py-2.5 text-[16px]"
+              className="rounded-xl border border-[var(--field-border)] bg-card px-3 py-2.5 text-[16px]"
             />
             <input
+              aria-label="Amount"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               inputMode="decimal"
               placeholder="Amount"
-              className="rounded-xl border border-border bg-card px-3 py-2.5 text-[16px]"
+              className="rounded-xl border border-[var(--field-border)] bg-card px-3 py-2.5 text-[16px]"
             />
             <select
+              aria-label="Currency"
               value={currency}
               onChange={(e) => setCurrency(e.target.value)}
-              className="rounded-xl border border-border bg-card px-3 py-2.5 text-[16px]"
+              className="rounded-xl border border-[var(--field-border)] bg-card px-3 py-2.5 text-[16px]"
             >
               {currencies.map((c) => (
                 <option key={c} value={c}>
@@ -290,9 +293,10 @@ function ExpensesPage() {
               ))}
             </select>
             <select
+              aria-label="Category"
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              className="rounded-xl border border-border bg-card px-3 py-2.5 text-[16px]"
+              className="rounded-xl border border-[var(--field-border)] bg-card px-3 py-2.5 text-[16px]"
             >
               {expenseCategories.map((c) => (
                 <option key={c} value={c}>
@@ -301,15 +305,17 @@ function ExpensesPage() {
               ))}
             </select>
             <input
+              aria-label="Date"
               type="date"
               value={spentOn}
               onChange={(e) => setSpentOn(e.target.value)}
-              className="rounded-xl border border-border bg-card px-3 py-2.5 text-[16px]"
+              className="rounded-xl border border-[var(--field-border)] bg-card px-3 py-2.5 text-[16px]"
             />
             <select
+              aria-label="Trip"
               value={tripId}
               onChange={(e) => setTripId(e.target.value)}
-              className="rounded-xl border border-border bg-card px-3 py-2.5 text-[16px]"
+              className="rounded-xl border border-[var(--field-border)] bg-card px-3 py-2.5 text-[16px]"
             >
               <option value="">No trip</option>
               {t.trips.map((trip) => (
@@ -321,11 +327,12 @@ function ExpensesPage() {
           </div>
 
           <textarea
+            aria-label="What was it for?"
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             placeholder="What was it for?"
             rows={2}
-            className="w-full rounded-xl border border-border bg-card px-3 py-2.5 text-[16px]"
+            className="w-full rounded-xl border border-[var(--field-border)] bg-card px-3 py-2.5 text-[16px]"
           />
 
           <label className="flex items-center gap-2.5 text-[16px] text-muted-foreground">
@@ -356,7 +363,7 @@ function ExpensesPage() {
                 value={rates.home}
                 onChange={(e) => rates.setHomeCurrency(e.target.value)}
                 aria-label="Your home currency"
-                className="rounded-lg border border-border bg-card px-2 py-1 text-[13px]"
+                className="rounded-lg border border-[var(--field-border)] bg-card px-2 py-1 text-[13px]"
               >
                 {homeCurrencies.map((c) => (
                   <option key={c} value={c}>

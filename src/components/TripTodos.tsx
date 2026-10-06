@@ -390,7 +390,7 @@ export function TripTodosBody({
             rows={4}
             aria-label="Paste a list of things to do"
             placeholder={"Renew passport\nBook airport transfer\nTell the bank"}
-            className="w-full rounded-2xl border border-border bg-card px-3 py-2 text-[14.5px]"
+            className="w-full rounded-2xl border border-[var(--field-border)] bg-card px-3 py-2 text-[14.5px]"
           />
           <div className="flex items-center gap-3">
             <button
@@ -552,14 +552,14 @@ function TodoItem({
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             aria-label="To-do"
-            className="w-full rounded-xl border border-border bg-card px-3 py-2 text-[14.5px]"
+            className="w-full rounded-xl border border-[var(--field-border)] bg-card px-3 py-2 text-[14.5px]"
           />
           <input
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             placeholder="Add a note"
             aria-label={`Note for ${todo.title}`}
-            className="w-full rounded-xl border border-border bg-card px-3 py-2 text-[13.5px]"
+            className="w-full rounded-xl border border-[var(--field-border)] bg-card px-3 py-2 text-[13.5px]"
           />
           <div className="flex flex-wrap items-center gap-2">
             <label className="flex items-center gap-1.5 text-[12.5px] text-muted-foreground">
@@ -569,7 +569,7 @@ function TodoItem({
                 value={todo.due_on ?? ""}
                 aria-label={`Due date for ${todo.title}`}
                 onChange={(e) => onDue(e.target.value)}
-                className="rounded-lg border border-border bg-card px-2 py-1 text-[12.5px] text-foreground"
+                className="rounded-lg border border-[var(--field-border)] bg-card px-2 py-1 text-[12.5px] text-foreground"
               />
             </label>
             <button

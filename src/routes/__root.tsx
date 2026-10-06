@@ -14,7 +14,6 @@ import { reportError } from "@/lib/report";
 import appCss from "../styles.css?url";
 import { Tour, useTourControl } from "../components/Tour";
 import { Welcome } from "../components/Welcome";
-import { BrandMark } from "../components/PageHeader";
 import {
   DEFAULT_THEME,
   readTheme,
@@ -29,28 +28,26 @@ import { ACCENT_BOOT_SCRIPT, DEFAULT_ACCENT } from "@/lib/accent";
 
 const APP_VERSION = typeof __APP_VERSION__ === "string" ? __APP_VERSION__ : "1.0.0";
 
-const LINK_PRIMARY = "btn-primary inline-flex items-center justify-center px-5";
-const LINK_SECONDARY =
-  "inline-flex min-h-11 items-center justify-center rounded-[var(--r-button)] border border-input bg-card px-5 text-[16px] font-semibold text-foreground";
+const PAGE_BUTTON = "btn-primary inline-flex items-center justify-center px-6";
+const PAGE_BUTTON_QUIET =
+  "inline-flex min-h-[var(--h-button)] items-center justify-center rounded-[var(--r-button)] border border-border bg-card px-6 text-[16px] font-semibold text-foreground";
 
 function NotFoundComponent() {
   return (
-    <div className="flex min-h-[100dvh] items-center justify-center bg-background px-5">
-      <div className="flex max-w-md flex-col items-center text-center">
-        <BrandMark large />
-        <h1 className="mt-6 font-display text-[38px] leading-[1.05] tracking-[-0.02em]">
-          We couldn't find that page.
-        </h1>
+    <main className="flex min-h-screen items-center justify-center bg-background px-6">
+      <div className="max-w-md text-center">
+        <p className="label-caps">Page not found</p>
+        <h1 className="mt-2 font-display text-[40px] leading-[1.1]">Béa can't find that page.</h1>
         <p className="mt-3 text-[16px] text-muted-foreground">
-          The link may be old, or the page may have moved.
+          It may have moved, or the link may be mistyped.
         </p>
         <div className="mt-6">
-          <Link to="/" className={LINK_PRIMARY}>
-            Go home
+          <Link to="/" className={PAGE_BUTTON}>
+            Back home
           </Link>
         </div>
       </div>
-    </div>
+    </main>
   );
 }
 
@@ -65,13 +62,11 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   }, [error]);
 
   return (
-    <div className="flex min-h-[100dvh] items-center justify-center bg-background px-5">
-      <div className="flex max-w-md flex-col items-center text-center">
-        <BrandMark large />
-        <h1 className="mt-6 font-display text-[38px] leading-[1.05] tracking-[-0.02em]">
-          This page didn't load.
-        </h1>
-        <p role="alert" className="mt-3 text-[16px] text-muted-foreground">
+    <main className="flex min-h-screen items-center justify-center bg-background px-6">
+      <div className="max-w-md text-center">
+        <p className="label-caps">Something slipped</p>
+        <h1 className="mt-2 font-display text-[40px] leading-[1.1]">This page didn't load.</h1>
+        <p className="mt-3 text-[16px] text-muted-foreground">
           That one's on us. Try again, or head home.
         </p>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
@@ -81,16 +76,16 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
               router.invalidate();
               reset();
             }}
-            className={LINK_PRIMARY}
+            className={PAGE_BUTTON}
           >
             Try again
           </button>
-          <a href="/" className={LINK_SECONDARY}>
-            Go home
+          <a href="/" className={PAGE_BUTTON_QUIET}>
+            Back home
           </a>
         </div>
       </div>
-    </div>
+    </main>
   );
 }
 

@@ -435,6 +435,7 @@ function PreferencesPage() {
               )}
               <div className="mt-3 flex gap-2">
                 <input
+                  aria-label="Add a country"
                   value={countryDraft}
                   onChange={(e) => setCountryDraft(e.target.value)}
                   onKeyDown={(e) => {
@@ -444,7 +445,7 @@ function PreferencesPage() {
                     }
                   }}
                   placeholder="Add a country"
-                  className="flex-1 rounded-xl border border-border bg-card px-3 py-2 text-[16px] outline-none focus:border-primary"
+                  className="flex-1 rounded-xl border border-[var(--field-border)] bg-card px-3 py-2 text-[16px] outline-none focus:border-primary"
                 />
                 <button
                   onClick={addCountry}
@@ -519,6 +520,7 @@ function PreferencesPage() {
                   )}
                   <div className="mt-2 flex gap-2">
                     <input
+                      aria-label="Interests"
                       value={tagDraft}
                       onChange={(e) => setTagDraft(e.target.value)}
                       onKeyDown={(e) => {
@@ -529,7 +531,7 @@ function PreferencesPage() {
                       }}
                       maxLength={CUSTOM_TAG_MAX}
                       placeholder="e.g. Jazz bars, ceramics, rooftop views"
-                      className="min-w-0 flex-1 rounded-xl border border-border bg-card px-3 py-2 text-[16px] outline-none focus:border-primary"
+                      className="min-w-0 flex-1 rounded-xl border border-[var(--field-border)] bg-card px-3 py-2 text-[16px] outline-none focus:border-primary"
                     />
                     <button
                       onClick={addTag}
@@ -554,20 +556,22 @@ function PreferencesPage() {
                 refuse.
               </p>
               <textarea
+                aria-label="Food"
                 value={prefs.dietary_notes ?? ""}
                 onChange={(e) => editNote("dietary_notes", e.target.value)}
                 onBlur={() => flushNotes.current()}
                 rows={2}
                 placeholder="Food: e.g. no shellfish, vegetarian dinners"
-                className="mt-3 w-full rounded-xl border border-border bg-card px-3 py-2 text-[16px] outline-none focus:border-primary"
+                className="mt-3 w-full rounded-xl border border-[var(--field-border)] bg-card px-3 py-2 text-[16px] outline-none focus:border-primary"
               />
               <textarea
+                aria-label="Avoid"
                 value={prefs.avoid_notes ?? ""}
                 onChange={(e) => editNote("avoid_notes", e.target.value)}
                 onBlur={() => flushNotes.current()}
                 rows={2}
                 placeholder="Avoid: e.g. long hikes, crowded nightlife, early flights"
-                className="mt-2 w-full rounded-xl border border-border bg-card px-3 py-2 text-[16px] outline-none focus:border-primary"
+                className="mt-2 w-full rounded-xl border border-[var(--field-border)] bg-card px-3 py-2 text-[16px] outline-none focus:border-primary"
               />
             </section>
           </>

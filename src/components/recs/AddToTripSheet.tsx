@@ -202,7 +202,7 @@ export function AddToTripSheet({
               <select
                 value={day}
                 onChange={(e) => setDay(e.target.value)}
-                className="min-w-0 rounded-xl border border-border bg-card px-3 py-2 text-[15px]"
+                className="min-w-0 rounded-xl border border-[var(--field-border)] bg-card px-3 py-2 text-[15px]"
               >
                 <option value="">No set day</option>
                 {days.map((d) => (
@@ -240,7 +240,7 @@ export function AddToTripSheet({
             onChange={(e) => setNote(e.target.value)}
             placeholder="Add a note (optional)"
             aria-label="Note"
-            className="mt-4 w-full rounded-xl border border-border bg-card px-3.5 py-3 text-[15px] outline-none focus:border-primary"
+            className="mt-4 w-full rounded-xl border border-[var(--field-border)] bg-card px-3.5 py-3 text-[15px] outline-none focus:border-primary"
           />
 
           {error && (

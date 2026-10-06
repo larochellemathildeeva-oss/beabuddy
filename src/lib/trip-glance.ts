@@ -71,10 +71,10 @@ export function heroTags(
   now = new Date(),
 ): { label: string; when: string } {
   const from = localDate(start);
-  if (!from) return { label: tentative ? "Tentative dates" : "Planning", when: "" };
+  if (!from) return { label: tentative ? "Upcoming trip" : "Planning", when: "" };
   const to = localDate(end) ?? from;
   const until = daysFrom(now, from);
-  const label = tentative ? "Tentative dates" : "Upcoming trip";
+  const label = "Upcoming trip";
   if (until > 1) return { label, when: `In ${until} days` };
   if (until === 1) return { label, when: "Tomorrow" };
   if (until === 0) return { label, when: "Today" };

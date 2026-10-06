@@ -160,7 +160,7 @@ export function DayTripFromNear({
           type="date"
           value={date}
           onChange={(e) => setDate(e.target.value)}
-          className="mt-1 w-full rounded-xl border border-border bg-card px-3 py-2.5 text-[15px]"
+          className="mt-1 w-full rounded-xl border border-[var(--field-border)] bg-card px-3 py-2.5 text-[15px]"
         />
       </label>
 
@@ -211,12 +211,13 @@ export function DayTripFromNear({
       )}
 
       <textarea
+        aria-label="Anything else for today"
         value={note}
         onChange={(e) => setNote(e.target.value)}
         maxLength={400}
         rows={2}
         placeholder="Anything else for today — lunch first, no museums…"
-        className="w-full rounded-xl border border-border bg-card px-3 py-2 text-[14.5px] outline-none focus:border-primary"
+        className="w-full rounded-xl border border-[var(--field-border)] bg-card px-3 py-2 text-[14.5px] outline-none focus:border-primary"
       />
 
       {error && (

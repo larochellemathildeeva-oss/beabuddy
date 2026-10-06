@@ -353,7 +353,7 @@ export function AddVisitedCity({
                   type="month"
                   value={when}
                   onChange={(e) => setWhen(e.target.value)}
-                  className="mt-1 w-full rounded-xl border border-border bg-card px-3 py-2 text-[14.5px] text-foreground outline-none focus:border-primary"
+                  className="mt-1 w-full rounded-xl border border-[var(--field-border)] bg-card px-3 py-2 text-[14.5px] text-foreground outline-none focus:border-primary"
                 />
               </label>
               <label className="text-[13px] text-muted-foreground">
@@ -362,7 +362,7 @@ export function AddVisitedCity({
                   value={note}
                   onChange={(e) => setNote(e.target.value)}
                   placeholder="Anything to remember"
-                  className="mt-1 w-full rounded-xl border border-border bg-card px-3 py-2 text-[14.5px] text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
+                  className="mt-1 w-full rounded-xl border border-[var(--field-border)] bg-card px-3 py-2 text-[14.5px] text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
                 />
               </label>
             </div>
@@ -372,11 +372,12 @@ export function AddVisitedCity({
         {mode === "list" && (
           <>
             <textarea
+              aria-label="Countries or cities to add"
               value={paste}
               onChange={(e) => setPaste(e.target.value)}
               rows={5}
               placeholder={"France\nSpain\nParis\nLisbon"}
-              className="w-full rounded-xl border border-border bg-card px-3 py-2 text-[14.5px] outline-none focus:border-primary"
+              className="w-full rounded-xl border border-[var(--field-border)] bg-card px-3 py-2 text-[14.5px] outline-none focus:border-primary"
             />
             <input
               ref={fileRef}
@@ -470,7 +471,7 @@ export function AddVisitedCity({
                             }}
                             placeholder="Usual country or city name"
                             aria-label={`Correct ${row.originalName}`}
-                            className="mt-1 w-full rounded-lg border border-border bg-card px-2.5 py-2 text-[14.5px] outline-none focus:border-primary"
+                            className="mt-1 w-full rounded-lg border border-[var(--field-border)] bg-card px-2.5 py-2 text-[14.5px] outline-none focus:border-primary"
                           />
                         </label>
                         <div className="flex flex-wrap items-center gap-3">

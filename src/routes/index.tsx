@@ -389,7 +389,8 @@ function SignedInHome() {
   ]);
   // The trip modules show while there is a trip under way or ahead.
   const shownModules = shown.filter(
-    (k) => k !== "stops" && (!TRIP_ONLY.has(k) || Boolean(trip && !trips.loading)),
+    (k) =>
+      k !== "stops" && k !== "suggested" && (!TRIP_ONLY.has(k) || Boolean(trip && !trips.loading)),
   );
   const tripWeather =
     Boolean(trip && !trips.loading) &&
@@ -467,7 +468,7 @@ function SignedInHome() {
             )}
             <HomeTripStats trip={trip} glance={glances[trip.id]} overlap={!underway} />
             <HomeWhereNext />
-            <HomeSuggested trip={trip} />
+            {layout.suggested && <HomeSuggested trip={trip} here={tripModules.here} />}
           </div>
         )}
 

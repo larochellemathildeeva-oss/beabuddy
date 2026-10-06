@@ -81,7 +81,7 @@ export function SaveSheet({
           value={note}
           onChange={(e) => setNote(e.target.value)}
           placeholder="e.g. great for brunch"
-          className="mt-2 w-full rounded-xl border border-border bg-card px-3.5 py-3 text-[15px] outline-none focus:border-primary"
+          className="mt-2 w-full rounded-xl border border-[var(--field-border)] bg-card px-3.5 py-3 text-[15px] outline-none focus:border-primary"
         />
       </label>
 
@@ -91,7 +91,7 @@ export function SaveSheet({
           value={who}
           onChange={(e) => setWho(e.target.value)}
           placeholder="A friend, a guide, a stranger…"
-          className="mt-2 w-full rounded-xl border border-border bg-card px-3.5 py-3 text-[15px] outline-none focus:border-primary"
+          className="mt-2 w-full rounded-xl border border-[var(--field-border)] bg-card px-3.5 py-3 text-[15px] outline-none focus:border-primary"
         />
       </label>
 

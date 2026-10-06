@@ -514,7 +514,7 @@ function TripsPage() {
             onChange={(e) => setForm({ ...form, title: e.target.value })}
             placeholder={suggestedName || "Trip name"}
             aria-label="Trip name"
-            className="w-full rounded-xl border border-border bg-card px-3 py-2.5 text-[15px]"
+            className="w-full rounded-xl border border-[var(--field-border)] bg-card px-3 py-2.5 text-[15px]"
           />
           {!form.title.trim() && suggestedName && (
             <p className="px-1 text-[12px] text-muted-foreground">
@@ -723,7 +723,7 @@ function TripsPage() {
               <select
                 value={packTemplateId}
                 onChange={(e) => setPackTemplateId(e.target.value)}
-                className="mt-1 w-full rounded-xl border border-border bg-card px-3 py-2.5 text-[15px] text-foreground"
+                className="mt-1 w-full rounded-xl border border-[var(--field-border)] bg-card px-3 py-2.5 text-[15px] text-foreground"
               >
                 <option value="">No packing list</option>
                 {packing.packs.map((pack) => (
@@ -838,10 +838,11 @@ function TripsPage() {
       >
         <div className="space-y-2">
           <input
+            aria-label="Invite code"
             value={code}
             onChange={(e) => setCode(e.target.value.toUpperCase())}
             placeholder="Invite code"
-            className="w-full rounded-xl border border-border bg-card px-3 py-2.5 text-[15px] tracking-widest"
+            className="w-full rounded-xl border border-[var(--field-border)] bg-card px-3 py-2.5 text-[15px] tracking-widest"
           />
           <button
             disabled={code.length < 4}
@@ -961,7 +962,7 @@ function DayTripRow({
           {...(max ? { max } : {})}
           aria-label="The day of this day trip"
           onChange={(e) => onChange({ start: e.target.value, end: e.target.value })}
-          className="min-h-11 rounded-xl border border-border bg-card px-3 py-2 text-[14.5px] text-foreground"
+          className="min-h-11 rounded-xl border border-[var(--field-border)] bg-card px-3 py-2 text-[14.5px] text-foreground"
         />
       </label>
       <p className="px-1 text-[12px] text-muted-foreground">

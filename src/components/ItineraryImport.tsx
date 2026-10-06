@@ -1452,7 +1452,7 @@ function ImportPanel({
                 value={currency}
                 onChange={(e) => setCurrency(e.target.value)}
                 aria-label="Currency"
-                className="rounded-lg border border-border bg-card px-2 py-1 text-[12.5px]"
+                className="rounded-lg border border-[var(--field-border)] bg-card px-2 py-1 text-[12.5px]"
               >
                 {["CAD", "USD", "EUR", "GBP", "JPY", "MXN"].map((value) => (
                   <option key={value}>{value}</option>
@@ -1529,7 +1529,7 @@ function ImportPanel({
                       value={dayOneDate}
                       aria-label="The date day one of this plan falls on"
                       onChange={(e) => setDayOneDate(e.target.value)}
-                      className="min-h-11 rounded-xl border border-border bg-card px-3 py-2 text-[14.5px] text-foreground"
+                      className="min-h-11 rounded-xl border border-[var(--field-border)] bg-card px-3 py-2 text-[14.5px] text-foreground"
                     />
                   </label>
                   <p className="mt-1.5 text-[12px] text-muted-foreground">
@@ -1741,12 +1741,13 @@ function ImportPanel({
                 </p>
               )}
               <textarea
+                aria-label="Rainy-day activities, something less expensive"
                 value={altReason}
                 onChange={(e) => setAltReason(e.target.value)}
                 rows={2}
                 maxLength={800}
                 placeholder="Rainy-day activities, something less expensive…"
-                className="w-full rounded-xl border border-input bg-card px-3 py-2 text-[14.5px] outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring"
+                className="w-full rounded-xl border border-[var(--field-border)] bg-card px-3 py-2 text-[14.5px] outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring"
               />
               <button
                 onClick={() => void findAlternatives()}
@@ -1759,12 +1760,13 @@ function ImportPanel({
                 Or start over from this draft.
               </p>
               <textarea
+                aria-label="Fewer museums, more food, a slower first day"
                 value={rebuildReason}
                 onChange={(e) => setRebuildReason(e.target.value)}
                 rows={2}
                 maxLength={800}
                 placeholder="Fewer museums, more food, a slower first day…"
-                className="w-full rounded-xl border border-input bg-card px-3 py-2 text-[14.5px] outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring"
+                className="w-full rounded-xl border border-[var(--field-border)] bg-card px-3 py-2 text-[14.5px] outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring"
               />
               <button
                 onClick={() => void rebuildTrip()}

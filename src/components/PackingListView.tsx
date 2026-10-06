@@ -317,7 +317,7 @@ export function PackingListView({
           maxLength={SECTION_MAX_LEN}
           onChange={(e) => setRenaming({ key, value: e.target.value })}
           aria-label="Section name"
-          className="min-w-0 flex-1 rounded-lg border border-border bg-card px-2 py-1 text-[14.5px]"
+          className="min-w-0 flex-1 rounded-lg border border-[var(--field-border)] bg-card px-2 py-1 text-[14.5px]"
         />
         <button
           type="submit"
@@ -490,11 +490,12 @@ export function PackingListView({
                         }}
                       >
                         <input
+                          aria-label={`Add to ${title}`}
                           autoFocus
                           value={addingIn.value}
                           onChange={(e) => setAddingIn({ key, value: e.target.value })}
                           placeholder={`Add to ${title}`}
-                          className="min-w-0 flex-1 rounded-xl border border-border bg-card px-3 py-2 text-[14.5px]"
+                          className="min-w-0 flex-1 rounded-xl border border-[var(--field-border)] bg-card px-3 py-2 text-[14.5px]"
                         />
                         <button
                           type="submit"
@@ -591,12 +592,13 @@ export function PackingListView({
           }}
         >
           <input
+            aria-label="Section name"
             autoFocus
             value={newSection}
             maxLength={SECTION_MAX_LEN}
             onChange={(e) => setNewSection(e.target.value)}
             placeholder="Section name — e.g. Electronics"
-            className="min-w-0 flex-1 rounded-xl border border-border bg-card px-3 py-2 text-[14.5px]"
+            className="min-w-0 flex-1 rounded-xl border border-[var(--field-border)] bg-card px-3 py-2 text-[14.5px]"
           />
           <button
             type="submit"
@@ -633,7 +635,7 @@ export function PackingListView({
             rows={4}
             aria-label="Paste a packing list"
             placeholder={"Passport\nPhone charger\nSwimsuit"}
-            className="w-full rounded-2xl border border-border bg-card px-3 py-2 text-[14.5px]"
+            className="w-full rounded-2xl border border-[var(--field-border)] bg-card px-3 py-2 text-[14.5px]"
           />
           <p className="text-[12px] text-muted-foreground">
             One thing per line. Béa sorts each into a section; you can move them after.
@@ -673,7 +675,7 @@ export function PackingListView({
                 onChange={(e) => setNewName(e.target.value)}
                 placeholder={`${pack.name} (edited)`}
                 aria-label="Name for the new list"
-                className="w-full rounded-xl border border-border bg-card px-3 py-2 text-[14.5px]"
+                className="w-full rounded-xl border border-[var(--field-border)] bg-card px-3 py-2 text-[14.5px]"
               />
             )}
             {saveError && (
@@ -923,7 +925,7 @@ function ItemEditor({
         value={label}
         onChange={(e) => setLabel(e.target.value)}
         aria-label="Item"
-        className="w-full rounded-lg border border-border bg-card px-2.5 py-1.5 text-[14.5px]"
+        className="w-full rounded-lg border border-[var(--field-border)] bg-card px-2.5 py-1.5 text-[14.5px]"
       />
       <div className="flex items-center gap-2">
         <div className="flex items-center rounded-lg border border-border">
@@ -949,7 +951,7 @@ function ItemEditor({
           value={section}
           onChange={(e) => setSection(e.target.value)}
           aria-label="Section"
-          className="min-w-0 flex-1 rounded-lg border border-border bg-card px-2 py-1.5 text-[13.5px]"
+          className="min-w-0 flex-1 rounded-lg border border-[var(--field-border)] bg-card px-2 py-1.5 text-[13.5px]"
         >
           <option value="">Unsorted</option>
           {choices.map((s) => (
