@@ -61,7 +61,7 @@ import type { ItineraryRow } from "@/hooks/useTrips";
 import { isDone, leaveBy } from "@/lib/companion";
 import { itineraryClockMinutes, timeModeFor, type TimeMode } from "@/lib/itinerary-change";
 import type { RouteLeg } from "@/lib/directions.functions";
-import { mapsDirToUrl, mapsDirUrl, mapsPlaceUrl } from "@/lib/direction-stops";
+import { legMapsUrl, mapsDirToUrl, mapsPlaceUrl } from "@/lib/direction-stops";
 import { rememberPlacePick, type ParsedPlace } from "@/lib/places.functions";
 import { placePatchForSavedRow } from "@/lib/place-label";
 import { parseStayChoice, stayChoices, stayLabel } from "@/lib/planned-stay";
@@ -1556,7 +1556,7 @@ export function TravelConnector({
 }) {
   const [open, setOpen] = useState(false);
   const mode = leg?.mode ?? fallbackMode ?? "walking";
-  const href = leg?.mapUrl || mapsDirUrl(from, to, area, mode);
+  const href = legMapsUrl(leg, to, area, mode);
   const isMeasured = Boolean(leg && leg.distance > 0);
   const leave = showTime && leg ? leaveBy(to.time_label, leg) : null;
   const steps = leg?.steps ?? [];
@@ -1688,7 +1688,7 @@ export function TravelConnector({
                     where to get off. A transit leg's own link already opens it. */}
                   {mode !== "transit" && (
                     <a
-                      href={mapsDirUrl(from, to, area, "transit")}
+                      href={mapsDirToUrl(to, area, "transit")}
                       target="_blank"
                       rel="noreferrer"
                       className="inline-flex items-center gap-1 text-[12.5px] font-bold text-primary hover:underline"

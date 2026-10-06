@@ -6,10 +6,14 @@ import { AI_CALL } from "@/lib/ai-errors";
 import { isSavedDirectionItem } from "@/lib/direction-stops";
 import {
   PLAN_EDIT_MAX_DAYS,
+  PLAN_EDIT_MAX_EARLIER,
   PLAN_EDIT_MAX_MOVES,
   PLAN_EDIT_MAX_REQUEST,
   PLAN_EDIT_MAX_STOPS,
+  combineMoves,
+  planAfter,
   planEditPrompt,
+  readPendingMoves,
   readPlanEdit,
 } from "@/lib/plan-edit";
 import { tripDays, type StopMove } from "@/lib/stop-move";
@@ -17,6 +21,32 @@ import { tripDays, type StopMove } from "@/lib/stop-move";
 const PlanEditInput = z.object({
   tripId: z.string().uuid(),
   request: z.string().trim().min(1).max(PLAN_EDIT_MAX_REQUEST),
+  /**
+   * The answer to the traveller's earlier requests, shown but not applied
+   * yet, so a follow-up ("and the market too") adds to it instead of
+   * starting over from the saved plan.
+   */
+  pending: z
+    .object({
+      requests: z
+        .array(z.string().trim().min(1).max(PLAN_EDIT_MAX_REQUEST))
+        .max(PLAN_EDIT_MAX_EARLIER),
+      moves: z
+        .array(
+          z.object({
+            id: z.string().uuid(),
+            day_date: z.string().max(20).nullable(),
+            at: z.union([
+              z.enum(["start", "end"]),
+              z.object({ after: z.string().uuid() }),
+              z.object({ index: z.number().int().min(0).max(PLAN_EDIT_MAX_STOPS) }),
+            ]),
+            time_label: z.string().max(10).nullable().optional(),
+          }),
+        )
+        .max(PLAN_EDIT_MAX_MOVES),
+    })
+    .optional(),
 });
 
 const PlanEditSchema = z.object({
@@ -33,6 +63,7 @@ const PlanEditSchema = z.object({
   reply: z.string(),
 });
 
+/** `moves` is everything to apply: earlier pending moves and the new ones together. */
 export type PlanEditAnswer = { moves: StopMove[]; reply: string };
 
 /**
@@ -66,14 +97,19 @@ export const askPlanEdit = createServerFn({ method: "POST" })
         .order("position", { ascending: true }),
     ]);
     if (!trip || error) throw new Error("Béa couldn't open this trip.");
-    const stops = (rows ?? []).filter((row) => row.title.trim() && !isSavedDirectionItem(row));
-    if (stops.length === 0) throw new Error("There's nothing on this trip to move yet.");
-    const days = tripDays(trip.start_date, trip.end_date, stops);
-    if (stops.length > PLAN_EDIT_MAX_STOPS || days.length > PLAN_EDIT_MAX_DAYS) {
+    const saved = (rows ?? []).filter((row) => row.title.trim() && !isSavedDirectionItem(row));
+    if (saved.length === 0) throw new Error("There's nothing on this trip to move yet.");
+    const days = tripDays(trip.start_date, trip.end_date, saved);
+    if (saved.length > PLAN_EDIT_MAX_STOPS || days.length > PLAN_EDIT_MAX_DAYS) {
       throw new Error(
         "This trip is too long for Béa to rearrange in one go. Move stops one by one.",
       );
     }
+
+    // Béa reads the plan as the traveller sees it, earlier changes in place.
+    const pending = readPendingMoves(data.pending?.moves ?? [], saved, days);
+    const stops = planAfter(saved, pending);
+    const earlier = pending.length > 0 ? (data.pending?.requests ?? []) : [];
 
     const { reserveAi } = await import("@/lib/ai-quota.server");
     await reserveAi(context.userId, "planEdit");
@@ -85,11 +121,12 @@ export const askPlanEdit = createServerFn({ method: "POST" })
           ...AI_CALL,
           output: Output.object({ schema: PlanEditSchema }),
           reasoning: "low",
-          prompt: planEditPrompt(data.request, stops, days),
+          prompt: planEditPrompt(data.request, stops, days, earlier),
         }),
       );
+      const moves = readPlanEdit(result.output.moves, stops, days);
       return {
-        moves: readPlanEdit(result.output.moves, stops, days),
+        moves: moves.length > 0 ? combineMoves(saved, [...pending, ...moves]) : [],
         reply: result.output.reply.trim().slice(0, 300),
       };
     } catch (error) {

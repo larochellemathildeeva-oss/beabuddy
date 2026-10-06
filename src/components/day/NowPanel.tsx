@@ -12,7 +12,7 @@ import { FollowAlong, FromHereLine } from "@/components/day/FollowAlong";
 import { QuickPhoto, type StopPhotosProps } from "@/components/day/StopPhotos";
 import type { ItineraryRow } from "@/hooks/useTrips";
 import { buildRoutes, type RouteLeg } from "@/lib/directions.functions";
-import { mapsDirUrl, mapsPlaceUrl } from "@/lib/direction-stops";
+import { legMapsUrl, mapsDirToUrl, mapsPlaceUrl } from "@/lib/direction-stops";
 import { arrivalHelp, type ArrivalStop } from "@/lib/arrival-help";
 import { timeForRail } from "@/lib/timeline-kind";
 import { lookupRain } from "@/lib/weather.functions";
@@ -176,7 +176,9 @@ export function NowPanel({
   // Following along means something only on the day itself, while it lasts.
   const followable = Boolean(thisDay && placeDay && thisDay === placeDay && phase !== "done");
   const directionsHref = next
-    ? leg?.mapUrl || mapsPlaceUrl(next.title, { lat: next.lat, lon: next.lon }, next.address)
+    ? leg
+      ? legMapsUrl(leg, next, area ?? "")
+      : mapsPlaceUrl(next.title, { lat: next.lat, lon: next.lon }, next.address)
     : "";
   const leavePanel = next ? (
     <LeavePanel
@@ -336,7 +338,7 @@ export function NowPanel({
             </p>
           )}
           <a
-            href={mapsDirUrl(arrival.from, arrival.stay, area ?? "", "transit")}
+            href={mapsDirToUrl(arrival.stay, area ?? "", "transit")}
             target="_blank"
             rel="noreferrer"
             className={primaryBtn}
