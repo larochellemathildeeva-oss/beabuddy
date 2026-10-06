@@ -1,14 +1,42 @@
+import { useState } from "react";
 import { Link } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
+import { toast } from "sonner";
 import { ChevronRight, MapPin } from "@/components/icons";
+import { changeFollow } from "@/lib/trip-follow.functions";
 import type { FollowedTrip } from "@/lib/trip-follow";
 import { formatDateRangeLabel } from "@/lib/trip-dates";
 
 /**
  * Trips → Following: trips other travellers shared with this one, each
  * opening the shared page (the live card, both clocks, the plan). Read-only,
- * and only what the share link shows. Unfollowing is on that page.
+ * and only what the share link shows. "Remove from list" stops following; the
+ * link still opens, and following it again is one tap on that page.
  */
-export function FollowedTripList({ trips }: { trips: FollowedTrip[] }) {
+export function FollowedTripList({ trips: all }: { trips: FollowedTrip[] }) {
+  const change = useServerFn(changeFollow);
+  // Tokens removed in this visit, hidden at once; the server forgets them too.
+  const [removed, setRemoved] = useState<ReadonlySet<string>>(new Set());
+  const [busy, setBusy] = useState<string | null>(null);
+  const trips = all.filter((t) => !removed.has(t.token));
+
+  const remove = async (trip: FollowedTrip) => {
+    setBusy(trip.token);
+    try {
+      const next = await change({ data: { token: trip.token, follow: false } });
+      if (next === "not-following" || next === "gone") {
+        setRemoved((set) => new Set(set).add(trip.token));
+        toast("Removed from Following", { description: trip.title });
+      } else {
+        toast.error("That didn't save. Try again.");
+      }
+    } catch {
+      toast.error("That didn't save. Try again.");
+    } finally {
+      setBusy(null);
+    }
+  };
+
   if (trips.length === 0) {
     return (
       <p className="py-6 text-center text-[14.5px] text-muted-foreground">
@@ -51,6 +79,14 @@ export function FollowedTripList({ trips }: { trips: FollowedTrip[] }) {
               </span>
               <ChevronRight className="size-5 shrink-0 text-muted-foreground" aria-hidden />
             </Link>
+            <button
+              type="button"
+              disabled={busy === trip.token}
+              onClick={() => void remove(trip)}
+              className="mt-1 min-h-11 px-1 text-[13px] font-semibold text-muted-foreground underline underline-offset-2 disabled:opacity-60"
+            >
+              Remove from list
+            </button>
           </li>
         );
       })}
