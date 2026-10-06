@@ -1,8 +1,8 @@
-import { useMemo, type ReactNode } from "react";
+import { useMemo, type CSSProperties, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { ArrowRight, Check, Luggage, Plane, Search } from "@/components/icons";
 import { TripPicture } from "@/components/HomeTripCard";
-import { TripRouteMap } from "@/components/TripRouteMap";
+import { TripBannerMap } from "@/components/TripRouteMap";
 import type { TripPhotoRow } from "@/hooks/useTripPhotos";
 import type { TripRow } from "@/hooks/useTrips";
 import type { TripGlance } from "@/hooks/useTripGlances";
@@ -11,6 +11,9 @@ import { useCityPositions } from "@/hooks/useCityPositions";
 import { tripCityStop, withCityPositions } from "@/lib/city-position";
 import { flightParts, heroWhen, routeStops } from "@/lib/home-route-map";
 import { heroTags, routeLine } from "@/lib/trip-glance";
+
+/** The picture the trip's cities are drawn over. */
+const UPCOMING_HERO_H = 300;
 
 const SOFT_SHADOW = "shadow-[0_4px_16px_rgb(0_0_0/0.06)]";
 
@@ -42,51 +45,54 @@ export function HomeUpcoming({ trip, photos }: { trip: TripRow; photos: TripPhot
     routeLine(stopCities) || trip.city?.split(",")[0] || stopCities[0] || trip.country || "";
 
   return (
-    <section data-guide="home-trip" className="relative -mx-4">
-      <div className="relative z-10 flex items-start justify-between gap-3 px-5 pt-2">
-        <Link to="/trips/$tripId" params={{ tripId: trip.id }} viewTransition className="min-w-0">
-          <p className="text-[10.5px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
-            {tags.label}
-          </p>
-          {/* The name is clamped, never the countdown under it. */}
-          <h2 className="mt-2 font-display text-[40px] leading-[0.98] tracking-[-0.02em]">
-            <span className="line-clamp-2 break-words">{trip.title}</span>
-            {when ? <span className="block">{when}</span> : null}
-          </h2>
-        </Link>
-        <Link
-          to="/trips/$tripId"
-          params={{ tripId: trip.id }}
-          viewTransition
-          aria-label={`Open ${trip.title}`}
-          className="mt-3 grid size-[50px] shrink-0 place-items-center rounded-full bg-[var(--home-ink)] text-[var(--home-ink-foreground)] shadow-[0_6px_16px_rgb(0_0_0/0.14)] transition-transform hover:translate-x-0.5"
-        >
-          <ArrowRight className="size-[22px]" />
-        </Link>
-      </div>
-      {route.length > 0 ? (
-        <div className="-mt-[100px]">
-          <TripRouteMap stops={route} label={`Map of the trip: ${cities}`} />
-        </div>
-      ) : (
-        <Link
-          to="/trips/$tripId"
-          params={{ tripId: trip.id }}
-          viewTransition
-          className="relative mx-4 mt-4 block h-[180px] overflow-hidden rounded-[var(--r-card)] bg-muted"
-        >
-          <TripPicture trip={trip} photos={photos} cities={stopCities} />
-          <span
-            aria-hidden
-            className="absolute inset-0 bg-[linear-gradient(to_top,rgb(0_0_0/0.5),transparent_55%)]"
+    <section data-guide="home-trip">
+      <div className="trip-hero -mx-4" style={{ height: UPCOMING_HERO_H }}>
+        <TripPicture trip={trip} photos={photos} cities={stopCities} />
+        {route.length > 0 ? (
+          <TripBannerMap
+            over
+            pills
+            stops={route}
+            label={`Map of the trip: ${cities}`}
+            height={UPCOMING_HERO_H}
+            current={-1}
+            done={0}
+            top={130}
+            bottom={UPCOMING_HERO_H - 50}
           />
-          {where ? (
-            <span className="absolute inset-x-4 bottom-3 truncate text-[15px] font-semibold text-white">
-              {where}
-            </span>
-          ) : null}
-        </Link>
-      )}
+        ) : null}
+        <span
+          aria-hidden
+          className="trip-hero-haze"
+          style={{ "--haze-end": "130px" } as CSSProperties}
+        />
+        <div className="relative flex items-start justify-between gap-3 px-5 pt-2">
+          <Link to="/trips/$tripId" params={{ tripId: trip.id }} viewTransition className="min-w-0">
+            <p className="text-[13px] font-semibold uppercase tracking-[0.16em] text-foreground/75">
+              {tags.label}
+            </p>
+            {/* The name is clamped, never the countdown under it. */}
+            <h2 className="mt-1 font-display text-[38px] leading-[0.98] tracking-[-0.02em]">
+              <span className="line-clamp-2 break-words">{trip.title}</span>
+              {when ? <span className="block">{when}</span> : null}
+            </h2>
+          </Link>
+          <Link
+            to="/trips/$tripId"
+            params={{ tripId: trip.id }}
+            viewTransition
+            aria-label={`Open ${trip.title}`}
+            className="mt-3 grid size-[50px] shrink-0 place-items-center rounded-full bg-[var(--home-ink)] text-[var(--home-ink-foreground)] shadow-[0_6px_16px_rgb(0_0_0/0.14)] transition-transform motion-safe:hover:translate-x-0.5"
+          >
+            <ArrowRight className="size-[22px]" />
+          </Link>
+        </div>
+        {route.length === 0 && where ? (
+          <span className="absolute inset-x-5 bottom-3 truncate text-[15px] font-semibold text-white">
+            {where}
+          </span>
+        ) : null}
+      </div>
     </section>
   );
 }
