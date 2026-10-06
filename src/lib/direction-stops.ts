@@ -292,26 +292,41 @@ function mapsPoint(
   return encodeURIComponent(query);
 }
 
-export function mapsDirUrl(
-  from: { title: string; lat?: number | null; lon?: number | null },
+/**
+ * Directions to one stop from wherever the phone is. Maps fills in the start
+ * from the traveller's own position, which is what every "Open in Maps" for
+ * a journey means: the traveller is about to go.
+ *
+ * Links used to name the stop before as the start. A traveller who had not
+ * tapped "I'm here" there (most don't), or had already moved on, opened Maps
+ * to a route beginning at a pin far from where they stood. Béa's own leg
+ * panel still shows the journey from the stop before.
+ */
+export function mapsDirToUrl(
   to: { title: string; lat?: number | null; lon?: number | null },
   area: string,
   /** "transit": Maps' own metro, bus and train steps — which line, which stop to get off. */
   mode: "walking" | "driving" | "transit" = "walking",
 ): string {
-  return `https://www.google.com/maps/dir/?api=1&origin=${mapsPoint(from.title, from, area)}&destination=${mapsPoint(to.title, to, area)}&travelmode=${mode}`;
+  return `https://www.google.com/maps/dir/?api=1&destination=${mapsPoint(to.title, to, area)}&travelmode=${mode}`;
 }
 
 /**
- * Directions to one stop from wherever the phone is: Maps fills in the start
- * from the traveller's own position, which is what "Directions" on a card means.
+ * The Maps link for a measured or saved journey into `to`. A saved leg's own
+ * `mapUrl` may carry the old start, so the link is always rebuilt: to the
+ * stop's own pin, which may have moved since the leg was saved, else the spot
+ * the leg was routed to, else the stop's name.
  */
-export function mapsDirToUrl(
+export function legMapsUrl(
+  leg:
+    { mode: "walking" | "driving" | "transit"; toLat?: number; toLon?: number } | null | undefined,
   to: { title: string; lat?: number | null; lon?: number | null },
   area: string,
-  mode: "walking" | "driving" | "transit" = "walking",
+  fallbackMode: "walking" | "driving" | "transit" = "walking",
 ): string {
-  return `https://www.google.com/maps/dir/?api=1&destination=${mapsPoint(to.title, to, area)}&travelmode=${mode}`;
+  const routed = { lat: leg?.toLat ?? null, lon: leg?.toLon ?? null };
+  const end = !hasCoords(to) && hasCoords(routed) ? { title: to.title, ...routed } : to;
+  return mapsDirToUrl(end, area, leg?.mode ?? fallbackMode);
 }
 
 /**
