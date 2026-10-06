@@ -123,7 +123,7 @@ export function ComparePins({ pins }: { pins: Pin[] }) {
               rows={2}
               maxLength={400}
               placeholder="Warm weather, easy on the budget, good food, a long weekend…"
-              className="mt-1 w-full rounded-xl border border-border bg-card px-3 py-2 text-[14.5px] outline-none"
+              className="mt-1 w-full rounded-xl border border-[var(--field-border)] bg-card px-3 py-2 text-[14.5px] outline-none"
             />
           </label>
 
@@ -132,7 +132,7 @@ export function ComparePins({ pins }: { pins: Pin[] }) {
             <select
               value={month}
               onChange={(e) => setMonth(e.target.value)}
-              className="mt-1 w-full rounded-xl border border-border bg-card px-3 py-2 text-[14.5px] outline-none"
+              className="mt-1 w-full rounded-xl border border-[var(--field-border)] bg-card px-3 py-2 text-[14.5px] outline-none"
             >
               <option value="">Not sure yet</option>
               {MONTHS.map((name) => (

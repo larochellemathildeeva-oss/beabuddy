@@ -122,7 +122,7 @@ export function CurrencySheet({
             enterKeyHint="done"
             autoComplete="off"
             placeholder="Amount"
-            className="min-w-0 flex-1 rounded-xl border border-border bg-card px-3 py-2 text-[22px] font-semibold tabular-nums"
+            className="min-w-0 flex-1 rounded-xl border border-[var(--field-border)] bg-card px-3 py-2 text-[22px] font-semibold tabular-nums"
           />
           <select
             aria-label="From currency"

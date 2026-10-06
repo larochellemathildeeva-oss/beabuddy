@@ -250,12 +250,13 @@ export function RecoListImport({
         them, looks each one up, then you can edit and pick the right pin before anything is saved.
       </p>
       <textarea
+        aria-label="One place per line, or paste a whole note"
         value={paste}
         onChange={(e) => setPaste(e.target.value)}
         rows={4}
         maxLength={20000}
         placeholder="One place per line, or paste a whole note…"
-        className="w-full rounded-xl border border-border bg-background px-3 py-2 text-[15px] outline-none focus:border-primary"
+        className="w-full rounded-xl border border-[var(--field-border)] bg-background px-3 py-2 text-[15px] outline-none focus:border-primary"
       />
       <label className="block">
         <span className="text-[13px] font-medium">Or a page of suggestions</span>
@@ -267,7 +268,7 @@ export function RecoListImport({
           autoCorrect="off"
           spellCheck={false}
           placeholder="https:// — Time Out, a blog, things to do…"
-          className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-[15px] outline-none focus:border-primary"
+          className="mt-1 w-full rounded-xl border border-[var(--field-border)] bg-background px-3 py-2 text-[15px] outline-none focus:border-primary"
         />
       </label>
       <button
@@ -338,10 +339,11 @@ export function RecoListImport({
         <div className="space-y-3">
           {summary && <p className="text-[13px] text-muted-foreground">{summary}</p>}
           <input
+            aria-label="Who told you"
             value={recommendedBy}
             onChange={(e) => setRecommendedBy(e.target.value)}
             placeholder="Who told you (optional — applies to all)"
-            className="w-full rounded-xl border border-border bg-background px-3 py-2 text-[15px] outline-none focus:border-primary"
+            className="w-full rounded-xl border border-[var(--field-border)] bg-background px-3 py-2 text-[15px] outline-none focus:border-primary"
           />
           {drafts.map((row, i) => (
             <article
@@ -378,7 +380,7 @@ export function RecoListImport({
                       });
                     }}
                     aria-label={`Name for suggestion ${i + 1}`}
-                    className="w-full rounded-lg border border-border bg-card px-2.5 py-2 text-[15px] font-medium outline-none focus:border-primary"
+                    className="w-full rounded-lg border border-[var(--field-border)] bg-card px-2.5 py-2 text-[15px] font-medium outline-none focus:border-primary"
                   />
                   <div className="grid grid-cols-2 gap-2">
                     <input
@@ -392,13 +394,13 @@ export function RecoListImport({
                       }}
                       aria-label={`City for ${row.originalName || `suggestion ${i + 1}`}`}
                       placeholder="City"
-                      className="rounded-lg border border-border bg-card px-2.5 py-2 text-[15px] outline-none focus:border-primary"
+                      className="rounded-lg border border-[var(--field-border)] bg-card px-2.5 py-2 text-[15px] outline-none focus:border-primary"
                     />
                     <select
                       value={row.category ?? "Place"}
                       onChange={(e) => patch(i, { category: e.target.value })}
                       aria-label={`Category for ${row.originalName || `suggestion ${i + 1}`}`}
-                      className="rounded-lg border border-border bg-card px-2.5 py-2 text-[15px] outline-none"
+                      className="rounded-lg border border-[var(--field-border)] bg-card px-2.5 py-2 text-[15px] outline-none"
                     >
                       {RECO_LIST_CATEGORIES.map((cat) => (
                         <option key={cat} value={cat}>
@@ -414,7 +416,7 @@ export function RecoListImport({
                     maxLength={400}
                     aria-label={`Note for ${row.originalName || `suggestion ${i + 1}`}`}
                     placeholder="Note — why it's here, a dish, a neighbourhood…"
-                    className="w-full rounded-lg border border-border bg-card px-2.5 py-2 text-[15px] outline-none focus:border-primary"
+                    className="w-full rounded-lg border border-[var(--field-border)] bg-card px-2.5 py-2 text-[15px] outline-none focus:border-primary"
                   />
                   <button
                     type="button"

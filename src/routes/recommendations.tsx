@@ -871,7 +871,7 @@ function RecommendationsPage() {
                     onChange={(e) => setQuery(e.target.value)}
                     placeholder="Search places, cities, people…"
                     aria-label="Search your saved places — typos are fine"
-                    className="h-12 w-full rounded-full border border-border bg-card pl-12 pr-4 text-[15px] outline-none placeholder:text-muted-foreground focus:border-primary"
+                    className="h-12 w-full rounded-full border border-[var(--field-border)] bg-card pl-12 pr-4 text-[15px] outline-none placeholder:text-muted-foreground focus:border-primary"
                   />
                 </label>
               )}
@@ -1205,7 +1205,7 @@ function RecommendationsPage() {
                   onChange={(e) => setDraftField("name", e.target.value)}
                   placeholder="Name"
                   aria-label="Name"
-                  className="w-full rounded-xl border border-border bg-background px-3 py-2 text-[15px] outline-none focus:border-primary"
+                  className="w-full rounded-xl border border-[var(--field-border)] bg-background px-3 py-2 text-[15px] outline-none focus:border-primary"
                 />
                 {[draft.address, draft.city, draft.country].some(Boolean) && (
                   <p className="px-1 text-[13px] text-muted-foreground">
@@ -1245,7 +1245,7 @@ function RecommendationsPage() {
                     }}
                     placeholder={DRAFT_FIELDS.find(([f]) => f === draftField)?.[1] ?? ""}
                     aria-label={DRAFT_FIELDS.find(([f]) => f === draftField)?.[1] ?? ""}
-                    className="w-full rounded-xl border border-border bg-background px-3 py-2 text-[15px] outline-none focus:border-primary"
+                    className="w-full rounded-xl border border-[var(--field-border)] bg-background px-3 py-2 text-[15px] outline-none focus:border-primary"
                   />
                 )}
                 <div className="pt-1">
@@ -1302,6 +1302,7 @@ function RecommendationsPage() {
                     </p>
                   )}
                   <input
+                    aria-label="Search a place, street, or city"
                     value={locQuery}
                     onChange={(e) => setLocQuery(e.target.value)}
                     onKeyDown={(e) => {
@@ -1311,7 +1312,7 @@ function RecommendationsPage() {
                       }
                     }}
                     placeholder="Search a place, street, or city"
-                    className="mt-2 w-full rounded-xl border border-border bg-background px-3 py-2 text-[15px] outline-none focus:border-primary"
+                    className="mt-2 w-full rounded-xl border border-[var(--field-border)] bg-background px-3 py-2 text-[15px] outline-none focus:border-primary"
                   />
                   <button
                     type="button"

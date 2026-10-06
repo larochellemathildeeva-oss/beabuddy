@@ -290,10 +290,11 @@ function MemoriesPage() {
                     </ul>
                     <div className="mt-2 flex gap-2">
                       <input
+                        aria-label="Note for next time"
                         value={isOpen ? draft : ""}
                         onChange={(e) => setDraft(e.target.value)}
                         placeholder="Next time, stay near the old town…"
-                        className="min-w-0 flex-1 rounded-xl border border-border bg-background px-3 py-2 text-[16px]"
+                        className="min-w-0 flex-1 rounded-xl border border-[var(--field-border)] bg-background px-3 py-2 text-[16px]"
                       />
                       <button
                         disabled={saving || !draft.trim()}

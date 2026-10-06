@@ -289,7 +289,7 @@ export function ShareRecos({
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search your saved places"
                 aria-label="Search your saved places"
-                className="w-full rounded-xl border border-border bg-card px-3 py-2 text-[15px]"
+                className="w-full rounded-xl border border-[var(--field-border)] bg-card px-3 py-2 text-[15px]"
               />
               <ul className="max-h-72 divide-y divide-border/60 overflow-y-auto border-y border-border/60">
                 {searchable.slice(0, 60).map((row) => (
@@ -321,7 +321,7 @@ export function ShareRecos({
                   pickedRows.length ? suggestedShareTitle(pickedRows) : "Give the list a name"
                 }
                 aria-label="Name this list"
-                className="w-full rounded-xl border border-border bg-card px-3 py-2 text-[15px]"
+                className="w-full rounded-xl border border-[var(--field-border)] bg-card px-3 py-2 text-[15px]"
               />
 
               <label className="flex items-start gap-2.5">
@@ -403,7 +403,7 @@ export function ShareRecos({
               autoCapitalize="characters"
               autoCorrect="off"
               spellCheck={false}
-              className="min-w-0 flex-1 rounded-xl border border-border bg-card px-3 py-2 font-mono text-[15px] tracking-widest"
+              className="min-w-0 flex-1 rounded-xl border border-[var(--field-border)] bg-card px-3 py-2 font-mono text-[15px] tracking-widest"
             />
             <button
               type="button"

@@ -546,7 +546,7 @@ function ProfilePage() {
               onBlur={() => saveProfile({ display_name: displayName })}
               placeholder="Your name"
               aria-label="Your name"
-              className="w-full rounded-full border border-border bg-card px-4 py-2.5 text-[15px] outline-none focus:border-primary"
+              className="w-full rounded-full border border-[var(--field-border)] bg-card px-4 py-2.5 text-[15px] outline-none focus:border-primary"
             />
             <input
               value={homeCity}
@@ -554,7 +554,7 @@ function ProfilePage() {
               onBlur={() => saveProfile({ home_city: homeCity })}
               placeholder="Home city"
               aria-label="Home city"
-              className="w-full rounded-full border border-border bg-card px-4 py-2.5 text-[15px] outline-none focus:border-primary"
+              className="w-full rounded-full border border-[var(--field-border)] bg-card px-4 py-2.5 text-[15px] outline-none focus:border-primary"
             />
             {saved && <p className="text-[12.5px] text-muted-foreground">Saved</p>}
             {user?.email && (
@@ -1125,7 +1125,7 @@ function DeleteAccountPanel({ userId }: { userId: string }) {
         onChange={(e) => setPhrase(e.target.value)}
         placeholder="Type DELETE"
         autoComplete="off"
-        className="mt-3 w-full rounded-xl border border-border bg-card px-3 py-2.5 text-[15px]"
+        className="mt-3 w-full rounded-xl border border-[var(--field-border)] bg-card px-3 py-2.5 text-[15px]"
         aria-label="Type DELETE to confirm account deletion"
       />
       {error && <p className="mt-2 text-[13px] text-destructive">{error}</p>}

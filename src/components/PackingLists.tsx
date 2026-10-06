@@ -36,9 +36,10 @@ function TripAttachForm({
         Add a copy of a list from You. Ticking things off only affects this trip.
       </p>
       <select
+        aria-label="Packing list to copy"
         value={attachId}
         onChange={(e) => setAttachId(e.target.value)}
-        className="w-full rounded-xl border border-border bg-card px-3 py-2 text-[14.5px]"
+        className="w-full rounded-xl border border-[var(--field-border)] bg-card px-3 py-2 text-[14.5px]"
       >
         <option value="">Choose a list…</option>
         {templates.packs.map((pack) => (
@@ -306,10 +307,11 @@ export function PackingBody({
       {showNew && allowCreate && (
         <div className="mb-3 space-y-2 rounded-xl bg-elevated p-3">
           <input
+            aria-label="Pack name"
             value={newPack}
             onChange={(e) => setNewPack(e.target.value)}
             placeholder="Pack name — e.g. Ski week"
-            className="w-full rounded-xl border border-border bg-card px-3 py-2 text-[14.5px]"
+            className="w-full rounded-xl border border-[var(--field-border)] bg-card px-3 py-2 text-[14.5px]"
           />
           <div className="flex flex-wrap gap-1.5">
             {Object.keys(STARTERS).map((k) => (

@@ -287,16 +287,18 @@ function PhotosPage() {
 
         <div className="grid grid-cols-2 gap-2">
           <input
+            aria-label="City"
             value={city}
             onChange={(e) => setCity(e.target.value)}
             placeholder="City (fallback)"
-            className="rounded-xl border border-border bg-card px-3 py-2 text-[16px] outline-none focus:border-primary"
+            className="rounded-xl border border-[var(--field-border)] bg-card px-3 py-2 text-[16px] outline-none focus:border-primary"
           />
           <input
+            aria-label="Country"
             value={country}
             onChange={(e) => setCountry(e.target.value)}
             placeholder="Country"
-            className="rounded-xl border border-border bg-card px-3 py-2 text-[16px] outline-none focus:border-primary"
+            className="rounded-xl border border-[var(--field-border)] bg-card px-3 py-2 text-[16px] outline-none focus:border-primary"
           />
         </div>
 

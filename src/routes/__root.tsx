@@ -28,25 +28,26 @@ import { ACCENT_BOOT_SCRIPT, DEFAULT_ACCENT } from "@/lib/accent";
 
 const APP_VERSION = typeof __APP_VERSION__ === "string" ? __APP_VERSION__ : "1.0.0";
 
+const PAGE_BUTTON = "btn-primary inline-flex items-center justify-center px-6";
+const PAGE_BUTTON_QUIET =
+  "inline-flex min-h-[var(--h-button)] items-center justify-center rounded-[var(--r-button)] border border-border bg-card px-6 text-[16px] font-semibold text-foreground";
+
 function NotFoundComponent() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
+    <main className="flex min-h-screen items-center justify-center bg-background px-6">
       <div className="max-w-md text-center">
-        <h1 className="text-7xl font-bold text-foreground">404</h1>
-        <h2 className="mt-4 text-xl font-semibold text-foreground">Page not found</h2>
-        <p className="mt-2 text-sm text-muted-foreground">
-          The page you're looking for doesn't exist or has been moved.
+        <p className="label-caps">Page not found</p>
+        <h1 className="mt-2 font-display text-[40px] leading-[1.1]">Béa can't find that page.</h1>
+        <p className="mt-3 text-[16px] text-muted-foreground">
+          It may have moved, or the link may be mistyped.
         </p>
         <div className="mt-6">
-          <Link
-            to="/"
-            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-          >
-            Go home
+          <Link to="/" className={PAGE_BUTTON}>
+            Back home
           </Link>
         </div>
       </div>
-    </div>
+    </main>
   );
 }
 
@@ -61,33 +62,30 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   }, [error]);
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
+    <main className="flex min-h-screen items-center justify-center bg-background px-6">
       <div className="max-w-md text-center">
-        <h1 className="text-xl font-semibold tracking-tight text-foreground">
-          This page didn't load
-        </h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Something went wrong on our end. You can try refreshing or head back home.
+        <p className="label-caps">Something slipped</p>
+        <h1 className="mt-2 font-display text-[40px] leading-[1.1]">This page didn't load.</h1>
+        <p className="mt-3 text-[16px] text-muted-foreground">
+          That one's on us. Try again, or head home.
         </p>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <button
+            type="button"
             onClick={() => {
               router.invalidate();
               reset();
             }}
-            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+            className={PAGE_BUTTON}
           >
             Try again
           </button>
-          <a
-            href="/"
-            className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
-          >
-            Go home
+          <a href="/" className={PAGE_BUTTON_QUIET}>
+            Back home
           </a>
         </div>
       </div>
-    </div>
+    </main>
   );
 }
 

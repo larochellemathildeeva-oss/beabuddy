@@ -19,7 +19,7 @@ export function AuthField({
       <input
         id={id}
         {...input}
-        className={`h-[var(--h-input)] w-full rounded-[var(--r-input)] border border-border bg-card px-4 text-[15px] outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring ${className}`}
+        className={`h-[var(--h-input)] w-full rounded-[var(--r-input)] border border-[var(--field-border)] bg-card px-4 text-[15px] outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring ${className}`}
       />
     </div>
   );
