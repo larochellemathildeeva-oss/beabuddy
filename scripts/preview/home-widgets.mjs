@@ -73,7 +73,7 @@ try {
     const { page, context } = await open(theme);
     await arrange(page);
     const editingSmall = await page.locator('[data-module="saved"]').boundingBox();
-    assert.ok(editingSmall.width < editingSmall.height * 4, `${theme}: small stays a half-width tile while editing`);
+    assert.ok(editingSmall.height < editingSmall.width * 0.9, `${theme}: small is shorter than a square while editing`);
     const initial = await order(page);
     const handle = page.getByRole("button", { name: "Move Saved for this trip", exact: true });
     await handle.focus();
@@ -141,7 +141,7 @@ try {
     assert.equal(await page.locator(".home-widget-handle").count(), 0);
     await page.screenshot({ path: join(shots, `${theme}-normal.png`), fullPage: true });
     const small = await page.locator('[data-module="saved"]').boundingBox();
-    assert.ok(small.height < small.width * 1.5, `${theme}: small fits its content, not a fixed square`);
+    assert.ok(small.height < small.width * 0.9, `${theme}: small is shorter than the old fixed square`);
     const tripContent = page.locator('[data-module="trip"] .home-widget-content');
     await tripContent.evaluate((node) => node.scrollTop = node.scrollHeight);
     const tripBox = await tripContent.boundingBox();
