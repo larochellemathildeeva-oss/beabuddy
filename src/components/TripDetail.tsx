@@ -1674,7 +1674,7 @@ export function TripDetail({
         switchable={perspective !== "overview" && perspective !== "companion"}
         short={perspective === "map"}
         hero={perspective === "overview"}
-        tracker={perspective === "overview" ? undefined : bannerTracker}
+        tracker={bannerTracker}
       />
       {/* Béa's line scrolls away with the page; only the bar above stays.
           The trip's actions moved up into the banner. */}
