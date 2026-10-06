@@ -9,13 +9,15 @@
  * Nothing is saved from here: the traveller sees the moves and taps Apply.
  */
 import { normalizeClock } from "./import-stop.ts";
-import type { StopMove } from "./stop-move.ts";
+import { rearrange, stopsOfDay, type StopMove } from "./stop-move.ts";
 
 export const PLAN_EDIT_MAX_REQUEST = 300;
 export const PLAN_EDIT_MAX_STOPS = 150;
 export const PLAN_EDIT_MAX_DAYS = 60;
 /** As many as there are stops, so swapping two full days is never cut short. */
 export const PLAN_EDIT_MAX_MOVES = PLAN_EDIT_MAX_STOPS;
+/** Earlier requests in one unsaved round of changes that Béa is reminded of. */
+export const PLAN_EDIT_MAX_EARLIER = 5;
 
 export type PlanEditStop = {
   id: string;
@@ -44,6 +46,8 @@ export function planEditPrompt(
   request: string,
   stops: readonly PlanEditStop[],
   days: readonly string[],
+  /** Requests already answered in this round, not saved yet but in `stops`. */
+  earlier: readonly string[] = [],
 ): string {
   const lines: string[] = [];
   const dayLabel = (day: string | null) => {
@@ -67,7 +71,17 @@ export function planEditPrompt(
     "You rearrange a travel plan. Here it is, day by day, stops in order:",
     lines.join("\n"),
     "",
-    `The traveller asks: "${request.trim().slice(0, PLAN_EDIT_MAX_REQUEST)}"`,
+    ...(earlier.length
+      ? [
+          "Earlier the traveller asked:",
+          ...earlier
+            .slice(-PLAN_EDIT_MAX_EARLIER)
+            .map((text) => `- "${text.trim().slice(0, PLAN_EDIT_MAX_REQUEST)}"`),
+          "Those changes are already in the plan above. Keep them unless the new request undoes them.",
+          "",
+          `The traveller now adds: "${request.trim().slice(0, PLAN_EDIT_MAX_REQUEST)}"`,
+        ]
+      : [`The traveller asks: "${request.trim().slice(0, PLAN_EDIT_MAX_REQUEST)}"`]),
     "",
     "Answer with only the moves that do what they ask, applied in order. For each move:",
     "- stop: the stop's ref (s1, s2 …).",
@@ -135,4 +149,92 @@ export function readPlanEdit(
     });
   }
   return [...moves.values()];
+}
+
+type PlannedStop = PlanEditStop & { position: number };
+
+/**
+ * Moves sent back from the phone (the unsaved answer to an earlier request)
+ * checked against the trip as the server read it: a move naming a stop, day
+ * or anchor not on the trip, or a time that is not a clock, is dropped.
+ */
+export function readPendingMoves(
+  moves: readonly (Omit<StopMove, "time_label"> & { time_label?: string | null | undefined })[],
+  stops: readonly PlanEditStop[],
+  days: readonly string[],
+): StopMove[] {
+  const ids = new Set(stops.map((stop) => stop.id));
+  const known = new Set(days);
+  const out: StopMove[] = [];
+  for (const move of moves.slice(0, PLAN_EDIT_MAX_MOVES)) {
+    if (!ids.has(move.id)) continue;
+    if (move.day_date !== null && !known.has(move.day_date)) continue;
+    const at = move.at;
+    if (typeof at === "object" && "after" in at && (!ids.has(at.after) || at.after === move.id)) {
+      continue;
+    }
+    if (typeof at === "object" && "index" in at && !Number.isFinite(at.index)) continue;
+    let time: string | null | undefined = move.time_label;
+    if (typeof time === "string") {
+      time = normalizeClock(time) ?? undefined;
+      if (time === undefined) continue;
+    }
+    out.push({
+      id: move.id,
+      day_date: move.day_date,
+      at,
+      ...(time !== undefined ? { time_label: time } : {}),
+    });
+  }
+  return out;
+}
+
+/** The stops as they stand once `moves` are applied, in plan order. */
+export function planAfter<T extends PlannedStop>(
+  stops: readonly T[],
+  moves: readonly StopMove[],
+): T[] {
+  const updates = new Map(rearrange(stops, moves).map((u) => [u.id, u]));
+  return stops
+    .map((stop, index) => ({ stop: { ...stop, ...updates.get(stop.id) }, index }))
+    .sort((a, b) => {
+      const da = a.stop.day_date;
+      const db = b.stop.day_date;
+      if (da !== db) {
+        if (da === null) return 1;
+        if (db === null) return -1;
+        return da < db ? -1 : 1;
+      }
+      return a.stop.position - b.stop.position || a.index - b.index;
+    })
+    .map(({ stop }) => stop);
+}
+
+/**
+ * Several rounds of moves as one list that lands every stop in the same
+ * place: each stop moved at all, once, straight after the stop before it
+ * where it ends up, in plan order. Saved with one Apply and one Undo.
+ */
+export function combineMoves<T extends PlannedStop>(
+  stops: readonly T[],
+  moves: readonly StopMove[],
+): StopMove[] {
+  const moved = new Set(moves.map((move) => move.id));
+  if (moved.size === 0) return [];
+  const after = planAfter(stops, moves);
+  const days = [...new Set(after.map((stop) => stop.day_date))];
+  const out: StopMove[] = [];
+  for (const day of days) {
+    const list = stopsOfDay(after, day);
+    list.forEach((stop, index) => {
+      if (!moved.has(stop.id)) return;
+      out.push({
+        id: stop.id,
+        day_date: day,
+        at: index === 0 ? "start" : { after: list[index - 1]!.id },
+        time_label: stop.time_label,
+      });
+    });
+  }
+  return out;
 }
