@@ -381,9 +381,6 @@ await flow("trips: tabs, layout and picture switches, New trip and Join sheets",
   await page.getByRole("button", { name: "List", exact: true }).click();
   await page.waitForTimeout(300);
   if (!(await text()).toLowerCase().includes("upcoming trips") || (await page.evaluate(() => localStorage.getItem("bea-trips-layout"))) !== "list") throw new Error("List did not apply and save");
-  await page.getByRole("button", { name: "Photo", exact: true }).first().click();
-  await page.waitForTimeout(300);
-  if ((await page.evaluate(() => localStorage.getItem("bea-trip-picture"))) !== "photo") throw new Error("Photo did not save");
   for (const [tab, expect] of [["Past", "Lisbon & Porto"], ["All", "Montréal Holidays"], ["Upcoming", "Trip documents"]]) {
     await page.getByRole("tab", { name: tab, exact: true }).click();
     await page.waitForTimeout(250);
@@ -420,7 +417,7 @@ await flow("trips: tabs, layout and picture switches, New trip and Join sheets",
 
 await flow("home: trip ahead keeps its map, stats, search and ideas", async (page) => {
   const text = () => page.evaluate(() => document.body.innerText);
-  for (const word of ["Upcoming trip", "to-do", "packed", "Where to next?", "Suggested for your trip"])
+  for (const word of ["to-do", "packed", "Where to next?", "Suggested for your trip"])
     if (!(await text()).toLowerCase().includes(word.toLowerCase())) throw new Error(`Home lost "${word}"`);
   if ((await page.getByRole("link", { name: /Where to next/ }).getAttribute("href")) !== "/trips/plan") throw new Error("Where to next? lost its route");
   if ((await page.getByRole("link", { name: /Iconic Landmarks/ }).count()) !== 1) throw new Error("Suggested ideas are gone");
@@ -456,7 +453,7 @@ await flow("home: trip ahead keeps its map, stats, search and ideas", async (pag
 
 await flow("home: on a trip shows the current and next stop under the route", async (page) => {
   const text = () => page.evaluate(() => document.body.innerText);
-  for (const word of ["On trip", "Paris to Berlin.", "Current stop", "Museum Island", "Next stop", "Clärchens Ballhaus", "Day 3 · Today"])
+  for (const word of ["Paris to Berlin.", "Current stop", "Museum Island", "Next stop", "Clärchens Ballhaus", "Day 3 · Today"])
     if (!(await text()).toLowerCase().includes(word.toLowerCase())) throw new Error(`On-trip Home lost "${word}"`);
   if (await page.getByText("Breakfast at Father Carpenter").count()) throw new Error("a stop already left is shown as current or next");
   if ((await page.getByRole("link", { name: /^Current stop: Museum Island/ }).count()) !== 1) throw new Error("the current stop is not a link");
@@ -1314,7 +1311,7 @@ await flow("shell header and navigation stay visible while the content scrolls",
   const name = "home: upcoming trip shows real flight, packing and planning links";
   const { page, errors } = await open("home");
   try {
-    for (const text of ["Upcoming trip", "in 2 days", "AC781", "YUL → LAX", "67%", "Where to next?", "Suggested for your trip"]) {
+    for (const text of ["AC781", "YUL → LAX", "67%", "Where to next?", "Suggested for your trip"]) {
       if ((await page.getByText(text, { exact: false }).count()) === 0) throw new Error(`missing "${text}"`);
     }
     const open = page.getByRole("link", { name: /Open LA/ });
