@@ -1,71 +1,24 @@
 import { useMemo, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { ArrowRight } from "@/components/icons";
-import { TripPicture } from "@/components/HomeTripCard";
+import { HomeTripBanner } from "@/components/HomeTripBanner";
 import type { TripPhotoRow } from "@/hooks/useTripPhotos";
 import type { TripRow } from "@/hooks/useTrips";
 import type { TripGlance } from "@/hooks/useTripGlances";
 import { useTripStops } from "@/hooks/useTripStops";
-import { useCityPositions } from "@/hooks/useCityPositions";
-import { tripCityStop } from "@/lib/city-position";
-import { flightParts, heroWhen } from "@/lib/home-route-map";
+import { flightParts } from "@/lib/home-route-map";
 import { placeArtUrl } from "@/lib/place-art";
-import { tripDateLine } from "@/lib/trip-card";
-import { heroTags, routeLine } from "@/lib/trip-glance";
 
-/** The trip's picture: a flat strip, as wide as the box. */
-const UPCOMING_PHOTO_H = 112;
+const SOFT_SHADOW = "";
 
-/**
- * Home's trip box, as the editorial design draws it: what kind of moment it
- * is and how soon, the trip's name in large serif, where and when in one
- * quiet line, its picture as a flat strip and one full-width button into it.
- */
-export function HomeUpcoming({
-  trip,
-  photos,
-  height = UPCOMING_PHOTO_H,
-}: {
-  trip: TripRow;
-  photos: TripPhotoRow[];
-  height?: number;
-}) {
-  const { stops, loading } = useTripStops(trip.id, null);
-  // A one-city trip keeps its city on the trip, not as a stop.
-  const cityStops = useMemo(
-    () => (stops.length || loading ? stops : tripCityStop(trip)),
-    [stops, loading, trip],
-  );
-  // A city typed rather than picked has no position: found by its name, and
-  // kept on the stop so the Trips list and the globe can place it.
-  useCityPositions(cityStops);
-  const tags = heroTags(trip.start_date, trip.end_date, trip.dates_status === "tentative");
-  const when = heroWhen(tags.when);
-  const stopCities = stops.map((s) => s.city).filter(Boolean);
-  const where =
-    routeLine(stopCities) || trip.city?.split(",")[0] || stopCities[0] || trip.country || "";
-  const dates = tripDateLine(trip.start_date, trip.end_date);
-  const meta = [where, dates].filter(Boolean).join(" · ");
+/** The top of Home with a trip ahead: the trip as the short strip the trip page opens with. */
+export function HomeUpcoming({ trip, photos }: { trip: TripRow; photos: TripPhotoRow[] }) {
+  const { stops } = useTripStops(trip.id, null);
+  const stopCities = useMemo(() => stops.map((s) => s.city).filter(Boolean), [stops]);
 
   return (
-    <section data-guide="home-trip" className="editorial-box">
-      <p className="label-caps">{[tags.label, when].filter(Boolean).join(" · ")}</p>
-      <h2 className="mt-3 break-words font-display text-[44px] font-bold leading-[0.98] tracking-[-2px]">
-        <span className="line-clamp-2">{trip.title}</span>
-      </h2>
-      {meta ? <p className="mt-2 text-[12px] text-muted-foreground">{meta}</p> : null}
-      <div className="relative mt-3.5 overflow-hidden bg-muted" style={{ height }}>
-        <TripPicture trip={trip} photos={photos} cities={stopCities} />
-      </div>
-      <Link
-        to="/trips/$tripId"
-        params={{ tripId: trip.id }}
-        viewTransition
-        aria-label={`Open ${trip.title}`}
-        className="bg-primary mt-3 flex h-[52px] w-full items-center justify-center text-[14px] font-semibold text-primary-foreground"
-      >
-        Open trip
-      </Link>
+    <section>
+      <HomeTripBanner trip={trip} photos={photos} cities={stopCities} />
     </section>
   );
 }
@@ -81,8 +34,8 @@ function shortDay(iso: string | null | undefined): string {
 }
 
 /**
- * The trip in three plain facts: to-dos left, the flight, how packed. Each
- * opens its own list. One line of words under the trip, never a row of pills.
+ * The trip in three numbers: to-dos left, the flight, how packed. Each opens
+ * its own list.
  */
 export function HomeTripStats({ trip, glance }: { trip: TripRow; glance: TripGlance | undefined }) {
   const open = glance?.todos.open ?? 0;

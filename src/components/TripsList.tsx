@@ -74,92 +74,29 @@ function quoteFor(trip: TripRow, stopCount: number, planned: number | null): str
   );
 }
 
-/** Positions this phone already knows for a city: no lookup. */
-function knownPositions(stops: readonly CityStop[]): ReadonlyMap<string, Position> {
-  const found = new Map<string, Position>();
-  for (const stop of stops) {
-    if (hasPosition(stop) || !stop.city.trim()) continue;
-    const key = cityKey(stop.city, stop.country);
-    const at = knownCityPosition(key);
-    if (at) found.set(key, at);
-  }
-  return found;
-}
-
-/**
- * A trip's cities and their route. `lookUp` finds the cities typed rather
- * than picked by name (one lookup each, kept on the phone), as Home does for
- * its one trip; rows only draw what is already known, so a long list never
- * asks the map for every trip at once.
- */
-function useTripRoute(trip: TripRow, lookUp: boolean) {
-  const { stops, loading } = useTripStops(trip.id, null);
-  const cityStops = useMemo(
-    (): readonly CityStop[] => (stops.length || loading ? stops : tripCityStop(trip)),
-    [stops, loading, trip],
-  );
-  const looked = useCityPositions(lookUp ? cityStops : []);
-  const route = useMemo(() => {
-    const known = new Map([...knownPositions(cityStops), ...looked]);
-    return routeStops(withCityPositions(cityStops, known));
-  }, [cityStops, looked]);
-  return { stops, route };
-}
-
-/** The trip's picture: its route on terrain (Stops), else its photo. */
+/** The trip's picture: a photo of the traveller's own, of the town, else Béa's illustration. */
 function TripPictureFill({
   trip,
   photos,
   cityNames,
-  route,
-  picture,
-  height,
-  top,
-  bottom,
-  compact = false,
-  current = -1,
-  done = 0,
 }: {
   trip: TripRow;
   photos: TripPhotoRow[];
   cityNames: string[];
-  route: RouteStop[];
-  picture: TripPicture;
-  height: number;
-  top: number;
-  bottom: number;
-  compact?: boolean;
-  current?: number;
-  done?: number;
 }) {
-  const showStops = picture === "stops" && route.length > 0;
   const photo = pickTripPhoto(photos, {
     city: trip.city,
     country: trip.country,
     cities: cityNames,
   });
-  const photoUrl = useSignedPhoto(showStops ? null : (photo?.storage_path ?? null));
-  const town = useTownPicture(showStops || !!photo, trip.city || cityNames[0], trip.country);
+  const photoUrl = useSignedPhoto(photo?.storage_path ?? null);
+  const town = useTownPicture(!!photo, trip.city || cityNames[0], trip.country);
   const art = bannerArtUrl(
     bannerSceneFor(
       [trip.title, ...cityNames, trip.city, trip.country],
       trip.title || trip.city || "",
     ),
   );
-  if (showStops) {
-    return (
-      <TripBannerMap
-        stops={route}
-        label={`Map of the trip: ${route.map((s) => s.city).join(", ")}`}
-        height={height}
-        top={top}
-        bottom={bottom}
-        current={current}
-        done={done}
-        compact={compact}
-      />
-    );
-  }
   return (
     <>
       <img
@@ -175,80 +112,9 @@ function TripPictureFill({
   );
 }
 
-/** Which city of the trip you are in today, and how many are behind you. */
-function whereToday(stops: readonly CityStop[], route: RouteStop[], today: string) {
-  let current = -1;
-  let done = 0;
-  route.forEach((city, i) => {
-    const stop = stops.find((s) => short(s.city) === short(city.city));
-    if (!stop) return;
-    const arrive = stop.arrive_on ?? "";
-    const depart = stop.depart_on ?? arrive;
-    if (depart && depart < today) done = i + 1;
-    else if (arrive && arrive <= today && today <= depart && current === -1) current = i;
-  });
-  return { current, done };
-}
-
 /* ------------------------------------------------------------------ */
 /* Header                                                              */
 /* ------------------------------------------------------------------ */
-
-const HERO_H = 200;
-const TAG_H = 50;
-
-/** The first placed city of each trip, read in one go for the header. */
-function useHeroPlaces(trips: TripRow[]) {
-  const ids = trips.map((t) => t.id).join(",");
-  const [firstStops, setFirstStops] = useState<Record<string, CityStop>>({});
-  useEffect(() => {
-    if (!ids) return;
-    let live = true;
-    void supabase
-      .from("trip_stops")
-      .select("trip_id, city, country, lat, lon, position")
-      .in("trip_id", ids.split(","))
-      .order("position", { ascending: true })
-      .then(({ data, error }) => {
-        if (!live || error) return;
-        const first: Record<string, CityStop> = {};
-        for (const row of (data ?? []) as (CityStop & { trip_id: string })[]) {
-          if (!ids.split(",").includes(row.trip_id)) continue;
-          if (!first[row.trip_id] || (!hasPosition(first[row.trip_id]!) && hasPosition(row)))
-            first[row.trip_id] = row;
-        }
-        setFirstStops(first);
-      });
-    return () => {
-      live = false;
-    };
-  }, [ids]);
-  // A trip with no placed city is found by its own city's name.
-  const asked = useMemo(
-    () =>
-      trips.flatMap((t) => {
-        const stop = firstStops[t.id];
-        return stop && hasPosition(stop) ? [] : tripCityStop(t);
-      }),
-    [trips, firstStops],
-  );
-  const found = useCityPositions(asked);
-  return useMemo(
-    () =>
-      trips.flatMap((trip) => {
-        const stop = firstStops[trip.id];
-        if (stop && hasPosition(stop))
-          return [{ trip, city: short(stop.city), lat: stop.lat!, lon: stop.lon! }];
-        const own = tripCityStop(trip)[0];
-        if (!own) return [];
-        const at =
-          found.get(cityKey(own.city, own.country)) ??
-          knownCityPosition(cityKey(own.city, own.country));
-        return at ? [{ trip, city: own.city, lat: at.lat, lon: at.lon }] : [];
-      }),
-    [trips, firstStops, found],
-  );
-}
 
 /**
  * The top of Trips, as the editorial design draws it: a small label, "Your
@@ -425,15 +291,13 @@ export function TripFeature({
   photos,
   glance,
   peopleCount,
-  picture,
 }: {
   trip: TripRow;
   photos: TripPhotoRow[];
   glance: TripGlance | undefined;
   peopleCount: number;
-  picture: TripPicture;
 }) {
-  const { stops, route } = useTripRoute(trip, true);
+  const { stops } = useTripStops(trip.id, null);
   const cityNames = stops.map((s) => s.city);
   const today = toLocalISODate(new Date());
   const leg = glance ? currentLeg(stops, glance.items, today) : null;
@@ -446,7 +310,6 @@ export function TripFeature({
   const openTodos = glance?.todos.open ?? 0;
   const count = tripCountdown(trip.start_date, trip.end_date);
   const quote = quoteFor(trip, stops.length, glance ? glance.items.length : null);
-  const { current, done } = whereToday(stops, route, today);
 
   const names = [...new Set(cityNames.map(short).filter(Boolean))];
   const places =
@@ -505,30 +368,18 @@ export function TripFeature({
         className="relative block h-[150px] overflow-hidden bg-muted"
         style={{ viewTransitionName: `trip-photo-${trip.id}` }}
       >
-        <TripPictureFill
-          trip={trip}
-          photos={photos}
-          cityNames={cityNames}
-          route={route}
-          picture={picture}
-          height={150}
-          top={20}
-          bottom={20}
-          current={current}
-          done={done}
-        />
+        <TripPictureFill trip={trip} photos={photos} cityNames={cityNames} />
       </Link>
 
       {ribbon.length > 1 ? (
         <ol className="trips-ribbon" aria-label="Cities on this trip">
           {ribbon.slice(0, 4).map((stop, i) => {
-            const state = i < done ? "done" : i === current ? "here" : "";
             return (
-              <li key={stop.id ?? i} data-state={state || undefined}>
+              <li key={stop.id ?? i}>
                 <i aria-hidden />
                 <b className="block truncate text-[14px] font-semibold">{short(stop.city)}</b>
                 <span className="block truncate text-[13px] text-muted-foreground">
-                  {state === "here" ? "You are here" : dayLabel(stop.arrive_on) || " "}
+                  {dayLabel(stop.arrive_on) || " "}
                 </span>
               </li>
             );
@@ -705,15 +556,13 @@ export function TripListRow({
   photos,
   glance,
   peopleCount,
-  picture,
 }: {
   trip: TripRow;
   photos: TripPhotoRow[];
   glance: TripGlance | undefined;
   peopleCount: number;
-  picture: TripPicture;
 }) {
-  const { stops, route } = useTripRoute(trip, false);
+  const { stops } = useTripStops(trip.id, null);
   const cityNames = stops.map((s) => s.city);
   const today = toLocalISODate(new Date());
   const live = glance ? liveSummary(glance.items, today) : null;
@@ -736,17 +585,7 @@ export function TripListRow({
   return (
     <div className="trips-row relative flex min-h-[116px] overflow-hidden">
       <div className="relative w-[34%] max-w-[150px] shrink-0 overflow-hidden bg-muted">
-        <TripPictureFill
-          trip={trip}
-          photos={photos}
-          cityNames={cityNames}
-          route={route}
-          picture={picture}
-          height={116}
-          top={22}
-          bottom={98}
-          compact
-        />
+        <TripPictureFill trip={trip} photos={photos} cityNames={cityNames} />
       </div>
       <div className="flex min-w-0 flex-1 flex-col gap-0.5 py-3 pl-3 pr-12">
         <p className="line-clamp-2 break-words font-display text-[20px] leading-tight">
@@ -789,16 +628,8 @@ export function TripListRow({
 /* Past trips as three tiles                                           */
 /* ------------------------------------------------------------------ */
 
-function PastTile({
-  trip,
-  photos,
-  picture,
-}: {
-  trip: TripRow;
-  photos: TripPhotoRow[];
-  picture: TripPicture;
-}) {
-  const { stops, route } = useTripRoute(trip, false);
+function PastTile({ trip, photos }: { trip: TripRow; photos: TripPhotoRow[] }) {
+  const { stops } = useTripStops(trip.id, null);
   const month = tripMonth(trip.start_date, trip.end_date);
   return (
     <Link
@@ -807,18 +638,7 @@ function PastTile({
       viewTransition
       className="relative block h-[132px] overflow-hidden rounded-[var(--r-image)] bg-[#2a2026] text-white shadow-sm"
     >
-      <TripPictureFill
-        trip={trip}
-        photos={photos}
-        cityNames={stops.map((s) => s.city)}
-        route={route}
-        picture={picture}
-        height={132}
-        top={18}
-        bottom={70}
-        compact
-        done={route.length}
-      />
+      <TripPictureFill trip={trip} photos={photos} cityNames={stops.map((s) => s.city)} />
       <span
         aria-hidden
         className="absolute inset-0"
@@ -836,19 +656,11 @@ function PastTile({
   );
 }
 
-export function PastTiles({
-  trips,
-  photos,
-  picture,
-}: {
-  trips: TripRow[];
-  photos: TripPhotoRow[];
-  picture: TripPicture;
-}) {
+export function PastTiles({ trips, photos }: { trips: TripRow[]; photos: TripPhotoRow[] }) {
   return (
     <div className="grid grid-cols-3 gap-2.5">
       {trips.map((trip) => (
-        <PastTile key={trip.id} trip={trip} photos={photos} picture={picture} />
+        <PastTile key={trip.id} trip={trip} photos={photos} />
       ))}
     </div>
   );

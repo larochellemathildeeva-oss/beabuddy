@@ -11,17 +11,16 @@ import { PlaceSearchInput } from "@/components/PlaceSearchInput";
 import {
   LayoutSwitch,
   PastTiles,
-  PictureSwitch,
   TripFeature,
   TripListRow,
   TripsHero,
   TripsSection,
 } from "@/components/TripsList";
-import { useTripPicture } from "@/hooks/useTripPicture";
 import { useTripsLayout } from "@/hooks/useTripsLayout";
 import { FollowedTripList } from "@/components/FollowedTripList";
 import { listFollowedTrips } from "@/lib/trip-follow.functions";
 import type { FollowedTrip } from "@/lib/trip-follow";
+import { knownToFollow, rememberFollows } from "@/lib/follow-hint";
 import { useTripGlances } from "@/hooks/useTripGlances";
 import { peopleOnTrip, tripTabs } from "@/lib/home-trip";
 import { toLocalISODate } from "@/lib/trip-dates";
@@ -111,8 +110,16 @@ function TripsPage() {
    */
   const [view, setView] = useState<"upcoming" | "past" | "following" | "all">("upcoming");
   const [layout, setLayout] = useTripsLayout();
-  const [picture, setPicture] = useTripPicture();
-  const { trips: followed, forget: forgetFollowed } = useFollowedTrips(user?.id ?? null);
+  const {
+    trips: followed,
+    failed: followedFailed,
+    retry: retryFollowed,
+    forget: forgetFollowed,
+  } = useFollowedTrips(user?.id ?? null);
+  // The tab stays when the list could not be read but this phone knows of
+  // follows, so a failed read is not mistaken for "following nothing".
+  const showFollowing =
+    Boolean(followed?.length) || (followedFailed && !!user && knownToFollow(user.id));
   const [form, setForm] = useState({
     title: "",
     city: "",
@@ -159,7 +166,6 @@ function TripsPage() {
   const { glances } = useTripGlances(t.trips.map((trip) => trip.id));
   const today = toLocalISODate(new Date());
   const lists = tripTabs(t.trips, today);
-  // The same array until the trips change, so the header map is not redrawn on every render.
   const beaSettings = useBeaSettings();
   // Picked once per visit, in the traveller's mix.
   const [emptyTrips] = useState(() => emptyLine({ kind: "noTrips", settings: beaSettings }));
@@ -179,15 +185,10 @@ function TripsPage() {
       photos={photos}
       glance={glances[trip.id]}
       peopleCount={peopleOnTrip(t.members, trip.id, t.uid)}
-      picture={picture}
     />
   );
-  const switches = (withLayout: boolean) => (
-    <div className="flex flex-wrap items-center gap-2">
-      {withLayout ? <LayoutSwitch layout={layout} onLayout={setLayout} /> : null}
-      <PictureSwitch picture={picture} onPicture={setPicture} />
-    </div>
-  );
+  const switches = (withLayout: boolean) =>
+    withLayout ? <LayoutSwitch layout={layout} onLayout={setLayout} /> : undefined;
   const pastSection = (all: boolean) =>
     lists.past.length > 0 ? (
       <TripsSection
@@ -210,7 +211,7 @@ function TripsPage() {
         {all ? (
           <div className="space-y-3">{lists.past.map(row)}</div>
         ) : (
-          <PastTiles trips={lists.past.slice(0, 3)} photos={photos} picture={picture} />
+          <PastTiles trips={lists.past.slice(0, 3)} photos={photos} />
         )}
       </TripsSection>
     ) : null;
@@ -230,7 +231,6 @@ function TripsPage() {
               photos={photos}
               glance={glances[featured.id]}
               peopleCount={peopleOnTrip(t.members, featured.id, t.uid)}
-              picture={picture}
             />
           </TripsSection>
         ) : (
@@ -281,12 +281,12 @@ function TripsPage() {
         />
         {t.signedIn ? (
           <>
-            <div role="tablist" aria-label="Which trips" className="trips-tabs">
+            <div role="tablist" aria-label="Which trips" className="trips-tabs relative z-[1]">
               {(
                 [
                   ["upcoming", "Upcoming"],
                   ["past", "Past"],
-                  ...(followed?.length ? ([["following", "Following"]] as const) : []),
+                  ...(showFollowing ? ([["following", "Following"]] as const) : []),
                   ["all", "All"],
                 ] as const
               ).map(([value, label]) => (
@@ -389,9 +389,21 @@ function TripsPage() {
                 </>
               )}
 
-              {view === "following" && (
-                <FollowedTripList trips={followed ?? []} onRemoved={forgetFollowed} />
-              )}
+              {view === "following" &&
+                (followedFailed ? (
+                  <p className="py-6 text-center text-[14.5px] text-muted-foreground">
+                    The trips you follow didn't load.{" "}
+                    <button
+                      type="button"
+                      onClick={retryFollowed}
+                      className="-my-3 inline-flex min-h-11 items-center font-semibold text-primary underline underline-offset-2"
+                    >
+                      Try again
+                    </button>
+                  </p>
+                ) : (
+                  <FollowedTripList trips={followed ?? []} onRemoved={forgetFollowed} />
+                ))}
 
               {t.trips.length === 0 && !t.loading && view !== "following" && (
                 <div className="tile-fill-3 flex items-center gap-4 rounded-[var(--r-card)] p-4">
@@ -942,30 +954,49 @@ function DayTripRow({
 
 /**
  * The trips this traveller follows, read when Trips opens and again for
- * another account; null until read, while following is not set up (its
- * migration), or when the read fails — the tab simply does not show. A
- * list belongs to the account it was read for, so another account never
- * sees it, even for a moment.
+ * another account; null until read and while following is not set up (its
+ * migration). A read that fails says so (`failed`), with `retry`, instead
+ * of looking like an empty list. A list belongs to the account it was read
+ * for, so another account never sees it, even for a moment.
  */
 function useFollowedTrips(userId: string | null): {
   trips: FollowedTrip[] | null;
+  /** The read failed; the tab shows with a way to try again when this phone knows of follows. */
+  failed: boolean;
+  retry: () => void;
   /** A trip the traveller just stopped following leaves the list for good this visit. */
   forget: (token: string) => void;
 } {
   const list = useServerFn(listFollowedTrips);
-  const [read, setRead] = useState<{ userId: string; trips: FollowedTrip[] | null } | null>(null);
+  const [read, setRead] = useState<{
+    userId: string;
+    trips: FollowedTrip[] | null;
+    failed?: boolean;
+  } | null>(null);
+  const [attempt, setAttempt] = useState(0);
   useEffect(() => {
     if (!userId) return;
-    let alive = true;
-    list()
-      .then((trips) => alive && setRead({ userId, trips }))
-      .catch(() => alive && setRead({ userId, trips: null }));
-    return () => {
-      alive = false;
-    };
-  }, [userId, list]);
+    // A retry, another account or leaving Trips cancels the read in flight.
+    const request = new AbortController();
+    list({ signal: request.signal })
+      .then((trips) => {
+        if (request.signal.aborted) return;
+        if (trips) rememberFollows(userId, trips.length > 0);
+        setRead({ userId, trips });
+      })
+      .catch(() => !request.signal.aborted && setRead({ userId, trips: null, failed: true }));
+    return () => request.abort();
+  }, [userId, list, attempt]);
   const forget = useCallback((token: string) => {
-    setRead((r) => (r?.trips ? { ...r, trips: r.trips.filter((t) => t.token !== token) } : r));
+    setRead((r) => {
+      if (!r?.trips) return r;
+      const trips = r.trips.filter((t) => t.token !== token);
+      // The last one removed: a later failed read must not bring the tab back.
+      if (trips.length === 0) rememberFollows(r.userId, false);
+      return { ...r, trips };
+    });
   }, []);
-  return { trips: userId && read?.userId === userId ? read.trips : null, forget };
+  const retry = useCallback(() => setAttempt((n) => n + 1), []);
+  const mine = userId && read?.userId === userId ? read : null;
+  return { trips: mine?.trips ?? null, failed: mine?.failed === true, retry, forget };
 }

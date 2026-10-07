@@ -15,7 +15,13 @@ export async function uploadPhotoFile(uid: string, file: File): Promise<string> 
       : `${uid}/${crypto.randomUUID()}.${ext}`;
   const { error } = await supabase.storage
     .from("photo-memories")
-    .upload(path, uploadFile, { contentType: uploadFile.type || "image/jpeg" });
+    // No longer than the hour a signed URL lasts (SIGN_SECONDS in
+    // trip-share.server.ts, 3600 elsewhere): a photo can be hidden from a
+    // link or the link turned off, and a longer cache would outlive that.
+    .upload(path, uploadFile, {
+      contentType: uploadFile.type || "image/jpeg",
+      cacheControl: "3600",
+    });
   if (error) throw error;
   return path;
 }
