@@ -7,6 +7,7 @@ import { Check, ChevronDown, Clock, MapPin } from "@/components/icons";
 import { useAuth } from "@/hooks/useAuth";
 import { changeFollow, readFollowState } from "@/lib/trip-follow.functions";
 import type { FollowState } from "@/lib/trip-follow";
+import { rememberFollows } from "@/lib/follow-hint";
 import { readSharedTrip } from "@/lib/trip-share.functions";
 import { clockIn, dateIn, wallTimeToInstant, zoneGap, zoneLabel } from "@/lib/trip-clock";
 import {
@@ -296,8 +297,9 @@ function SharedTripPage() {
 /**
  * "Follow in Béa": a signed-in traveller keeps this trip under Trips →
  * Following. It is the same link, kept in their account; if the link is
- * turned off, the trip leaves their list. Hidden until following is set up
- * (its migration), and for a link that no longer opens.
+ * turned off, the trip leaves their list. Says so when following is not set
+ * up (its migration) or could not be checked; hidden for a link that no
+ * longer opens.
  */
 function FollowButton({ token }: { token: string }) {
   const { user, loading } = useAuth();
@@ -305,20 +307,25 @@ function FollowButton({ token }: { token: string }) {
   const change = useServerFn(changeFollow);
   // The state belongs to the account it was read for: another account
   // signing in never sees it, even for a moment.
-  const [read, setState] = useState<{ userId: string; state: FollowState | null } | null>(null);
+  // A read that failed is "failed", not hidden: the button vanishing is
+  // what made following look broken.
+  const [read, setState] = useState<{
+    userId: string;
+    state: FollowState | "failed" | null;
+  } | null>(null);
   const state = user && read?.userId === user.id ? read.state : null;
   const [busy, setBusy] = useState(false);
+  const [attempt, setAttempt] = useState(0);
   useEffect(() => {
     if (!user) return;
     const userId = user.id;
-    let alive = true;
-    readState({ data: { token } })
-      .then((next) => alive && setState({ userId, state: next }))
-      .catch(() => alive && setState({ userId, state: null }));
-    return () => {
-      alive = false;
-    };
-  }, [user, token, readState]);
+    // A retry, another account or leaving the page cancels the read in flight.
+    const request = new AbortController();
+    readState({ data: { token }, signal: request.signal })
+      .then((next) => !request.signal.aborted && setState({ userId, state: next }))
+      .catch(() => !request.signal.aborted && setState({ userId, state: "failed" }));
+    return () => request.abort();
+  }, [user, token, readState, attempt]);
 
   if (loading) return null;
   if (!user) {
@@ -335,6 +342,27 @@ function FollowButton({ token }: { token: string }) {
       </p>
     );
   }
+  if (state === "unavailable") {
+    return (
+      <p className="text-[13px] text-muted-foreground">
+        Following trips isn't set up in Béa yet, so this one can't be kept under Trips for now.
+      </p>
+    );
+  }
+  if (state === "failed") {
+    return (
+      <p className="text-[13px] text-muted-foreground">
+        Béa couldn't check whether you follow this trip.{" "}
+        <button
+          type="button"
+          onClick={() => setAttempt((n) => n + 1)}
+          className="-my-3 inline-flex min-h-11 items-center font-semibold text-primary underline underline-offset-2"
+        >
+          Try again
+        </button>
+      </p>
+    );
+  }
   if (state !== "following" && state !== "not-following") return null;
   const following = state === "following";
   const toggle = async () => {
@@ -342,6 +370,7 @@ function FollowButton({ token }: { token: string }) {
     try {
       const next = await change({ data: { token, follow: !following } });
       if (next !== "full") setState({ userId: user.id, state: next });
+      if (next === "following") rememberFollows(user.id, true);
       if (next === "following")
         toast.success("Following", { description: "It's under Trips → Following." });
       else if (next === "not-following") toast("Stopped following");
