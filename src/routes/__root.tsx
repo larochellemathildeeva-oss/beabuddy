@@ -59,6 +59,36 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   // their phone is visible to us afterwards.
   useEffect(() => {
     reportError(error, "route error boundary");
+    // A code file that would not load (a deploy replaced it, or a stale copy
+    // was kept): one fresh load fetches the current ones. Once only, so a
+    // real outage cannot loop.
+    if (
+      !/importing a module script failed|failed to fetch dynamically imported module/i.test(
+        error.message,
+      )
+    )
+      return;
+    try {
+      if (sessionStorage.getItem("bea-chunk-reload")) return;
+      sessionStorage.setItem("bea-chunk-reload", "1");
+    } catch {
+      return;
+    }
+    void (async () => {
+      try {
+        const regs = await navigator.serviceWorker?.getRegistrations();
+        await Promise.all((regs ?? []).map((r) => r.update()));
+        const keys = await caches.keys();
+        await Promise.all(
+          keys
+            .filter((k) => k.startsWith("bea-pages-") || k.startsWith("bea-assets-"))
+            .map((k) => caches.delete(k)),
+        );
+      } catch {
+        // reload anyway
+      }
+      window.location.reload();
+    })();
   }, [error]);
 
   return (

@@ -14,7 +14,7 @@
  * traveller kept offline (bea-map-…) are theirs, not the worker's: they stay
  * until the traveller, sign-out or erasure removes them.
  */
-const VERSION = "v2";
+const VERSION = "v3";
 const PAGES = `bea-pages-${VERSION}`;
 const ASSETS = `bea-assets-${VERSION}`;
 const SHELL = [
@@ -36,6 +36,18 @@ const NAVIGATE_TIMEOUT_MS = 3500;
  * the old ones, so the cache only grew; the oldest go first.
  */
 const MAX_ASSETS = 250;
+
+/**
+ * A built file is kept only when it is the file: a deploy in progress can
+ * answer a missing file with a page (200, text/html), and a page kept as a
+ * script makes "Importing a module script failed" on every visit after.
+ */
+function isBuiltFile(response, url) {
+  if (!response.ok) return false;
+  const type = response.headers.get("content-type") || "";
+  if (url.pathname.startsWith("/assets/") && type.includes("text/html")) return false;
+  return true;
+}
 
 async function trimAssets() {
   const cache = await caches.open(ASSETS);
@@ -133,9 +145,9 @@ self.addEventListener("fetch", (event) => {
     event.respondWith(
       caches.open(ASSETS).then(async (cache) => {
         const hit = await cache.match(request);
-        if (hit) return hit;
+        if (hit && isBuiltFile(hit, url)) return hit;
         const response = await fetch(request);
-        if (response.ok) {
+        if (isBuiltFile(response, url)) {
           event.waitUntil(cache.put(request, response.clone()).then(trimAssets));
         }
         return response;
