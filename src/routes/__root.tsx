@@ -60,24 +60,32 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   useEffect(() => {
     reportError(error, "route error boundary");
     // A code file that would not load (a deploy replaced it, or a stale copy
-    // was kept): one fresh load fetches the current ones. Once only, so a
-    // real outage cannot loop.
+    // was kept): one fresh load fetches the current ones. Not while offline
+    // (the kept copies are all there is then), and at most once in ten
+    // minutes, so a real outage cannot loop but a later deploy still recovers.
     if (
       !/importing a module script failed|failed to fetch dynamically imported module/i.test(
         error.message,
       )
     )
       return;
+    if (navigator.onLine === false) return;
     try {
-      if (sessionStorage.getItem("bea-chunk-reload")) return;
-      sessionStorage.setItem("bea-chunk-reload", "1");
+      const last = Number(sessionStorage.getItem("bea-chunk-reload") ?? 0);
+      if (Date.now() - last < 10 * 60_000) return;
+      sessionStorage.setItem("bea-chunk-reload", String(Date.now()));
     } catch {
       return;
     }
+    let live = true;
     void (async () => {
       try {
         const regs = await navigator.serviceWorker?.getRegistrations();
-        await Promise.all((regs ?? []).map((r) => r.update()));
+        await Promise.all((regs ?? []).map((r) => r.update().catch(() => {})));
+      } catch {
+        // clear the copies anyway
+      }
+      try {
         const keys = await caches.keys();
         await Promise.all(
           keys
@@ -87,8 +95,11 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
       } catch {
         // reload anyway
       }
-      window.location.reload();
+      if (live) window.location.reload();
     })();
+    return () => {
+      live = false;
+    };
   }, [error]);
 
   return (
