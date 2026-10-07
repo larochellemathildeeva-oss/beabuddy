@@ -33,7 +33,7 @@ export function HomeSaveTile({
         src={art}
         alt=""
         decoding="async"
-        className="place-art art-dim h-[104px] w-[42%] shrink-0 rounded-[12px] object-cover"
+        className="place-art art-dim h-[104px] w-[42%] shrink-0 rounded-[var(--r-card)] object-cover"
       />
       <span className="flex min-w-0 flex-1 flex-col py-1 pr-1">
         <span className="flex items-start justify-between gap-2">

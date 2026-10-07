@@ -52,6 +52,18 @@ export const TRIP_PERSPECTIVES = [
 export type TripPerspective = (typeof TRIP_PERSPECTIVES)[number]["id"];
 
 /**
+ * The tabs the bar shows. Companion is the live side of the Map, not a tab of
+ * its own (owner, 2026-10-07): the Map tab offers a Map | Companion switch,
+ * and a trip under way still opens on Companion.
+ */
+export const TRIP_TABS: readonly TripPerspective[] = ["overview", "map", "timeline"];
+
+/** The tab a perspective lives under. */
+export function tabOf(perspective: TripPerspective): TripPerspective {
+  return perspective === "companion" ? "map" : perspective;
+}
+
+/**
  * Where to open.
  *
  * On the trip, "Now" is the only view with a right answer, so it wins. Before

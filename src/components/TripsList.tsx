@@ -117,21 +117,21 @@ function TripPictureFill({
 /* ------------------------------------------------------------------ */
 
 /**
- * The top of Trips: "Your trips." as a short text header with the calendar and
- * New trip beside it, no picture to scroll past.
+ * The top of Trips, as the editorial design draws it: a small label, "Your
+ * trips." in large serif over a rule, and the two ways to start (the calendar
+ * and a new trip) as plain words. Each trip is one tap away in the list under
+ * the tabs, so the top carries no map.
  */
-export function TripsHero({ actions }: { actions: ReactNode }) {
+export function TripsHero({ actions }: { trips?: TripRow[]; today?: string; actions: ReactNode }) {
   return (
-    <section data-guide="trips-header" className="flex items-start justify-between gap-3 pb-1">
-      <div className="min-w-0">
-        <p className="text-[13px] font-semibold uppercase tracking-[0.16em] text-foreground/75">
-          Trip folders
-        </p>
-        <h1 className="mt-1 font-display text-[34px] leading-[1] tracking-[-0.02em]">
-          Your trips.
-        </h1>
+    <section data-guide="trips-header" className="page-title-rule border-b border-border pb-4">
+      <div className="flex items-center justify-between gap-3">
+        <p className="label-caps">Trips</p>
+        <div className="flex shrink-0 items-center gap-1">{actions}</div>
       </div>
-      <div className="flex shrink-0 items-center gap-2 pt-1">{actions}</div>
+      <h1 className="mt-3 font-display text-[46px] leading-[1.08] tracking-[-0.01em]">
+        Your trips.
+      </h1>
     </section>
   );
 }
@@ -152,7 +152,7 @@ export function TripsSection({
   return (
     <section className="rise">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
-        <h2 className="font-display text-[26px] leading-none">{title}</h2>
+        <h2 className="trips-section-title">{title}</h2>
         {aside}
       </div>
       {children}
@@ -267,7 +267,7 @@ function Chip({
       to="/trips/$tripId"
       params={{ tripId: to.tripId }}
       search={to.prep ? { prep: to.prep } : {}}
-      className={`tile-fill-${tone} flex min-h-[56px] min-w-0 flex-1 items-center gap-1.5 rounded-2xl border border-border/60 px-2 py-2`}
+      className={`trips-chip tile-fill-${tone} flex min-h-[56px] min-w-0 flex-1 items-center gap-1.5 px-2 py-2`}
     >
       <span className="grid size-7 shrink-0 place-items-center rounded-full bg-card text-primary">
         <Icon className="size-4" aria-hidden />
@@ -336,62 +336,39 @@ export function TripFeature({
         : "None yet";
   const stayFirst = started && lodging;
 
+  const kicker = live ? "Happening now" : started ? "On this trip" : "Upcoming trip";
+  const when = count ? (count.unit ? `${count.value} ${count.unit}` : count.value) : "";
+  const headline = trip.title;
+
   return (
-    <article className="trips-feature overflow-hidden">
+    <article className="trips-feature editorial-feature overflow-hidden">
+      <div className="px-4 pb-3 pt-3">
+        <p className="label-caps">
+          {[kicker, live ? `Stop ${live.step} of ${live.total}` : when].filter(Boolean).join(" · ")}
+          {peopleCount > 1 ? ` · ${peopleCount} travellers` : ""}
+        </p>
+        <h3 className="mt-2 line-clamp-2 break-words font-display text-[46px] font-bold leading-[0.98] tracking-[-2px]">
+          {headline}
+        </h3>
+        {places ? (
+          <p className="mt-1.5 font-display text-[24px] leading-[28px] tracking-[-0.5px]">
+            {places}
+          </p>
+        ) : null}
+        <p className="label-caps mt-2.5">
+          {tripDateLine(trip.start_date, trip.end_date)}
+          {trip.dates_status === "tentative" ? " · tentative" : ""}
+        </p>
+      </div>
       <Link
         to="/trips/$tripId"
         params={{ tripId: trip.id }}
         viewTransition
         aria-label={`Open ${trip.title}`}
-        className="relative block h-[210px] overflow-hidden bg-muted"
+        className="relative block h-[150px] overflow-hidden bg-muted"
         style={{ viewTransitionName: `trip-photo-${trip.id}` }}
       >
         <TripPictureFill trip={trip} photos={photos} cityNames={cityNames} />
-        {live ? (
-          <span className="absolute left-3 top-3 flex items-center gap-1.5 rounded-full bg-primary px-3 py-1.5 text-[13px] font-bold text-primary-foreground">
-            <span className="size-2 rounded-full bg-primary-foreground" aria-hidden />
-            Live · Stop {live.step} of {live.total}
-          </span>
-        ) : peopleCount > 1 ? (
-          <span className="absolute left-3 top-3 flex items-center gap-1.5 rounded-full bg-card/92 px-3 py-1.5 text-[13px] font-semibold text-foreground shadow-sm">
-            <Users className="size-4" aria-hidden />
-            {peopleCount} travellers
-          </span>
-        ) : null}
-        <span className="trips-glass absolute inset-x-3 bottom-3 flex items-center gap-3 p-3">
-          <span className="min-w-0 flex-1">
-            <span className="line-clamp-2 break-words font-display text-[24px] leading-[1.1]">
-              {trip.title}
-            </span>
-            <span className="mt-0.5 block truncate text-[14px] text-muted-foreground">
-              {[places, tripDateLine(trip.start_date, trip.end_date)].filter(Boolean).join(" · ")}
-              {trip.dates_status === "tentative" ? " · tentative" : ""}
-            </span>
-          </span>
-          {count ? (
-            <span
-              aria-label={count.label}
-              className="grid size-[60px] shrink-0 place-items-center rounded-full bg-primary text-center text-primary-foreground"
-            >
-              <span className="leading-none">
-                <span
-                  className={`block font-display ${count.unit ? "text-[24px]" : "text-[17px]"}`}
-                >
-                  {count.value}
-                </span>
-                {count.unit ? (
-                  <span className="block text-[13px] font-semibold">{count.unit}</span>
-                ) : null}
-              </span>
-            </span>
-          ) : null}
-          <span
-            aria-hidden
-            className="grid size-9 shrink-0 place-items-center rounded-full bg-elevated"
-          >
-            <ChevronRight className="size-5" />
-          </span>
-        </span>
       </Link>
 
       {ribbon.length > 1 ? (
@@ -414,7 +391,7 @@ export function TripFeature({
         </p>
       ) : null}
 
-      <div className="flex gap-2 px-3 pt-3">
+      <div className="trips-chips flex pt-0">
         {stayFirst ? (
           <Chip
             icon={Bed}

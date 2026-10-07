@@ -302,6 +302,7 @@ export function TripMenuSheet({
       // Escape and the arrow go back to the menu first, then close it.
       onClose={() => (section ? onSection(null) : onClose())}
       page
+      crumb={`${title} / Trip menu`}
       {...(section ? { backLabel: "Back to the trip menu" } : {})}
       tone={section ? 4 : 1}
       title={section ? SECTION_TITLES[section] : "Trip settings"}
@@ -328,11 +329,10 @@ export function TripMenuSheet({
           <Group name="Plan" rows={plan} />
           <Group name="The trip" rows={trip} />
           <Group name="On this phone" rows={phone} />
-          {footer ? (
-            <div className="plain-card mt-4 overflow-hidden px-1 [&>button]:min-h-14 [&>button]:w-full">
-              {footer}
-            </div>
-          ) : null}
+          {footer ? <div className="menu-footer">{footer}</div> : null}
+          <button type="button" onClick={onClose} className="menu-done bg-primary mono-caps">
+            Done
+          </button>
         </div>
       )}
     </Sheet>
@@ -350,29 +350,13 @@ type Row = {
 
 function Group({ name, rows }: { name: string; rows: Row[] }) {
   return (
-    <section aria-label={name}>
-      <h2 className="mb-2 mt-5 px-0.5 font-display text-[22px] leading-none">{name}</h2>
-      <div className="plain-card divide-y divide-border overflow-hidden">
+    <section aria-label={name} className="menu-group">
+      <h2 className="mono-caps menu-group-label">{name}</h2>
+      <div>
         {rows.map((row) => (
-          <button
-            key={row.key}
-            type="button"
-            onClick={row.onClick}
-            className="flex min-h-[60px] w-full items-center gap-3 px-3.5 py-2.5 text-left"
-          >
-            <span
-              className="grid size-10 shrink-0 place-items-center rounded-xl bg-elevated [[data-theme=colorful]_&]:bg-[var(--tile)]"
-              style={{ "--tile": `var(--tile-${row.tone})` } as CSSProperties}
-            >
-              <row.icon className="size-5" />
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block font-display text-[19px] leading-tight">{row.title}</span>
-              <span className="mt-0.5 block text-[14px] leading-snug text-muted-foreground">
-                {row.note}
-              </span>
-            </span>
-            <ChevronRight className="size-5 shrink-0 text-muted-foreground" aria-hidden />
+          <button key={row.key} type="button" onClick={row.onClick} className="menu-row">
+            <span className="menu-row-title">{row.title}</span>
+            <span className="menu-row-note">{row.note}</span>
           </button>
         ))}
       </div>

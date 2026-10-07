@@ -16,7 +16,7 @@ import { timeForRail } from "@/lib/timeline-kind";
 import { toLocalISODate } from "@/lib/trip-dates";
 import { heroTags } from "@/lib/trip-glance";
 
-const SOFT_SHADOW = "shadow-[0_4px_16px_rgb(0_0_0/0.06)]";
+const SOFT_SHADOW = "";
 const SAVED_HERO_H = 250;
 const TAG_H = 44;
 
@@ -82,7 +82,7 @@ export function NowCards({
         to="/trips/$tripId"
         params={{ tripId: trip.id }}
         viewTransition
-        className={`block rounded-[20px] bg-card p-4 ${SOFT_SHADOW}`}
+        className={`block rounded-[var(--r-card)] bg-card p-4 ${SOFT_SHADOW}`}
       >
         <p className="text-[14px] text-muted-foreground">{dayMeta}</p>
         <p className="mt-1 text-[17px] font-semibold">
@@ -131,7 +131,7 @@ function StopCard({
       params={{ tripId: trip.id }}
       viewTransition
       aria-label={`${label}: ${stop.title}${time ? `, ${time}` : ""}`}
-      className={`block rounded-[20px] bg-card p-4 ${SOFT_SHADOW}`}
+      className={`block rounded-[var(--r-card)] bg-card p-4 ${SOFT_SHADOW}`}
     >
       <div className="flex items-center justify-between gap-3">
         <p className="text-[14px] font-medium text-muted-foreground">{label}</p>
@@ -150,7 +150,7 @@ function StopCard({
         <span className="min-w-0 break-words">{stop.title}</span>
       </p>
       <div className="mt-3 flex items-center gap-3">
-        <StopArt item={stop} className="size-[84px] rounded-[14px]" />
+        <StopArt item={stop} className="size-[84px] rounded-[var(--r-card)]" />
         <div className="min-w-0">
           {time ? <p className="text-[17px] font-bold leading-tight">{time}</p> : null}
           {line ? (
@@ -236,7 +236,7 @@ export function HomeSavedCard({ cities }: { cities: SavedCity[] }) {
   const { strong, rest } = savedSummary(cities);
   return (
     <section
-      className={`flex items-center justify-between gap-3 rounded-[20px] bg-card p-4 ${SOFT_SHADOW}`}
+      className={`flex items-center justify-between gap-3 rounded-[var(--r-card)] bg-card p-4 ${SOFT_SHADOW}`}
     >
       <p className="min-w-0 text-[16px] leading-snug">
         <strong className="font-bold">{strong}</strong>
@@ -283,7 +283,7 @@ function CityTile({ city }: { city: SavedCity }) {
   return (
     <Link
       to="/recommendations"
-      className="group relative aspect-[3/4] overflow-hidden rounded-[18px] bg-muted"
+      className="group relative aspect-[3/4] overflow-hidden rounded-[var(--r-card)] bg-muted"
     >
       <img
         src={town.photo?.url ?? art}

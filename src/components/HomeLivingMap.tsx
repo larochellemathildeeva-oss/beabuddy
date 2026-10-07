@@ -1,6 +1,6 @@
 import { useMemo, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
-import { ArrowRight, Check, Luggage, Plane, Search } from "@/components/icons";
+import { ArrowRight } from "@/components/icons";
 import { HomeTripBanner } from "@/components/HomeTripBanner";
 import type { TripPhotoRow } from "@/hooks/useTripPhotos";
 import type { TripRow } from "@/hooks/useTrips";
@@ -9,7 +9,7 @@ import { useTripStops } from "@/hooks/useTripStops";
 import { flightParts } from "@/lib/home-route-map";
 import { placeArtUrl } from "@/lib/place-art";
 
-const SOFT_SHADOW = "shadow-[0_4px_16px_rgb(0_0_0/0.06)]";
+const SOFT_SHADOW = "";
 
 /** The top of Home with a trip ahead: the trip as the short strip the trip page opens with. */
 export function HomeUpcoming({ trip, photos }: { trip: TripRow; photos: TripPhotoRow[] }) {
@@ -46,13 +46,13 @@ export function HomeTripStats({ trip, glance }: { trip: TripRow; glance: TripGla
   const packed = packing
     ? new Intl.NumberFormat(undefined, { style: "percent" }).format(percent / 100)
     : "—";
-  const cell = "flex min-w-0 items-center gap-2 px-2.5 py-1";
+  const cell = "flex min-h-11 min-w-0 flex-col justify-center px-3 py-2";
 
   return (
     <section
       data-guide="home-next"
       aria-label="This trip at a glance"
-      className={`relative z-10 grid grid-cols-[0.85fr_1.3fr_1fr] divide-x divide-border/70 rounded-[24px] bg-card py-3.5 ${SOFT_SHADOW}`}
+      className="grid grid-cols-[0.8fr_1.4fr_1fr] divide-x divide-border border border-border bg-card"
     >
       <Link
         to="/trips/$tripId"
@@ -60,9 +60,6 @@ export function HomeTripStats({ trip, glance }: { trip: TripRow; glance: TripGla
         search={{ prep: "todo" }}
         className={cell}
       >
-        <span className="grid size-8 shrink-0 place-items-center rounded-full bg-[color-mix(in_oklch,var(--success)_16%,var(--card))] text-[var(--success)]">
-          <Check className="size-4" />
-        </span>
         <Stat big={String(open)} small={open === 1 ? "to-do" : "to-dos"} />
       </Link>
       <Link
@@ -71,7 +68,6 @@ export function HomeTripStats({ trip, glance }: { trip: TripRow; glance: TripGla
         search={flight ? {} : { view: "bookings" }}
         className={cell}
       >
-        <Plane className="size-6 shrink-0" />
         {flight ? (
           <Stat
             big={parts?.code ?? flight.title}
@@ -94,19 +90,7 @@ export function HomeTripStats({ trip, glance }: { trip: TripRow; glance: TripGla
         search={{ prep: "packing" }}
         className={cell}
       >
-        <Luggage className="size-6 shrink-0" />
-        <span className="min-w-0 flex-1">
-          <Stat big={packed} small={packing ? "packed" : "Packing list"} />
-          <span
-            aria-hidden
-            className="mt-1.5 block h-1 w-full max-w-[90px] overflow-hidden rounded-full bg-[var(--stat-track)]"
-          >
-            <span
-              className="block h-full rounded-full bg-[image:var(--stat-fill)]"
-              style={{ width: `${percent}%` }}
-            />
-          </span>
-        </span>
+        <Stat big={packed} small={packing ? "packed" : "Packing list"} />
       </Link>
     </section>
   );
@@ -115,8 +99,10 @@ export function HomeTripStats({ trip, glance }: { trip: TripRow; glance: TripGla
 function Stat({ big, small }: { big: string; small: ReactNode }) {
   return (
     <span className="block min-w-0">
-      <span className="block truncate text-[17px] font-bold leading-tight">{big}</span>
-      <span className="block whitespace-nowrap text-[12.5px] leading-snug text-muted-foreground">
+      <span className="block truncate font-display text-[34px] font-bold leading-none tracking-[-1px]">
+        {big}
+      </span>
+      <span className="block whitespace-nowrap text-[12px] leading-snug text-muted-foreground">
         {small}
       </span>
     </span>
@@ -126,15 +112,9 @@ function Stat({ big, small }: { big: string; small: ReactNode }) {
 /** "Where to next?": the way into planning another trip. */
 export function HomeWhereNext() {
   return (
-    <Link
-      to="/trips/plan"
-      className={`flex h-14 items-center gap-3 rounded-full bg-[var(--home-search)] ps-5 pe-1 ${SOFT_SHADOW}`}
-    >
-      <Search className="size-5 shrink-0 text-foreground" />
-      <span className="flex-1 text-[15.5px] text-muted-foreground">Where to next?</span>
-      <span className="grid size-[48px] place-items-center rounded-full bg-[var(--home-ink)] text-[var(--home-ink-foreground)]">
-        <ArrowRight className="size-[22px]" />
-      </span>
+    <Link to="/trips/plan" className="flex h-[52px] items-center gap-3 border border-border px-4">
+      <span className="flex-1 text-[14px] text-muted-foreground">Where to next?</span>
+      <ArrowRight className="size-[18px] shrink-0" aria-hidden />
     </Link>
   );
 }
@@ -173,6 +153,7 @@ export function HomeSuggested({
   ];
   return (
     <section data-guide="home-suggested">
+      <p className="label-caps mb-1">Béa suggests</p>
       <div className="mb-1.5 flex items-center justify-between gap-3">
         <h2 className="font-sans text-[16.5px] font-semibold">Suggested for your trip</h2>
         <Link
@@ -190,7 +171,7 @@ export function HomeSuggested({
             to="/trips/$tripId"
             params={{ tripId: trip.id }}
             search={{ plan: "build", ask: idea.ask }}
-            className="group relative aspect-square overflow-hidden rounded-[18px] bg-muted"
+            className="group relative aspect-square overflow-hidden rounded-[var(--r-card)] bg-muted"
           >
             <img
               src={idea.art}

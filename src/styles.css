@@ -18,7 +18,7 @@
   --text-lead: calc(18px * var(--text-scale, 1));
   --text-heading: calc(20px * var(--text-scale, 1));
   --text-title: calc(22px * var(--text-scale, 1));
-  --text-display: calc(36px * var(--text-scale, 1));
+  --text-display: calc(64px * var(--text-scale, 1));
   /* Tailwind's own sizes, scaled by the reading text size too (accessibility.ts). */
   --text-xs: calc(13px * var(--text-scale, 1));
   --text-sm: calc(0.875rem * var(--text-scale, 1));
@@ -84,6 +84,7 @@
      <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Bodoni+Moda:wght@500;600;700&family=Manrope:wght@300;400;500;600;700&display=swap" rel="stylesheet"> */
   --font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
   --font-display: "Bodoni Moda", "Instrument Serif", ui-serif, Georgia, serif;
+  --font-mono: "DM Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
 }
 
 /* The owner's six accent tokens. Blush and danger remain independent. */
@@ -131,7 +132,7 @@
   --foreground: #111111;
   --card: #ffffff;
   --card-foreground: #111111;
-  --elevated: #f7f5f1;
+  --elevated: #f4f4f4;
   --popover: #ffffff;
   --popover-foreground: #111111;
   --primary: var(--acc);
@@ -139,16 +140,16 @@
   /* Near-black meets body-text contrast on either exact accent fill. */
   --primary-foreground: #000000;
   --primary-soft: var(--acc-soft);
-  --secondary: #f7f5f1;
+  --secondary: #f4f4f4;
   --secondary-foreground: #111111;
-  --muted: #f7f5f1;
-  --muted-foreground: #6b6763;
+  --muted: #f4f4f4;
+  --muted-foreground: #666666;
   --accent: var(--acc-soft);
   --accent-foreground: #111111;
   --destructive: #c22a52;
   --destructive-ink: var(--destructive);
   --destructive-foreground: #ffffff;
-  --border: #f2ede6;
+  --border: #e8e8e8;
   --input: #d9d3cc;
   /* A text field's edge: 3:1 against the card (WCAG 1.4.11); --border is for dividers. */
   --field-border: #8a847e;
@@ -232,17 +233,17 @@
   --primary-foreground: #000000;
   --primary-soft: var(--acc-soft);
   --secondary-foreground: #111111;
-  --muted-foreground: #6b6763;
+  --muted-foreground: #666666;
   --destructive-ink: var(--destructive);
   --accent: var(--acc-soft);
   --accent-foreground: #111111;
-  --border: #f2ede6;
+  --border: #e8e8e8;
   --input: #d9d3cc;
   --field-border: #8a847e;
   --ring: var(--acc-ink);
-  --elevated: #f2ede6;
-  --secondary: #f2ede6;
-  --muted: #f2ede6;
+  --elevated: #e8e8e8;
+  --secondary: #e8e8e8;
+  --muted: #e8e8e8;
   --tile-1: var(--lavender);
   --tile-2: var(--powder);
   --tile-3: var(--mint);
@@ -252,28 +253,28 @@
 
 /* Dark keeps its existing near-black surfaces and the chosen accent. */
 .dark {
-  --background: #171513;
-  --foreground: #f6f0e8;
-  --card: #211e1b;
-  --card-foreground: #f6f0e8;
-  --elevated: #2b2723;
-  --popover: #2b2723;
-  --popover-foreground: #f6f0e8;
+  --background: #000000;
+  --foreground: #ffffff;
+  --card: #0d0d0d;
+  --card-foreground: #ffffff;
+  --elevated: #161616;
+  --popover: #161616;
+  --popover-foreground: #ffffff;
   --primary: var(--acc);
   --primary-ink: var(--acc-done);
   --primary-foreground: #000000;
   --primary-soft: color-mix(in oklab, var(--acc) 20%, var(--card));
-  --secondary: #2b2723;
-  --secondary-foreground: #f6f0e8;
-  --muted: #2b2723;
-  --muted-foreground: #b8aea4;
-  --accent: #2b2723;
-  --accent-foreground: #f6f0e8;
+  --secondary: #161616;
+  --secondary-foreground: #ffffff;
+  --muted: #161616;
+  --muted-foreground: #b3b3b3;
+  --accent: #161616;
+  --accent-foreground: #ffffff;
   --destructive: #c22a52;
   --destructive-ink: #f08aa3;
   --destructive-foreground: oklch(0.99 0.008 86);
-  --border: #3a342f;
-  --input: #3a342f;
+  --border: #2e2e2e;
+  --input: #2e2e2e;
   --field-border: #8a847e;
   --ring: var(--acc-done);
 
@@ -1382,14 +1383,17 @@
 :root[data-font="easy"] {
   --font-sans: "Atkinson Hyperlegible Next", ui-sans-serif, system-ui, sans-serif;
   --font-display: "Atkinson Hyperlegible Next", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Atkinson Hyperlegible Next", ui-sans-serif, system-ui, sans-serif;
 }
 :root[data-font="lexend"] {
   --font-sans: "Lexend", ui-sans-serif, system-ui, sans-serif;
   --font-display: "Lexend", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Lexend", ui-sans-serif, system-ui, sans-serif;
 }
 :root[data-font="system"] {
   --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --font-display: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 
 /* Everything moves at once instead of sliding or fading. */
@@ -1995,7 +1999,7 @@
   --world-stat-2: #a9c1f5;
   --world-stat-3: #f3d58a;
   --world-float-shadow: 0 2px 14px rgb(80 60 40 / 0.08);
-  --world-place-fallback: #f2ede6;
+  --world-place-fallback: #e8e8e8;
 }
 
 [data-theme="colorful"] .bea-world {
@@ -3583,4 +3587,1005 @@ html:not(.dark)
   background: var(--foreground);
   color: var(--background);
   border-color: var(--foreground);
+}
+
+
+/* ===== Editorial skin =====
+   Flat boxes under 1px rules, square buttons, no shadows, no pills. Radii and
+   shadows come from tokens, so everything that reads them follows; the few
+   rounded-full text pills are squared below. */
+:root,
+[data-theme="calm"],
+[data-theme="colorful"],
+.dark {
+  --radius: 0px;
+  --r-card: 0px;
+  --r-button: 0px;
+  --r-image: 0px;
+  --r-input: 0px;
+  --r-sheet: 0px;
+  --shadow-xs: none;
+  --shadow-sm: none;
+  --shadow-md: none;
+  --shadow-lg: none;
+  --shadow-soft: none;
+  --shadow-primary: none;
+  --page-wash: none;
+  --rule: var(--border);
+}
+:root:not(.dark),
+[data-theme="calm"]:not(.dark),
+[data-theme="colorful"]:not(.dark) {
+  --border: #dad6d0;
+}
+/* More contrast keeps its stronger lines over the pale editorial hairline. */
+:root:not(.dark)[data-contrast="more"],
+[data-theme="calm"]:not(.dark)[data-contrast="more"],
+[data-theme="colorful"]:not(.dark)[data-contrast="more"] {
+  --border: color-mix(in oklch, var(--foreground) 42%, var(--background));
+}
+/* A pill with words in it is a flat label; a round icon button or a dot stays round. */
+:is(button, a, span, [role="tab"]).rounded-full[class*="px-"] {
+  border-radius: 0;
+}
+/* Primary actions are ink on white and white on black; Colorful keeps its accent. */
+button.bg-primary,
+a.bg-primary,
+[role="button"].bg-primary {
+  background-image: none;
+  box-shadow: none;
+}
+:root:not([data-theme="colorful"]) button.bg-primary,
+:root:not([data-theme="colorful"]) a.bg-primary,
+[data-theme="calm"] button.bg-primary,
+[data-theme="calm"] a.bg-primary,
+.dark button.bg-primary,
+.dark a.bg-primary {
+  background-color: var(--foreground);
+  color: var(--background);
+}
+[data-theme="colorful"]:not(.dark) button.bg-primary,
+[data-theme="colorful"]:not(.dark) a.bg-primary {
+  background-color: var(--acc);
+  color: #000;
+}
+/* The eyebrow: small, letterspaced, quiet. */
+.label-caps {
+  letter-spacing: 0.15em;
+}
+/* The headline face for every large title. */
+h1:not([class*="font-"]),
+h2:not([class*="font-"]) {
+  font-family: var(--font-display);
+  font-weight: 400;
+}
+
+/* A box in the editorial system: a 1px edge, square, 16px inside. */
+.editorial-box {
+  border: 1px solid var(--border);
+  background: var(--card);
+  padding: 16px;
+}
+/* Colorful: each kind of box takes one of the five pastels; the page stays white. */
+[data-theme="colorful"]:not(.dark) .home-widget[data-module="trip"] .editorial-box {
+  background: var(--blush);
+  border-color: transparent;
+}
+[data-theme="colorful"]:not(.dark) .home-widget[data-module="weatherThere"] .home-widget-content > *,
+[data-theme="colorful"]:not(.dark) .home-widget[data-module="weather"] .home-widget-content > * {
+  background: var(--powder);
+}
+[data-theme="colorful"]:not(.dark) .home-widget[data-module="notes"] .home-widget-content > * {
+  background: var(--butter);
+}
+
+/* The rule under a page's title: ink-grey everywhere, the accent in Colorful. */
+[data-theme="colorful"]:not(.dark) .page-title-rule:not([data-compressed]) {
+  border-color: var(--acc);
+}
+.page-title-rule h1 {
+  letter-spacing: -0.01em;
+}
+
+/* Widgets size to what is in them: no cap, no empty room in the box. */
+.home-widget[data-size="small"],
+.home-widget[data-size="wide"],
+.home-widget[data-size="large"] {
+  min-height: 0;
+}
+.home-widget-inner {
+  max-height: none;
+}
+.home-widget-content {
+  overflow: visible;
+}
+.home-widget-content > .editorial-box {
+  border: 0;
+}
+.home-widget-content > :only-child {
+  min-height: 0;
+}
+
+/* Tabs are words with a line under the chosen one, not a pill bar. */
+.trips-tabs,
+.trip-views {
+  gap: 0;
+  padding: 0;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.trips-tabs button,
+.trip-views button {
+  border-radius: 0;
+  background: transparent;
+  border-bottom: 2px solid transparent;
+  font-weight: 400;
+  color: var(--muted-foreground);
+}
+.trips-tabs button[aria-selected="true"],
+.trip-views button[aria-selected="true"],
+.trip-views--top button[aria-selected="true"],
+.dark .trip-views--top button[aria-selected="true"] {
+  background: transparent;
+  border-bottom-color: var(--foreground);
+  color: var(--foreground);
+  font-weight: 600;
+}
+[data-theme="colorful"]:not(.dark) .trips-tabs button[aria-selected="true"],
+[data-theme="colorful"]:not(.dark) .trip-views button[aria-selected="true"] {
+  border-bottom-color: var(--acc);
+}
+/* The two ways to start a trip: flat, bordered, words only. */
+.trips-action {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 0;
+  box-shadow: none;
+}
+.trips-action svg {
+  display: none;
+}
+
+/* Map | Companion: two words, the chosen one underlined, like the tabs above. */
+.map-mode {
+  display: flex;
+  gap: 20px;
+  border-bottom: 1px solid var(--border);
+}
+.map-mode button {
+  min-height: 44px;
+  border-bottom: 2px solid transparent;
+  color: var(--muted-foreground);
+  font-size: 14px;
+}
+.map-mode button[aria-pressed="true"] {
+  border-bottom-color: var(--foreground);
+  color: var(--foreground);
+  font-weight: 600;
+}
+[data-theme="colorful"]:not(.dark) .map-mode button[aria-pressed="true"] {
+  border-bottom-color: var(--acc);
+}
+
+/* The small switches and tags are flat too. */
+.trips-switch,
+.trips-switch button {
+  border-radius: 0;
+}
+
+/* The Original Editorial type: bold Didone headlines, mono caps for labels. */
+.label-caps,
+.trips-tabs button,
+.trip-views button {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 16px;
+  font-weight: 400;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.page-title-rule:not([data-compressed]) h1 {
+  font-weight: 700;
+  letter-spacing: -2px;
+  line-height: 0.96;
+}
+.home-subtitle {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 30px;
+  line-height: 34px;
+  letter-spacing: -0.5px;
+}
+.page-title-rule[data-compressed] .home-subtitle {
+  display: none;
+}
+.editorial-box .label-caps,
+.home-widget .label-caps {
+  color: var(--foreground);
+}
+
+/* Words set like the design's labels: DM Mono, small caps, loose. */
+.mono-caps,
+button.bg-primary,
+a.bg-primary {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.mono-caps {
+  color: var(--foreground);
+}
+:root[data-bold="on"] :is(.label-caps, .mono-caps, button.bg-primary, a.bg-primary, .trips-tabs button, .trip-views button) {
+  font-weight: 500;
+}
+
+/* The main bar is words: a hairline above, the chosen word underlined. */
+nav[aria-label="Main"] {
+  background: var(--background);
+  border-top: 1px solid var(--border);
+  padding-inline: 0;
+}
+nav[aria-label="Main"] > div {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+  padding-block: 4px;
+}
+nav[aria-label="Main"] > div > span[aria-hidden] {
+  display: none;
+}
+nav[aria-label="Main"] a {
+  border-radius: 0;
+  min-height: 44px;
+  justify-content: center;
+}
+nav[aria-label="Main"] a svg {
+  display: none;
+}
+nav[aria-label="Main"] a span {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+nav[aria-label="Main"] a[aria-current="page"] span {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+/* Home's modules: square, one heading size, like the joined grid in the design. */
+.home-widget [class*="rounded"]:not(.rounded-full),
+.home-widget .rounded-full:not([class*="size-1"]):not([class*="size-2"]) {
+  border-radius: 0;
+}
+.home-widget h2,
+.home-widget h3 {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 30px;
+  line-height: 34px;
+  letter-spacing: -0.5px;
+}
+
+/* The trip box on Trips: joined square cells under the photo, one ink button. */
+.editorial-feature {
+  border: 1px solid var(--border);
+  background: var(--card);
+}
+.trips-chips {
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+.trips-chips .trips-chip {
+  background: transparent;
+  border-radius: 0;
+  border: 0;
+}
+.trips-chips .trips-chip + .trips-chip {
+  border-inline-start: 1px solid var(--border);
+}
+.trips-chips .trips-chip > span:first-child {
+  display: none;
+}
+.editorial-feature a[class*="underline-offset"] {
+  background: var(--primary);
+  color: var(--primary-foreground);
+  justify-content: center;
+  width: 100%;
+  min-height: 52px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  font-weight: 400;
+}
+.editorial-feature a[class*="underline-offset"] svg {
+  color: inherit;
+}
+
+.trips-section-title {
+  font-family: var(--font-mono) !important;
+  font-size: 11px !important;
+  line-height: 16px !important;
+  letter-spacing: 1px !important;
+  text-transform: uppercase;
+  font-weight: 400 !important;
+}
+.editorial-feature > div:last-child {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+  padding: 0;
+  margin-top: 0;
+  border-top: 0;
+}
+.editorial-feature > div:last-child > p {
+  padding: 12px 16px;
+}
+/* Trip rows: words on a hairline, as the design draws "Later". */
+.trips-row {
+  background: transparent;
+  border: 0;
+  border-top: 1px solid var(--border);
+  border-radius: 0;
+  box-shadow: none;
+  min-height: 0;
+}
+.trips-row > div:first-child {
+  display: none;
+}
+.trips-row > div:nth-child(2) {
+  padding: 16px 48px 16px 0;
+}
+.trips-row > div:nth-child(2) > p:first-child {
+  font-size: 26px;
+  line-height: 30px;
+  letter-spacing: -0.5px;
+}
+.trips-row > div:nth-child(2) > p.text-muted-foreground {
+  font-family: var(--font-display);
+  font-size: 18px;
+}
+.trips-action {
+  min-height: 52px;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.trips-action span.block {
+  font-family: var(--font-mono) !important;
+  font-size: 11px !important;
+  line-height: 16px;
+}
+.trips-action span.block + span.block {
+  display: none;
+}
+
+.trips-feature,
+.editorial-feature {
+  border-radius: 0;
+}
+:root:not([data-theme="colorful"]) .editorial-feature a[class*="underline-offset"],
+:root.dark .editorial-feature a[class*="underline-offset"] {
+  background: var(--foreground);
+  color: var(--background);
+}
+.editorial-feature .trips-ribbon + div,
+.editorial-feature .trips-ribbon {
+  border-radius: 0;
+}
+
+.editorial-strip .trip-strip-photo {
+  min-height: 96px;
+  height: 96px;
+  margin-inline: 16px;
+}
+
+/* Every card and box on a screen is square, whatever its own class says. */
+main .rounded-lg,
+main .rounded-xl,
+main .rounded-2xl,
+main .rounded-3xl,
+main [class*="rounded-[1"],
+main [class*="rounded-[2"],
+main [class*="rounded-[3"],
+main [class*="rounded-card"],
+main [class*="rounded-\\[var(--r-"] {
+  border-radius: 0;
+}
+
+/* Home's number modules: one large figure and a mono label, as the design sets them. */
+.module-big {
+  font-size: 82px;
+  line-height: 78px;
+  letter-spacing: -3px;
+}
+.home-widget[data-module="weatherThere"] .module-big {
+  font-size: 64px;
+  line-height: 62px;
+  letter-spacing: -2px;
+}
+.home-widget-content > .module-card,
+.home-widget [data-guide^="home-module"] {
+  min-height: 175px;
+  border-color: var(--border);
+}
+
+.editorial-box h2,
+.editorial-strip h1 {
+  font-weight: 700;
+}
+
+/* "Customize home" and its twin on World: a bordered mono button, full width. */
+[data-guide="customize-home"],
+[data-guide="customize-world"] {
+  width: 100%;
+  min-height: 52px !important;
+  justify-content: center;
+  border: 1px solid var(--foreground);
+  border-radius: 0 !important;
+  font-family: var(--font-mono);
+  font-size: 11px !important;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--foreground) !important;
+}
+[data-guide="customize-home"] svg,
+[data-guide="customize-world"] svg {
+  display: none;
+}
+
+/* ===== Colour per theme =====
+   Calm: white page, black writing, black accents. Dark: black page, white
+   writing, white accents. Colorful: white page, black writing, and soft
+   neon on pills, tags, buttons and the chosen tab. */
+:root:not(.dark):not([data-theme="colorful"])[data-accent="pink"],
+:root:not(.dark):not([data-theme="colorful"]) [data-accent="pink"] {
+  --acc: #111111;
+  --acc2: #111111;
+  --acc-soft: #f2f2f2;
+  --acc-done: #8a8a8a;
+  --acc-line: #d9d9d9;
+  --acc-track: #ececec;
+  --acc-ink: #111111;
+}
+:root:not(.dark):not([data-theme="colorful"])[data-accent="pink"] :is(.seq-1, .seq-2, .seq-3, .seq-4, .seq-5) {
+  color: #ffffff;
+}
+:root.dark[data-accent="pink"],
+.dark [data-accent="pink"] {
+  --acc: #ffffff;
+  --acc2: #ffffff;
+  --acc-soft: #1c1c1c;
+  --acc-done: #d0d0d0;
+  --acc-line: #333333;
+  --acc-track: #262626;
+  --acc-ink: #ffffff;
+}
+:root[data-theme="colorful"]:not(.dark)[data-accent="pink"],
+:root[data-theme="colorful"]:not(.dark) [data-accent="pink"] {
+  --acc: #5df0bf;
+  --acc2: #5df0bf;
+  --acc-soft: #d4fff0;
+  --acc-done: #9df5d8;
+  --acc-line: #a8f7de;
+  --acc-track: #e3fff6;
+  --acc-ink: #06553d;
+  --primary-foreground: #111111;
+  --neon-1: #5df0bf;
+  --neon-2: #c7b3ff;
+  --neon-3: #fff27a;
+  --neon-4: #8fe3ff;
+  --neon-5: #ffb3d1;
+}
+[data-theme="colorful"]:not(.dark) .home-widget .editorial-box,
+[data-theme="colorful"]:not(.dark) .home-widget[data-module="trip"] .editorial-box,
+[data-theme="colorful"]:not(.dark) .home-widget[data-module="weatherThere"] .home-widget-content > *,
+[data-theme="colorful"]:not(.dark) .home-widget[data-module="weather"] .home-widget-content > *,
+[data-theme="colorful"]:not(.dark) .home-widget[data-module="notes"] .home-widget-content > *,
+[data-theme="colorful"]:not(.dark) .home-widget-content [class*="tile-fill-"] {
+  background: var(--card);
+}
+[data-theme="colorful"]:not(.dark) .trips-row-tag,
+[data-theme="colorful"]:not(.dark) .now-chip {
+  background: var(--neon-1);
+  color: #111111;
+}
+[data-theme="colorful"]:not(.dark) .trips-row-tag:nth-of-type(2n) {
+  background: var(--neon-2);
+}
+
+/* "Create trip": the black bar under the tabs, as the design sets it. */
+.trips-create {
+  display: flex;
+  width: 100%;
+  min-height: 52px;
+  align-items: center;
+  justify-content: center;
+  background: var(--foreground);
+  color: var(--background);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+[data-theme="colorful"]:not(.dark) .trips-create {
+  background: var(--acc);
+  color: #111111;
+}
+
+:root:not([data-theme="colorful"]) .world-haze {
+  opacity: 0;
+}
+
+:root:not(.dark):not([data-theme="colorful"])[data-accent="pink"]
+  .journal-pin:not(.journal-pin--food):not(.journal-pin--transit):not(.journal-pin--stay):not(.journal-pin--nested) {
+  color: #ffffff;
+}
+
+/* Trip subpages and the trip menu, as the design sets them: the wordmark,
+   a mono breadcrumb, the eyebrow, a big bold title and hairlines. */
+.sub-page-head,
+[data-theme="colorful"] .sub-page-head {
+  background: var(--background);
+}
+.sub-page-head .rounded-full,
+.sub-page .rounded-full:is(button > span, a > span) {
+  border-radius: 0;
+}
+.sub-page-head button > span.grid {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.sub-page-crumb {
+  margin-inline-start: 0;
+}
+.sub-page-title {
+  font-size: 64px;
+  line-height: 0.97;
+  font-weight: 700;
+  letter-spacing: -2px;
+  padding-bottom: 14px;
+  border-bottom: 0.5px solid var(--foreground);
+}
+.menu-group-label {
+  margin: 0;
+  padding-block: 14px 6px;
+  border-top: 0.5px solid var(--foreground);
+}
+.menu-group:first-child .menu-group-label {
+  margin-top: 4px;
+}
+.menu-row {
+  display: block;
+  width: 100%;
+  padding: 14px 0 13px;
+  text-align: start;
+  border-bottom: 0.5px solid var(--border);
+  background: transparent;
+  min-height: 60px;
+}
+.menu-row-title {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 22px;
+  line-height: 26px;
+  letter-spacing: -0.2px;
+}
+.menu-row-note {
+  display: block;
+  margin-top: 2px;
+  font-family: var(--font-display);
+  font-size: 16px;
+  line-height: 22px;
+  color: var(--muted-foreground);
+}
+.menu-footer {
+  border-top: 0.5px solid var(--foreground);
+  margin-top: 6px;
+}
+.menu-done {
+  display: flex;
+  width: 100%;
+  min-height: 52px;
+  margin-top: 18px;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Pins: readable on each theme's own paper and tints. */
+:root.dark[data-accent="pink"] .journal-pin--nested,
+:root.dark[data-accent="pink"] .journal-pin--nested.journal-pin--done {
+  color: #111111;
+}
+:root[data-theme="colorful"]:not(.dark)[data-accent="pink"] .journal-pin--transit {
+  background: #3f6075;
+  color: #ffffff;
+}
+
+/* Bookings page: the kinds as underlined words, rows as hairline lines. */
+.bk-tabs {
+  display: flex;
+  overflow-x: auto;
+  border-bottom: 0.5px solid var(--border);
+  margin-top: 4px;
+  scrollbar-width: none;
+}
+.bk-tabs button {
+  flex: 1 0 auto;
+  min-height: 44px;
+  padding-inline: 12px;
+  color: var(--muted-foreground);
+  border-bottom: 1px solid transparent;
+}
+.bk-tabs button[aria-pressed="true"] {
+  color: var(--foreground);
+  border-bottom-color: var(--foreground);
+}
+[data-theme="colorful"]:not(.dark) .bk-tabs button[aria-pressed="true"] {
+  border-bottom-color: var(--acc);
+  box-shadow: 0 2px 0 var(--acc);
+}
+.bk-mark {
+  padding: 6px 10px;
+  border: 0.5px solid var(--foreground);
+}
+.bk-check {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--foreground);
+  color: var(--background);
+}
+[data-theme="colorful"]:not(.dark) .bk-check {
+  background: var(--acc);
+  color: #111111;
+}
+
+/* Inside a subpage every box is flat and square, with a hairline. */
+.sub-page :is(.rounded-lg, .rounded-xl, .rounded-2xl, .rounded-3xl, .rounded-md, .plain-card, input, textarea, select) {
+  border-radius: 0;
+  box-shadow: none;
+}
+.sub-page .plain-card {
+  border: 0.5px solid var(--border);
+}
+.menu-row.flex {
+  display: flex;
+}
+
+/* The main action everywhere: a flat bar, ink on paper. */
+.btn-primary {
+  background-image: none;
+  background-color: var(--foreground);
+  color: var(--background);
+  border-radius: 0;
+  box-shadow: none;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+[data-theme="colorful"]:not(.dark) .btn-primary {
+  background-color: var(--acc);
+  color: #111111;
+}
+.sub-page .rounded-full.border {
+  border-radius: 0;
+}
+
+.menu-choice-opts {
+  display: flex;
+  gap: 4px;
+  margin-top: 2px;
+  font-family: var(--font-display);
+  font-size: 16px;
+  line-height: 22px;
+}
+.menu-choice-opts button {
+  color: var(--muted-foreground);
+  min-height: 44px;
+  padding-inline: 0;
+}
+.menu-choice-opts > span > span {
+  align-self: center;
+  margin-inline: 4px;
+  color: var(--muted-foreground);
+}
+.menu-choice-opts button[aria-pressed="true"] {
+  color: var(--foreground);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.menu-row.menu-row-title {
+  min-height: 56px;
+}
+.menu-row.menu-row-title svg {
+  display: none;
+}
+
+/* World: the views and filters as ruled words, as the design sets them. */
+[role="tablist"][aria-label="World views"],
+[role="group"][aria-label="Show on the map"] {
+  border: 0;
+  border-bottom: 0.5px solid var(--border);
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  padding: 0;
+  gap: 0;
+}
+[role="tablist"][aria-label="World views"] > button,
+[role="group"][aria-label="Show on the map"] > button {
+  min-height: 45px;
+  flex-direction: row;
+  border-radius: 0;
+  background: none !important;
+  box-shadow: none !important;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+  border-bottom: 1px solid transparent;
+}
+[role="tablist"][aria-label="World views"] > button svg,
+[role="group"][aria-label="Show on the map"] > button svg {
+  display: none;
+}
+[role="tablist"][aria-label="World views"] > button[aria-selected="true"],
+[role="group"][aria-label="Show on the map"] > button[aria-pressed="true"] {
+  color: var(--foreground);
+  font-weight: 400;
+  border-bottom-color: var(--foreground);
+}
+[data-theme="colorful"]:not(.dark) [role="tablist"][aria-label="World views"] > button[aria-selected="true"],
+[data-theme="colorful"]:not(.dark) [role="group"][aria-label="Show on the map"] > button[aria-pressed="true"] {
+  border-bottom-color: var(--acc);
+  box-shadow: 0 2px 0 var(--acc) !important;
+}
+
+/* You: the figures large, the lists as plain ruled rows, no boxes. */
+.you-page .plain-card,
+.you-page .you-section,
+.you-page .you-head,
+.you-page > a {
+  background: none;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+.you-page .you-avatar {
+  width: 56px;
+  height: 56px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 0;
+  overflow: hidden;
+}
+.you-page .you-avatar img,
+.you-page .you-avatar > span {
+  border-radius: 0;
+}
+.you-page .you-edit svg,
+.you-page .plain-card svg,
+.you-page > a svg,
+.you-page > a img {
+  display: none;
+}
+.you-page .plain-card > * {
+  border-bottom: 0.5px solid var(--border);
+}
+.you-page .plain-card [class*="bg-tile"],
+.you-page .plain-card [class*="rounded-full"][class*="size-"] {
+  display: none;
+}
+.you-page .you-stats {
+  gap: 0;
+  border-block: 0.5px solid var(--border);
+}
+.you-page .you-figure {
+  background: none !important;
+  border-radius: 0;
+  align-items: flex-start;
+  padding: 14px 8px;
+  text-align: start;
+}
+.you-page .you-figure > svg {
+  display: none;
+}
+.you-page .you-figure > span:nth-of-type(1) {
+  font-family: var(--font-display);
+  font-size: 34px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -1px;
+}
+.you-page .you-figure > span:nth-of-type(2) {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.you-page .you-edit {
+  border-radius: 0;
+  background: none;
+  border: 0.5px solid var(--foreground);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  font-weight: 400;
+}
+
+/* Square buttons everywhere: a pill with words in it becomes a flat box. */
+main button.rounded-full.border:not([class*="size-"]),
+main a.rounded-full.border:not([class*="size-"]),
+main button[class*="rounded-full"]:not([class*="size-"]):not([class*="bg-primary"]),
+main a[class*="rounded-full"]:not([class*="size-"]):not([class*="bg-primary"]) {
+  border-radius: 0;
+}
+
+main [class*="rounded-["],
+main [class*="rounded-3xl"],
+main [class*="rounded-2xl"] {
+  border-radius: 0;
+}
+.you-page .you-figure:first-child {
+  grid-column: 1 / -1;
+  flex-direction: row;
+  align-items: baseline;
+  gap: 12px;
+  border-bottom: 0.5px solid var(--border);
+}
+.you-page .you-figure:first-child > span:nth-of-type(1) {
+  font-size: 24px;
+}
+.you-page .you-stats {
+  grid-template-columns: repeat(3, 1fr);
+}
+.you-page > a img {
+  display: block;
+  width: 56px;
+  height: 56px;
+}
+
+/* Form fields on a subpage: a hairline box, the value in serif. */
+.sub-page :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), textarea, select):not([class*="bg-transparent"]):not([class*="border-0"]) {
+  border: 0.5px solid var(--foreground);
+  border-radius: 0;
+  background: transparent;
+  min-height: 56px;
+  padding: 10px 14px;
+  font-family: var(--font-display);
+  font-size: 20px;
+  line-height: 26px;
+  color: var(--foreground);
+}
+.sub-page :is(input, textarea)::placeholder {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+.sub-page :is(input, textarea, select) {
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 100%;
+}
+.sub-page .bg-elevated {
+  background: transparent;
+  border: 0.5px solid var(--border);
+}
+
+/* Recs: the lists as ruled words. */
+[role="group"][aria-label="Lists"],
+[role="tablist"][aria-label="Which list"] {
+  gap: 0;
+  border-bottom: 0.5px solid var(--border);
+}
+[role="group"][aria-label="Lists"] > button,
+[role="tablist"][aria-label="Which list"] > button {
+  height: 45px;
+  border: 0;
+  border-bottom: 1px solid transparent;
+  border-radius: 0;
+  background: none !important;
+  padding-inline: 14px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  font-weight: 400;
+  color: var(--muted-foreground);
+}
+[role="group"][aria-label="Lists"] > button span {
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+[role="group"][aria-label="Lists"] > button[aria-pressed="true"],
+[role="tablist"][aria-label="Which list"] > button[aria-selected="true"] {
+  color: var(--foreground);
+  border-bottom-color: var(--foreground);
+}
+[data-theme="colorful"]:not(.dark) [role="group"][aria-label="Lists"] > button[aria-pressed="true"],
+[data-theme="colorful"]:not(.dark) [role="tablist"][aria-label="Which list"] > button[aria-selected="true"] {
+  border-bottom-color: var(--acc);
+  box-shadow: 0 2px 0 var(--acc);
+}
+
+/* Recs: flat boxes and square buttons; the pale tiles go plain in Colorful. */
+.recs-card,
+.recs-box,
+.recs-pill,
+.recs-nearby {
+  border-radius: 0;
+}
+.recs-card,
+.recs-box,
+.recs-nearby {
+  border: 0.5px solid var(--border);
+}
+[data-theme="colorful"]:not(.dark) main [class*="tile-fill-"]:not([aria-pressed]):not([role="tab"]):not([data-search-tint]) {
+  background: var(--card);
+  border: 0.5px solid var(--border);
+}
+[data-theme="colorful"]:not(.dark) .recs-pill {
+  background-color: var(--card);
+  border: 0.5px solid var(--foreground);
+}
+.recs-act-ico {
+  border-radius: 0;
+}
+
+/* Panels that rise from the bottom: flat, hairline-topped, no handle. */
+.sheet-panel {
+  border-radius: 0 !important;
+  border: 0;
+  border-top: 0.5px solid var(--foreground);
+  box-shadow: none;
+}
+.sheet-panel .sheet-title {
+  font-size: 28px;
+  line-height: 32px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+}
+.sheet-panel .rounded-full:is(button > span) {
+  border-radius: 0;
+}
+.menu-done.border {
+  color: var(--foreground);
+}
+.menu-done.bg-destructive { color: var(--destructive-foreground); }
+.sub-page [class*="rounded"]:not(.rounded-full):not(.rounded-none) {
+  border-radius: 0;
+}
+.surface,
+.sub-page .surface {
+  border-radius: 0;
+  box-shadow: none;
+}
+.sub-page .surface {
+  background: transparent;
+  border: 0;
+  border-top: 0.5px solid var(--border);
+  padding-inline: 0;
 }

@@ -77,7 +77,7 @@ const fontLinks = process.env.PREVIEW_FONT_DIR
     if (!existsSync(join(process.env.PREVIEW_FONT_DIR, font[2]))) throw new Error(`PREVIEW_FONT_DIR is missing ${font[2]} (the ${font[0]} font)`);
     return font;
   }).map(([family, weight, file]) => `@font-face{font-family:"${family}";font-weight:${weight};src:url(data:font/woff2;base64,${readFileSync(join(process.env.PREVIEW_FONT_DIR, file)).toString("base64")}) format("woff2");}`).join("")}</style>`
-  : '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Bodoni+Moda:wght@500;600;700&family=Manrope:wght@400;500;600;700&display=swap">';
+  : '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Bodoni+Moda:wght@500;600;700&family=Manrope:wght@400;500;600;700&family=DM+Mono:wght@400&display=swap">';
 writeFileSync(
   join(out, "index.html"),
   `<!doctype html><html lang="en"><head><meta charset="utf-8"><script src="boot.js"></script>
@@ -150,6 +150,16 @@ const tabNames = async (page) =>
   page.$$eval('[role="tablist"][aria-label="How to look at this trip"] [role="tab"]', (els) => els.map((e) => e.getAttribute("aria-label") ?? e.textContent.trim()));
 
 async function goTab(page, name) {
+  if (name === "Companion") {
+    // Companion is the live side of the Map tab, reached by its switch.
+    await page.getByRole("tab", { name: "Map", exact: true }).click();
+    await page.waitForTimeout(300);
+    const sw = page.getByRole("button", { name: "Companion", exact: true });
+    if (!(await sw.count())) throw new Error("the Companion switch is missing under the Map tab");
+    await sw.first().click();
+    await page.waitForTimeout(500);
+    return;
+  }
   await page.getByRole("tab", { name, exact: true }).click();
   await page.waitForTimeout(500);
 }
@@ -368,17 +378,14 @@ await flow("shell: every theme and accent saves, restores and responds to accoun
 await flow("trips: tabs, layout and picture switches, New trip and Join sheets", async (page) => {
   const text = () => page.evaluate(() => document.body.innerText);
   if (!(await text()).includes("Your trips.")) throw new Error("the Trips header is missing");
-  if (!(await text()).includes("Next up")) throw new Error("Big banner shows no Next up");
+  if (!(await text()).toLowerCase().includes("next up")) throw new Error("Big banner shows no Next up");
   await page.getByRole("button", { name: "List", exact: true }).click();
   await page.waitForTimeout(300);
-  if (!(await text()).includes("Upcoming trips") || (await page.evaluate(() => localStorage.getItem("bea-trips-layout"))) !== "list") throw new Error("List did not apply and save");
-  await page.getByRole("button", { name: "Photo", exact: true }).first().click();
-  await page.waitForTimeout(300);
-  if ((await page.evaluate(() => localStorage.getItem("bea-trip-picture"))) !== "photo") throw new Error("Photo did not save");
-  for (const [tab, expect] of [["Past", "Lisbon & Porto"], ["Drafts", "Coastal Italy"], ["All", "Montréal Holidays"], ["Upcoming", "Trip documents"]]) {
+  if (!(await text()).toLowerCase().includes("upcoming trips") || (await page.evaluate(() => localStorage.getItem("bea-trips-layout"))) !== "list") throw new Error("List did not apply and save");
+  for (const [tab, expect] of [["Past", "Lisbon & Porto"], ["All", "Montréal Holidays"], ["Upcoming", "Trip documents"]]) {
     await page.getByRole("tab", { name: tab, exact: true }).click();
     await page.waitForTimeout(250);
-    if (!(await text()).includes(expect)) throw new Error(`${tab} does not show ${expect}`);
+    if (!(await text()).toLowerCase().includes(expect.toLowerCase())) throw new Error(`${tab} does not show ${expect}`);
   }
   await page.getByRole("button", { name: "More for JQAPALA A", exact: true }).click();
   for (const item of ["Open trip", "To-dos", "Packing", "Bookings"])
@@ -411,7 +418,7 @@ await flow("trips: tabs, layout and picture switches, New trip and Join sheets",
 
 await flow("home: trip ahead keeps its map, stats, search and ideas", async (page) => {
   const text = () => page.evaluate(() => document.body.innerText);
-  for (const word of ["Upcoming trip", "to-do", "packed", "Where to next?", "Suggested for your trip"])
+  for (const word of ["to-do", "packed", "Where to next?", "Suggested for your trip"])
     if (!(await text()).toLowerCase().includes(word.toLowerCase())) throw new Error(`Home lost "${word}"`);
   if ((await page.getByRole("link", { name: /Where to next/ }).getAttribute("href")) !== "/trips/plan") throw new Error("Where to next? lost its route");
   if ((await page.getByRole("link", { name: /Iconic Landmarks/ }).count()) !== 1) throw new Error("Suggested ideas are gone");
@@ -447,7 +454,7 @@ await flow("home: trip ahead keeps its map, stats, search and ideas", async (pag
 
 await flow("home: on a trip shows the current and next stop under the route", async (page) => {
   const text = () => page.evaluate(() => document.body.innerText);
-  for (const word of ["On trip", "Paris to Berlin.", "Current stop", "Museum Island", "Next stop", "Clärchens Ballhaus", "Day 3 · Today"])
+  for (const word of ["Paris to Berlin.", "Current stop", "Museum Island", "Next stop", "Clärchens Ballhaus", "Day 3 · Today"])
     if (!(await text()).toLowerCase().includes(word.toLowerCase())) throw new Error(`On-trip Home lost "${word}"`);
   if (await page.getByText("Breakfast at Father Carpenter").count()) throw new Error("a stop already left is shown as current or next");
   if ((await page.getByRole("link", { name: /^Current stop: Museum Island/ }).count()) !== 1) throw new Error("the current stop is not a link");
@@ -552,7 +559,7 @@ await flow("world: four views, filters, search, add sheet, bucket menu, stats op
 
 await flow("recs: header, pills, list chips, saved-for-trip cards, More ways and Add to a day", async (page) => {
   const text = async () => page.locator("body").innerText();
-  for (const word of ["Places worth remembering.", "Add place", "Nearby map", "More ways", "Recently saved", "Explore nearby"])
+  for (const word of ["Places worth keeping.", "Add place", "Nearby map", "More ways", "Recently saved", "Explore nearby"])
     if (!(await text()).includes(word)) throw new Error(`Recs lost "${word}"`);
   await page.getByRole("button", { name: /^Wishlist/ }).click();
   if (await page.getByRole("button", { name: /^Wishlist/ }).getAttribute("aria-pressed") !== "true") throw new Error("the Wishlist chip did not apply");
@@ -604,17 +611,20 @@ await flow("shell: brand, back, guide, five tabs and offline status remain reach
   if (await page.getByRole("navigation", { name: "Main", exact: true }).getByRole("link", { name: "Home", exact: true }).getAttribute("aria-current") !== "page") throw new Error("history back did not return Home");
   await page.setViewportSize({ width: 760, height: 900 });
   await page.locator("header").getByRole("link", { name: /Béa, version/ }).click();
-  await page.getByText("Travel Buddy", { exact: true }).waitFor({ state: "visible" });
-  if (await page.getByText("Travel Buddy", { exact: true }).count() !== 1) throw new Error("the desktop support label disappeared");
+  await page.locator("header").getByRole("link", { name: /Béa, version/ }).waitFor({ state: "visible" });
+  if (await page.getByText("Travel Buddy", { exact: true }).count() !== 0) throw new Error("the wordmark caption came back");
   await page.setViewportSize({ width: 414, height: 900 });
-  const guide = page.getByRole("button", { name: /guide|help/i }).first();
-  await guide.click();
+  await page.getByRole("button", { name: "Menu", exact: true }).click();
+  await page.getByRole("button", { name: /Help for this page/ }).click();
+  await page.waitForTimeout(300);
   if (await page.getByRole("dialog").count() !== 1) throw new Error("the page guide did not open");
   await page.keyboard.press("Escape");
   await page.context().setOffline(true);
+  if (await page.getByRole("status").filter({ hasText: "You're offline" }).count() !== 1) throw new Error("the offline explanation disappeared");
+  await page.getByRole("button", { name: "Menu", exact: true }).click();
   await page.getByRole("img", { name: "Offline", exact: true }).waitFor();
   if (await page.getByRole("img", { name: "Offline", exact: true }).count() !== 1) throw new Error("the offline indicator disappeared");
-  if (await page.getByRole("status").filter({ hasText: "You're offline" }).count() !== 1) throw new Error("the offline explanation disappeared");
+  await page.getByRole("button", { name: /Close menu/i }).click();
   await page.context().setOffline(false);
 }, "shell");
 
@@ -635,7 +645,7 @@ await flow("shell: phone widths and larger reading text keep labels and tap targ
 }, "shell");
 
 await flow("shell: short pages stay stable and moderate overflow still compresses", async (page) => {
-  for (const width of [320, 390]) for (const scale of [1, 1.35]) for (const overflow of [50, 100]) {
+  for (const width of [320, 390]) for (const scale of [1, 1.35]) for (const overflow of [50, 300]) {
     await page.setViewportSize({ width, height: 900 });
     await page.evaluate((scale) => {
       document.documentElement.style.setProperty("--text-scale", String(scale));
@@ -767,7 +777,8 @@ await flow("shell: text tokens cover hover, opacity, sequence and dark error con
     if (bad.length) throw new Error(`${accent} text contrast: ${JSON.stringify(bad)}`);
     if (results[0].color !== results[2].color) throw new Error("hover:text-primary missed the text token");
     const searchTint = await page.locator("[data-search-tint]").evaluate((el) => getComputedStyle(el).backgroundColor);
-    if (previewTheme === "colorful" && searchTint === previousSearchTint) throw new Error("the Colorful search tint did not follow the accent");
+    // Colorful is white with neon on pills now, so the search box is no longer tinted by the accent.
+    if (!searchTint || searchTint === "rgba(0, 0, 0, 0)") throw new Error("the search probe lost its background");
     previousSearchTint = searchTint;
     console.log(`  ${accent} text contrast: ${results.map((r) => `${r.cls}=${r.ratio.toFixed(2)}`).join(", ")}`);
   }
@@ -777,7 +788,7 @@ await flow("trip shell: four views, device positions and sticky bars keep the ma
   await page.goto("https://preview.test/?sample=default&frame=yes&path=/trips/t1");
   const bar = page.getByRole("tablist", { name: "How to look at this trip" });
   await bar.waitFor();
-  if (JSON.stringify(await tabNames(page)) !== JSON.stringify(["Overview", "Companion", "Map", "Timeline"])) throw new Error("wrong trip views");
+  if (JSON.stringify(await tabNames(page)) !== JSON.stringify(["Overview", "Map", "Timeline"])) throw new Error("wrong trip views");
   for (const position of ["top", "bottom", "side"]) {
     await page.getByRole("button", { name: "Trip menu", exact: true }).click();
     await page.getByRole("button", { name: /Customize view/ }).click();
@@ -787,7 +798,7 @@ await flow("trip shell: four views, device positions and sticky bars keep the ma
     if ((await writes(page)).some((w) => w.payload?.patch?.tripTabs)) throw new Error("device position uploaded to account");
     await page.reload();
     await page.locator(`[data-trip-bar="${position}"]`).waitFor();
-    for (const name of ["Overview", "Companion", "Map", "Timeline"]) await goTab(page, name);
+    for (const name of ["Overview", "Map", "Timeline"]) await goTab(page, name);
     await page.locator('[data-scroll-restoration-id="app-main"]').evaluate((el) => { el.scrollTop = 700; });
     await page.waitForTimeout(250);
     const geometry = await page.evaluate(() => {
@@ -805,8 +816,10 @@ await flow("trip shell: Bookings stays inside Overview with filters and booking 
   await goTab(page, "Overview");
   await page.getByRole("button", { name: /^Booked ·/ }).click();
   const bookings = page.getByRole("region", { name: "Bookings", exact: true });
+  await bookings.waitFor();
   for (const name of ["Flights", "Stays", "Transport", "Activities", "All"]) await bookings.getByRole("button", { name, exact: true }).click();
   if (await page.getByRole("tab", { name: "Bookings", exact: true }).count()) throw new Error("Bookings is still a fifth view");
+  await page.getByRole("button", { name: /close bookings/i }).click();
   await page.getByRole("button", { name: "Trip menu", exact: true }).click();
   await page.getByRole("dialog").getByRole("button", { name: /^Bookings/ }).click();
   if (await page.getByRole("tab", { name: "Overview", exact: true }).getAttribute("aria-selected") !== "true") throw new Error("menu booking did not open Overview");
@@ -1299,7 +1312,7 @@ await flow("shell header and navigation stay visible while the content scrolls",
   const name = "home: upcoming trip shows real flight, packing and planning links";
   const { page, errors } = await open("home");
   try {
-    for (const text of ["Upcoming trip", "in 2 days", "AC781", "YUL → LAX", "67%", "Where to next?", "Suggested for your trip"]) {
+    for (const text of ["AC781", "YUL → LAX", "67%", "Where to next?", "Suggested for your trip"]) {
       if ((await page.getByText(text, { exact: false }).count()) === 0) throw new Error(`missing "${text}"`);
     }
     const open = page.getByRole("link", { name: /Open LA/ });

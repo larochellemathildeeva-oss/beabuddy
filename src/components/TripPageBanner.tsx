@@ -163,7 +163,16 @@ export function TripPageBanner({
   }
 
   return (
-    <section className="trip-strip" aria-label={title}>
+    <section className="trip-strip editorial-strip" aria-label={title}>
+      <div className="px-4 pb-3 pt-2">
+        <p className="label-caps truncate">{[pill, where].filter(Boolean).join(" · ")}</p>
+        <h1 className="mt-1.5 line-clamp-2 break-words font-display text-[44px] font-bold leading-[0.98] tracking-[-2px]">
+          {title}
+        </h1>
+        <p className="label-caps mt-2 truncate">
+          {[dates, tentative ? "tentative" : "", companions ?? ""].filter(Boolean).join(" · ")}
+        </p>
+      </div>
       <div
         className="trip-strip-photo"
         style={viewTransitionName ? { viewTransitionName } : undefined}
@@ -176,29 +185,16 @@ export function TripPageBanner({
             className="art-dim trip-strip-img absolute inset-0 size-full object-cover"
           />
         ) : null}
-        <span aria-hidden className="trip-strip-shade" />
         {credited ? (
           <p
             title={photoCredit(credited)}
-            className="absolute start-3 top-2 max-w-[60%] truncate rounded-full bg-black/70 px-2.5 py-0.5 text-[13px] text-white"
+            className="absolute start-3 top-2 max-w-[60%] truncate bg-black/70 px-2.5 py-0.5 text-[13px] text-white"
           >
             {photoCredit(credited)}
           </p>
         ) : null}
-        {pill ? <span className="trip-strip-pill">{pill}</span> : null}
-        <div className="relative min-w-0 px-4 pb-2.5 pt-12 text-white">
-          <h1 className="line-clamp-2 break-words font-display text-[28px] leading-[1.05] tracking-[-0.02em] [text-wrap:balance]">
-            {title}
-          </h1>
-          <p className="mt-1 truncate text-[14px] text-white/90">
-            {[dates, tentative ? "tentative" : "", companions ?? ""].filter(Boolean).join(" · ")}
-          </p>
-        </div>
       </div>
-      <div className="px-4 pb-1 pt-2">
-        <p className="truncate text-[14px] text-muted-foreground">{where}</p>
-        {tracker}
-      </div>
+      <div className="px-4 pb-1 pt-2">{tracker}</div>
     </section>
   );
 }

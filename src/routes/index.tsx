@@ -506,11 +506,22 @@ function SignedInHome() {
     <AppShell
       homeHeader
       // With a trip ahead, the trip is the headline; without one, the greeting.
-      {...(showTrip || noTripMap
+      {...(noTripMap
         ? {}
         : {
-            eyebrow: today,
-            title: greetingLine,
+            eyebrow: `Home / ${today}`,
+            title: (
+              <>
+                {greeting}.
+                <span className="home-subtitle mt-3 block">
+                  {trip && !trips.loading
+                    ? `Let’s get back to ${trip.city?.split(",")[0]?.trim() || trip.title}.`
+                    : firstName
+                      ? `${firstName}, where to next?`
+                      : "Where to next?"}
+                </span>
+              </>
+            ),
           })}
       actionBesideEyebrow
     >

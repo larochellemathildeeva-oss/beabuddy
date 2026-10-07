@@ -14,11 +14,12 @@ import { COMPRESS_AT, measureHeaderHeights, nextCompressed } from "../lib/page-h
 import { planeFromMatches, planeIsUndeclared, travelDirection } from "../lib/route-plane";
 import { BrandMark, PageHeader } from "./PageHeader";
 
-import { ArrowLeft, Globe2, Home, MapPinned, Bookmark, Search, User } from "@/components/icons";
+import { ArrowLeft, Globe2, Home, MapPinned, Bookmark, User } from "@/components/icons";
 import logo from "../assets/bea-logo.png";
 
 const APP_VERSION = typeof __APP_VERSION__ === "string" ? __APP_VERSION__ : "1.0.0";
-import { PageGuide } from "./PageGuide";
+import { OPEN_GUIDE_EVENT, PageGuide } from "./PageGuide";
+import { Sheet } from "./Sheet";
 import { useStopPictures } from "../hooks/useStopPictures";
 import { useIdleLogout } from "../hooks/useIdleLogout";
 import { useRestoreKeptOffline } from "../hooks/useRestoreKeptOffline";
@@ -108,6 +109,7 @@ export function AppShell({
   useIdleLogout(!!user);
   useRestoreKeptOffline(user?.id);
   const online = useOnline();
+  const [menuOpen, setMenuOpen] = useState(false);
 
   // The shell owns the only scroll container in the app, so header compression
   // is one listener here rather than one per screen. Passive, and it only sets
@@ -219,29 +221,29 @@ export function AppShell({
         className="relative mx-auto flex h-dvh w-full max-w-[520px] flex-col overflow-hidden border-x border-border/70 bg-transparent md:max-w-[680px] xl:max-w-[780px]"
       >
         {homeHeader ? (
-          <header className="z-20 flex shrink-0 items-center justify-between bg-background/35 px-5 pb-1 pt-3 backdrop-blur-xl">
+          <header className="z-20 flex shrink-0 items-center justify-between bg-background px-5 pb-1 pt-2">
             <Link to="/" aria-label={`Béa, version ${APP_VERSION}`} title={`v${APP_VERSION}`}>
               <BrandMark large />
             </Link>
-            <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-3">
               <Link
                 to="/recommendations"
                 search={{ find: true }}
                 aria-label="Search your places"
-                className="grid size-11 place-items-center rounded-full bg-card text-foreground shadow-[0_3px_12px_rgb(0_0_0/0.07)]"
+                className="mono-caps grid min-h-11 min-w-11 place-items-center px-1 text-[13px] text-muted-foreground"
               >
-                <Search className="size-[19px]" />
+                Search
               </Link>
-              {user && <PageGuide round />}
-              {!online && (
-                <span
-                  role="img"
-                  aria-label="Offline"
-                  title="Offline — changes may not sync"
-                  className="grid size-7 place-items-center rounded-full border border-border bg-card"
+              {user && <PageGuide round hideToggle />}
+              {user && (
+                <button
+                  type="button"
+                  onClick={() => setMenuOpen(true)}
+                  aria-haspopup="dialog"
+                  className="mono-caps grid min-h-11 min-w-11 place-items-center px-1 text-[13px] text-muted-foreground"
                 >
-                  <span className="size-1.5 rounded-full bg-muted-foreground" />
-                </span>
+                  Menu
+                </button>
               )}
             </div>
           </header>
@@ -280,7 +282,27 @@ export function AppShell({
             </div>
 
             <div className="order-3 flex shrink-0 items-center gap-2">
-              {user && <PageGuide round />}
+              {user && <PageGuide round hideToggle />}
+              {user && (
+                <Link
+                  to="/recommendations"
+                  search={{ find: true }}
+                  aria-label="Search your places"
+                  className="mono-caps grid min-h-11 min-w-11 place-items-center px-1 text-[13px] text-muted-foreground"
+                >
+                  Search
+                </Link>
+              )}
+              {user && (
+                <button
+                  type="button"
+                  onClick={() => setMenuOpen(true)}
+                  aria-haspopup="dialog"
+                  className="mono-caps grid min-h-11 min-w-11 place-items-center px-1 text-[13px] text-muted-foreground"
+                >
+                  Menu
+                </button>
+              )}
               {!user && (
                 <Link
                   to="/auth"
@@ -289,16 +311,6 @@ export function AppShell({
                   Sign in
                 </Link>
               )}
-              <span
-                role="img"
-                aria-label={online ? "Online" : "Offline"}
-                title={online ? "Online" : "Offline — changes may not sync"}
-                className="grid size-7 group-has-[#app-header-slot:not(:empty)]/hdr:hidden place-items-center rounded-full border border-border bg-card"
-              >
-                <span
-                  className={`size-1.5 rounded-full ${online ? "bg-nexttime" : "bg-muted-foreground"}`}
-                />
-              </span>
             </div>
             {/* A page can put its own actions here (a trip: Plan with Béa, Add stop, To do), on the same line as the logo and help. */}
             <div
@@ -318,6 +330,47 @@ export function AppShell({
             You're offline. Kept trips still open; changes sync when you're back.
           </p>
         )}
+
+        <Sheet
+          open={menuOpen}
+          onClose={() => setMenuOpen(false)}
+          page
+          title="Menu"
+          hint="Béa"
+          crumb="Back"
+        >
+          <div>
+            <button
+              type="button"
+              className="menu-row"
+              onClick={() => {
+                setMenuOpen(false);
+                window.dispatchEvent(new Event(OPEN_GUIDE_EVENT));
+              }}
+            >
+              <span className="menu-row-title">Help for this page</span>
+              <span className="menu-row-note">What you can do here</span>
+            </button>
+            {[
+              ["/profile", "Profile settings", "Your details and how Béa works"],
+              ["/help", "Help & FAQ", "Questions and answers"],
+              ["/privacy", "Privacy & legal", "How your data is kept"],
+            ].map(([to, title, note]) => (
+              <Link
+                key={to}
+                to={to as "/profile"}
+                className="menu-row block"
+                onClick={() => setMenuOpen(false)}
+              >
+                <span className="menu-row-title">{title}</span>
+                <span className="menu-row-note">{note}</span>
+              </Link>
+            ))}
+            <p role="img" aria-label={online ? "Online" : "Offline"} className="menu-row-note pt-4">
+              {online ? "Online" : "Offline · changes sync when you are back"}
+            </p>
+          </div>
+        </Sheet>
 
         <PageHeader
           ref={pageHeaderRef}

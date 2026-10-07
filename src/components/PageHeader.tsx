@@ -1,30 +1,21 @@
 import type { ReactNode, Ref } from "react";
-import logo from "@/assets/bea-logo.png";
 
 /** Shared identity row; the shell keeps the Home link and header actions. */
 export function BrandMark({ version, large = false }: { version?: string; large?: boolean }) {
   return (
     <span className="flex min-h-11 items-center gap-2">
-      <img
-        src={logo}
-        alt="Béa logo"
-        className="size-9 shrink-0 object-contain"
-        width={36}
-        height={36}
-      />
       <span className="leading-none">
         <span
-          className={`block font-display tracking-[-0.035em] ${large ? "text-[40px]" : "text-[30px]"}`}
+          className={`block font-display tracking-[-0.01em] ${large ? "text-[28px]" : "text-[26px]"}`}
         >
-          Béa<span className="text-[var(--acc)]">.</span>
+          Béa
         </span>
         {version && (
-          <span className="mt-1 hidden text-[13px] font-semibold text-muted-foreground min-[390px]:block">
+          <span className="mt-1 hidden text-[10px] font-semibold tracking-[0.12em] text-muted-foreground min-[390px]:block">
             v{version}
           </span>
         )}
       </span>
-      <span className="label-caps hidden sm:inline">Travel Buddy</span>
     </span>
   );
 }
@@ -70,7 +61,7 @@ export function PageHeader({
       // Once compressed the title is a bar sitting directly above the content,
       // so it needs a hairline to sit behind — expanded, it is part of the page
       // and a rule there would only cut the screen in half.
-      className="rise group shrink-0 border-b border-transparent px-4 pt-4 transition-[padding,border-color] duration-(--t-shift) ease-(--ease-standard) data-[compressed]:border-border/50 data-[compressed]:pb-2 data-[compressed]:pt-2.5"
+      className="page-title-rule rise group mx-4 shrink-0 border-b border-border pb-2 pt-3 transition-[padding,border-color] duration-(--t-shift) ease-(--ease-standard) data-[compressed]:pb-2 data-[compressed]:pt-2.5"
     >
       {actionBesideEyebrow && action ? (
         <div>

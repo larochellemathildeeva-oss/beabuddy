@@ -33,8 +33,8 @@ export function HomeTripModule({
         <ModuleCard
           guide="home-module-saved"
           title="Saved for this trip"
-          sub={`${ctx.savedHere.length} ${ctx.savedHere.length === 1 ? "place" : "places"}`}
-          art={ctx.art}
+          label="Places saved"
+          big={String(ctx.savedHere.length)}
           action={{ label: "Open your saved places", icon: Bookmark, to: "/recommendations" }}
         />
       );
@@ -63,7 +63,8 @@ export function HomeTripModule({
         <ModuleCard
           guide="home-module-group"
           title="Group plans"
-          sub={`${ctx.people.length} ${ctx.people.length === 1 ? "person" : "people"}`}
+          label={ctx.people.length === 1 ? "Traveller" : "Travellers"}
+          big={String(ctx.people.length)}
           tone={3}
           action={{ label: "Invite someone", icon: Plus, ...tripLink({ menu: "invite" }) }}
         >
@@ -105,10 +106,13 @@ export function HomeTripModule({
       );
     case "notes":
       return (
-        <ModuleCard guide="home-module-notes" title="Notes from Béa" tone={5}>
-          <Quote className="seq-text-5 size-5" aria-hidden />
-          <span className="mt-1.5 block text-[13.5px] leading-snug">{ctx.note}</span>
-        </ModuleCard>
+        <ModuleCard
+          guide="home-module-notes"
+          title="Notes from Béa"
+          headline={ctx.note}
+          art={ctx.art}
+          tone={5}
+        />
       );
     default:
       return null;
