@@ -15,7 +15,12 @@ export async function uploadPhotoFile(uid: string, file: File): Promise<string> 
       : `${uid}/${crypto.randomUUID()}.${ext}`;
   const { error } = await supabase.storage
     .from("photo-memories")
-    .upload(path, uploadFile, { contentType: uploadFile.type || "image/jpeg" });
+    // A photo's file never changes (a new one gets a new path), so let the
+    // browser and the CDN keep it for a year rather than fetch it again.
+    .upload(path, uploadFile, {
+      contentType: uploadFile.type || "image/jpeg",
+      cacheControl: "31536000",
+    });
   if (error) throw error;
   return path;
 }
