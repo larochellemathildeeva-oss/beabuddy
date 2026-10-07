@@ -319,13 +319,12 @@ function FollowButton({ token }: { token: string }) {
   useEffect(() => {
     if (!user) return;
     const userId = user.id;
-    let alive = true;
-    readState({ data: { token } })
-      .then((next) => alive && setState({ userId, state: next }))
-      .catch(() => alive && setState({ userId, state: "failed" }));
-    return () => {
-      alive = false;
-    };
+    // A retry, another account or leaving the page cancels the read in flight.
+    const request = new AbortController();
+    readState({ data: { token }, signal: request.signal })
+      .then((next) => !request.signal.aborted && setState({ userId, state: next }))
+      .catch(() => !request.signal.aborted && setState({ userId, state: "failed" }));
+    return () => request.abort();
   }, [user, token, readState, attempt]);
 
   if (loading) return null;

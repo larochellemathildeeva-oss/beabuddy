@@ -1009,20 +1009,25 @@ function useFollowedTrips(userId: string | null): {
   const [attempt, setAttempt] = useState(0);
   useEffect(() => {
     if (!userId) return;
-    let alive = true;
-    list()
+    // A retry, another account or leaving Trips cancels the read in flight.
+    const request = new AbortController();
+    list({ signal: request.signal })
       .then((trips) => {
-        if (!alive) return;
+        if (request.signal.aborted) return;
         if (trips) rememberFollows(userId, trips.length > 0);
         setRead({ userId, trips });
       })
-      .catch(() => alive && setRead({ userId, trips: null, failed: true }));
-    return () => {
-      alive = false;
-    };
+      .catch(() => !request.signal.aborted && setRead({ userId, trips: null, failed: true }));
+    return () => request.abort();
   }, [userId, list, attempt]);
   const forget = useCallback((token: string) => {
-    setRead((r) => (r?.trips ? { ...r, trips: r.trips.filter((t) => t.token !== token) } : r));
+    setRead((r) => {
+      if (!r?.trips) return r;
+      const trips = r.trips.filter((t) => t.token !== token);
+      // The last one removed: a later failed read must not bring the tab back.
+      if (trips.length === 0) rememberFollows(r.userId, false);
+      return { ...r, trips };
+    });
   }, []);
   const retry = useCallback(() => setAttempt((n) => n + 1), []);
   const mine = userId && read?.userId === userId ? read : null;
