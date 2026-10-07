@@ -2433,7 +2433,7 @@ export function TripDetail({
             title="The Timeline"
             hint={`${trip.title} / Timeline options`}
             page
-            crumb={`${trip.title} / Trip menu`}
+            crumb={trip.title}
           >
             <div>
               {stopItems.length > 0 && (
@@ -2619,7 +2619,7 @@ export function TripDetail({
         page
         title="Add to this trip"
         hint={`${trip.title} / Add`}
-        crumb={`${trip.title} / Trip menu`}
+        crumb={trip.title}
       >
         <div>
           <button
@@ -2786,7 +2786,7 @@ export function TripDetail({
         open={bookingsOpen}
         onClose={() => setBookingsOpen(false)}
         page
-        crumb={`${trip.title} / Trip menu`}
+        crumb={trip.title}
         title={BOOKING_TITLES[bookingFilter]}
         hint={`${trip.title} / Bookings`}
         tone={2}

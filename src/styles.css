@@ -1383,14 +1383,17 @@
 :root[data-font="easy"] {
   --font-sans: "Atkinson Hyperlegible Next", ui-sans-serif, system-ui, sans-serif;
   --font-display: "Atkinson Hyperlegible Next", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Atkinson Hyperlegible Next", ui-sans-serif, system-ui, sans-serif;
 }
 :root[data-font="lexend"] {
   --font-sans: "Lexend", ui-sans-serif, system-ui, sans-serif;
   --font-display: "Lexend", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Lexend", ui-sans-serif, system-ui, sans-serif;
 }
 :root[data-font="system"] {
   --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --font-display: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 
 /* Everything moves at once instead of sliding or fading. */
@@ -3587,11 +3590,10 @@ html:not(.dark)
 }
 
 
-/* ===== Editorial skin (owner, 2026-10-07; Figma "Béa Editorial edition") =====
-   Flat boxes under 1px rules, square buttons, no shadows, no pills. Calm is
-   white with black writing, Dark black with white writing, Colorful white with
-   the five pastels. Radii and shadows come from tokens, so everything that
-   reads them follows; the few rounded-full text pills are squared below. */
+/* ===== Editorial skin =====
+   Flat boxes under 1px rules, square buttons, no shadows, no pills. Radii and
+   shadows come from tokens, so everything that reads them follows; the few
+   rounded-full text pills are squared below. */
 :root,
 [data-theme="calm"],
 [data-theme="colorful"],
@@ -3615,6 +3617,12 @@ html:not(.dark)
 [data-theme="calm"]:not(.dark),
 [data-theme="colorful"]:not(.dark) {
   --border: #dad6d0;
+}
+/* More contrast keeps its stronger lines over the pale editorial hairline. */
+:root:not(.dark)[data-contrast="more"],
+[data-theme="calm"]:not(.dark)[data-contrast="more"],
+[data-theme="colorful"]:not(.dark)[data-contrast="more"] {
+  --border: color-mix(in oklch, var(--foreground) 42%, var(--background));
 }
 /* A pill with words in it is a flat label; a round icon button or a dot stays round. */
 :is(button, a, span, [role="tab"]).rounded-full[class*="px-"] {
@@ -3646,8 +3654,8 @@ a.bg-primary,
   letter-spacing: 0.15em;
 }
 /* The headline face for every large title. */
-h1,
-h2 {
+h1:not([class*="font-"]),
+h2:not([class*="font-"]) {
   font-family: var(--font-display);
   font-weight: 400;
 }
@@ -3812,6 +3820,9 @@ a.bg-primary {
 .mono-caps {
   color: var(--foreground);
 }
+:root[data-bold="on"] :is(.label-caps, .mono-caps, button.bg-primary, a.bg-primary, .trips-tabs button, .trip-views button) {
+  font-weight: 500;
+}
 
 /* The main bar is words: a hairline above, the chosen word underlined. */
 nav[aria-label="Main"] {
@@ -3879,7 +3890,7 @@ nav[aria-label="Main"] a[aria-current="page"] span {
   border: 0;
 }
 .trips-chips .trips-chip + .trips-chip {
-  border-left: 1px solid var(--border);
+  border-inline-start: 1px solid var(--border);
 }
 .trips-chips .trips-chip > span:first-child {
   display: none;
@@ -3898,67 +3909,6 @@ nav[aria-label="Main"] a[aria-current="page"] span {
 }
 .editorial-feature a[class*="underline-offset"] svg {
   color: inherit;
-}
-
-.trips-section-title {
-  font-family: var(--font-mono) !important;
-  font-size: 11px !important;
-  line-height: 16px !important;
-  letter-spacing: 1px !important;
-  text-transform: uppercase;
-  font-weight: 400 !important;
-}
-.editorial-feature > div:last-child {
-  flex-direction: column;
-  align-items: stretch;
-  gap: 0;
-  padding: 0;
-  margin-top: 0;
-  border-top: 0;
-}
-.editorial-feature > div:last-child > p {
-  padding: 12px 16px;
-}
-/* Trip rows: words on a hairline, as the design draws "Later". */
-.trips-row {
-  background: transparent;
-  border: 0;
-  border-top: 1px solid var(--border);
-  border-radius: 0;
-  box-shadow: none;
-  min-height: 0;
-}
-.trips-row > div:first-child {
-  display: none;
-}
-.trips-row > div:nth-child(2) {
-  padding: 16px 48px 16px 0;
-}
-.trips-row > div:nth-child(2) > p:first-child {
-  font-size: 26px;
-  line-height: 30px;
-  letter-spacing: -0.5px;
-}
-.trips-row > div:nth-child(2) > p.text-muted-foreground {
-  font-family: var(--font-display);
-  font-size: 18px;
-}
-.trips-action {
-  min-height: 52px;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  font-family: var(--font-mono);
-  text-transform: uppercase;
-  letter-spacing: 1px;
-}
-.trips-action span.block {
-  font-family: var(--font-mono) !important;
-  font-size: 11px !important;
-  line-height: 16px;
-}
-.trips-action span.block + span.block {
-  display: none;
 }
 
 .trips-section-title {
@@ -4096,10 +4046,10 @@ main [class*="rounded-\\[var(--r-"] {
   display: none;
 }
 
-/* ===== Colour per theme (owner, 2026-10-07) =====
+/* ===== Colour per theme =====
    Calm: white page, black writing, black accents. Dark: black page, white
    writing, white accents. Colorful: white page, black writing, and soft
-   neon on pills, tags, buttons and the chosen tab. The hot pink is gone. */
+   neon on pills, tags, buttons and the chosen tab. */
 :root:not(.dark):not([data-theme="colorful"])[data-accent="pink"],
 :root:not(.dark):not([data-theme="colorful"]) [data-accent="pink"] {
   --acc: #111111;
@@ -4123,7 +4073,8 @@ main [class*="rounded-\\[var(--r-"] {
   --acc-track: #262626;
   --acc-ink: #ffffff;
 }
-:root[data-theme="colorful"]:not(.dark)[data-accent="pink"] {
+:root[data-theme="colorful"]:not(.dark)[data-accent="pink"],
+:root[data-theme="colorful"]:not(.dark) [data-accent="pink"] {
   --acc: #5df0bf;
   --acc2: #5df0bf;
   --acc-soft: #d4fff0;
@@ -4348,7 +4299,7 @@ main [class*="rounded-\\[var(--r-"] {
 }
 .menu-choice-opts button {
   color: var(--muted-foreground);
-  min-height: 32px;
+  min-height: 44px;
   padding-inline: 0;
 }
 .menu-choice-opts > span > span {
@@ -4420,7 +4371,18 @@ main [class*="rounded-\\[var(--r-"] {
   border-radius: 0;
   box-shadow: none;
 }
-.you-page .you-avatar,
+.you-page .you-avatar {
+  width: 56px;
+  height: 56px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 0;
+  overflow: hidden;
+}
+.you-page .you-avatar img,
+.you-page .you-avatar > span {
+  border-radius: 0;
+}
 .you-page .you-edit svg,
 .you-page .plain-card svg,
 .you-page > a svg,

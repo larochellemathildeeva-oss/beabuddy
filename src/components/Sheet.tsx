@@ -215,7 +215,16 @@ export function Sheet({
             onClick={onBack ?? onClose}
             // Where the arrow is the only way out, a busy page keeps it from closing.
             disabled={!showClose && !onBack}
-            aria-label={backLabel ?? (onBack ? "Back" : `Close ${title.toLowerCase()}`)}
+            aria-label={
+              backLabel ??
+              (onBack
+                ? crumb
+                  ? `Back, ${crumb}`
+                  : "Back"
+                : crumb
+                  ? `${crumb}, close ${title.toLowerCase()}`
+                  : `Close ${title.toLowerCase()}`)
+            }
             className="sub-page-crumb mono-caps mt-3 flex min-h-11 items-center gap-3 text-left"
           >
             <ArrowLeft className="size-4 shrink-0" aria-hidden />

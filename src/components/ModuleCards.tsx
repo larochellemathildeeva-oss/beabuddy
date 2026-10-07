@@ -214,6 +214,7 @@ export function WeatherThereCard({
   return (
     <ModuleCard
       title="Weather there"
+      art={art}
       big={weather ? temperature(weather.temp) : undefined}
       sub={
         weather

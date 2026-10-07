@@ -155,7 +155,8 @@ async function goTab(page, name) {
     await page.getByRole("tab", { name: "Map", exact: true }).click();
     await page.waitForTimeout(300);
     const sw = page.getByRole("button", { name: "Companion", exact: true });
-    if (await sw.count()) await sw.first().click();
+    if (!(await sw.count())) throw new Error("the Companion switch is missing under the Map tab");
+    await sw.first().click();
     await page.waitForTimeout(500);
     return;
   }
@@ -610,8 +611,8 @@ await flow("shell: brand, back, guide, five tabs and offline status remain reach
   if (await page.getByRole("navigation", { name: "Main", exact: true }).getByRole("link", { name: "Home", exact: true }).getAttribute("aria-current") !== "page") throw new Error("history back did not return Home");
   await page.setViewportSize({ width: 760, height: 900 });
   await page.locator("header").getByRole("link", { name: /Béa, version/ }).click();
-  await page.getByText("Travel Buddy", { exact: true }).waitFor({ state: "visible" });
-  if (await page.getByText("Travel Buddy", { exact: true }).count() !== 1) throw new Error("the desktop support label disappeared");
+  await page.locator("header").getByRole("link", { name: /Béa, version/ }).waitFor({ state: "visible" });
+  if (await page.getByText("Travel Buddy", { exact: true }).count() !== 0) throw new Error("the wordmark caption came back");
   await page.setViewportSize({ width: 414, height: 900 });
   await page.getByRole("button", { name: "Menu", exact: true }).click();
   await page.getByRole("button", { name: /Help for this page/ }).click();
@@ -777,7 +778,7 @@ await flow("shell: text tokens cover hover, opacity, sequence and dark error con
     if (results[0].color !== results[2].color) throw new Error("hover:text-primary missed the text token");
     const searchTint = await page.locator("[data-search-tint]").evaluate((el) => getComputedStyle(el).backgroundColor);
     // Colorful is white with neon on pills now, so the search box is no longer tinted by the accent.
-    if (!searchTint) throw new Error("the search probe lost its background");
+    if (!searchTint || searchTint === "rgba(0, 0, 0, 0)") throw new Error("the search probe lost its background");
     previousSearchTint = searchTint;
     console.log(`  ${accent} text contrast: ${results.map((r) => `${r.cls}=${r.ratio.toFixed(2)}`).join(", ")}`);
   }
@@ -818,7 +819,7 @@ await flow("trip shell: Bookings stays inside Overview with filters and booking 
   await bookings.waitFor();
   for (const name of ["Flights", "Stays", "Transport", "Activities", "All"]) await bookings.getByRole("button", { name, exact: true }).click();
   if (await page.getByRole("tab", { name: "Bookings", exact: true }).count()) throw new Error("Bookings is still a fifth view");
-  await page.getByRole("button", { name: "Close bookings", exact: true }).click();
+  await page.getByRole("button", { name: /close bookings/i }).click();
   await page.getByRole("button", { name: "Trip menu", exact: true }).click();
   await page.getByRole("dialog").getByRole("button", { name: /^Bookings/ }).click();
   if (await page.getByRole("tab", { name: "Overview", exact: true }).getAttribute("aria-selected") !== "true") throw new Error("menu booking did not open Overview");

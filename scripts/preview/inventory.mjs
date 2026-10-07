@@ -68,11 +68,11 @@ async function names({ sample, click, companion, plainMap }) {
     else {
       await page.locator('[role="tab"][aria-label="Map"]').first().click();
       await page.waitForTimeout(400);
-      await page.getByRole("button", { name: "Companion", exact: true }).first().click().catch(() => {});
+      await page.getByRole("button", { name: "Companion", exact: true }).first().click();
     }
     await page.waitForTimeout(600);
   }
-  if (click) { await page.locator(click).first().click().catch(() => {}); await page.waitForTimeout(600); }
+  if (click) { await page.locator(click).first().click({ timeout: 5000 }); await page.waitForTimeout(600); }
   if (plainMap) {
     // A trip under way opens Map on its Companion side; the plain map is one tap away.
     await page.locator('[aria-label="Map or Companion"] button', { hasText: /^Map$/ }).first().click().catch(() => {});

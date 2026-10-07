@@ -173,8 +173,8 @@ export function Globe({
   const look = themeName === "dark" ? "night" : "day";
   // Calm and Dark draw the plain globe as lines: ink on white, white on black.
   const lineLook = !open && themeName !== "colorful";
-  const lineInk = themeName === "dark" ? "#ffffff" : "#111111";
-  const linePaper = themeName === "dark" ? "#000000" : "#ffffff";
+  const lineInk = "var(--foreground)";
+  const linePaper = "var(--background)";
   const [earth, setEarth] = useState<{ look: "day" | "night"; map: EarthMap } | null>(null);
   const earthCanvas = useRef<HTMLCanvasElement | null>(null);
   useEffect(() => {

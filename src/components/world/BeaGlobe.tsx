@@ -166,8 +166,8 @@ export function BeaGlobe({
   readyRef.current = earthReady;
   // Calm and Dark draw the original line globe: ink on white, white on black.
   const lineLook = mood !== "colorful";
-  const lineInk = mood === "dark" ? "#ffffff" : "#111111";
-  const linePaper = mood === "dark" ? "#000000" : "#ffffff";
+  const lineInk = "var(--foreground)";
+  const linePaper = "var(--background)";
 
   const spin = useRef<Spin>({ rotation: initialRotation, vLam: 0, vPhi: 0 });
   const zoomRef = useRef(1);
