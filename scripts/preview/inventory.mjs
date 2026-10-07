@@ -42,6 +42,7 @@ const INTENDED = {
 };
 const intendedFor = (name) => Object.entries(INTENDED).find(([key]) => name === key || name.startsWith(key))?.[1];
 
+const FONT_HOSTS = new Set(["fonts.googleapis.com", "fonts.gstatic.com"]);
 const types = { js: "text/javascript", css: "text/css", html: "text/html", png: "image/png", webp: "image/webp", jpg: "image/jpeg", svg: "image/svg+xml", json: "application/json" };
 const tile = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/+/9fwAJ+wP9KobjigAAAABJRU5ErkJggg==", "base64");
 const executablePath = process.env.CHROMIUM_PATH || (existsSync("/opt/pw-browsers/chromium") ? "/opt/pw-browsers/chromium" : undefined);
@@ -53,7 +54,7 @@ async function names({ sample, click, companion, plainMap }) {
   await page.route("**/*", (route) => {
     const url = new URL(route.request().url());
     if (url.pathname.startsWith("/api/tile/")) return route.fulfill({ body: tile, contentType: "image/png" });
-    if (url.host.endsWith("googleapis.com") || url.host.endsWith("gstatic.com")) return route.continue();
+    if (FONT_HOSTS.has(url.host)) return route.continue();
     if (url.host !== "preview.test") return route.abort();
     const file = url.pathname === "/" ? "/index.html" : url.pathname;
     const path = existsSync(join(out, file)) ? join(out, file) : join(here, "..", "..", "public", file);
