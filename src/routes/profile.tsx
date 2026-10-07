@@ -233,7 +233,7 @@ function ProfilePage() {
 
   return (
     <AppShell eyebrow="You" title="Travel, your way.">
-      <div className="space-y-6">
+      <div className="you-page space-y-6">
         {!loading && !user && (
           <div data-guide="profile-account" className={`${PLAIN} p-4`}>
             <p className="font-display text-[21px] leading-snug">

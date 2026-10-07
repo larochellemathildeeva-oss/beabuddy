@@ -169,7 +169,12 @@ export function Globe({
    * their plain land. It is a canvas behind the SVG, never inside it: Safari
    * lays a canvas in <foreignObject> out at the wrong size and place.
    */
-  const look = useThemeName() === "dark" ? "night" : "day";
+  const themeName = useThemeName();
+  const look = themeName === "dark" ? "night" : "day";
+  // Calm and Dark draw the plain globe as lines: ink on white, white on black.
+  const lineLook = !open && themeName !== "colorful";
+  const lineInk = themeName === "dark" ? "#ffffff" : "#111111";
+  const linePaper = themeName === "dark" ? "#000000" : "#ffffff";
   const [earth, setEarth] = useState<{ look: "day" | "night"; map: EarthMap } | null>(null);
   const earthCanvas = useRef<HTMLCanvasElement | null>(null);
   useEffect(() => {
@@ -719,8 +724,12 @@ export function Globe({
             <>
               <path
                 d={spherePath}
-                fill={`url(#${oceanId})`}
-                style={{ stroke: "color-mix(in oklab, var(--visited) 25%, var(--border))" }}
+                fill={lineLook ? linePaper : `url(#${oceanId})`}
+                style={{
+                  stroke: lineLook
+                    ? lineInk
+                    : "color-mix(in oklab, var(--visited) 25%, var(--border))",
+                }}
                 strokeWidth={0.8}
               />
               <path
@@ -743,11 +752,15 @@ export function Globe({
                     ? c.visited
                       ? "color-mix(in oklab, var(--visited) 34%, transparent)"
                       : "transparent"
-                    : c.visited
-                      ? "color-mix(in oklab, var(--visited) 72%, var(--card))"
-                      : "color-mix(in oklab, var(--foreground) 16%, var(--card))",
+                    : lineLook
+                      ? c.visited
+                        ? `color-mix(in oklab, ${lineInk} 22%, ${linePaper})`
+                        : linePaper
+                      : c.visited
+                        ? "color-mix(in oklab, var(--visited) 72%, var(--card))"
+                        : "color-mix(in oklab, var(--foreground) 16%, var(--card))",
                 }}
-                stroke={relief ? "rgb(255 255 255 / 0.32)" : "var(--card)"}
+                stroke={relief ? "rgb(255 255 255 / 0.32)" : lineLook ? lineInk : "var(--card)"}
                 strokeWidth={relief ? 0.3 : 0.45}
                 strokeOpacity={relief && look === "night" ? 0.55 : undefined}
                 strokeLinejoin="round"
@@ -763,7 +776,7 @@ export function Globe({
             ) : null,
           )}
           {/* The Earth is lit as it is painted; the plain globe is shaded here. */}
-          {!relief && (
+          {!relief && !lineLook && (
             <path d={spherePath} fill={`url(#${shadeId})`} className="pointer-events-none" />
           )}
           <path

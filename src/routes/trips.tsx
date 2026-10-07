@@ -19,7 +19,6 @@ import {
 } from "@/components/TripsList";
 import { useTripPicture } from "@/hooks/useTripPicture";
 import { useTripsLayout } from "@/hooks/useTripsLayout";
-import { heroTrips } from "@/lib/trips-page";
 import { FollowedTripList } from "@/components/FollowedTripList";
 import { listFollowedTrips } from "@/lib/trip-follow.functions";
 import type { FollowedTrip } from "@/lib/trip-follow";
@@ -110,9 +109,7 @@ function TripsPage() {
    * The master's tabs. Undated trips sit at the end of Upcoming; Following
    * (trips others shared) shows once the traveller follows one.
    */
-  const [view, setView] = useState<"upcoming" | "past" | "drafts" | "following" | "all">(
-    "upcoming",
-  );
+  const [view, setView] = useState<"upcoming" | "past" | "following" | "all">("upcoming");
   const [layout, setLayout] = useTripsLayout();
   const [picture, setPicture] = useTripPicture();
   const { trips: followed, forget: forgetFollowed } = useFollowedTrips(user?.id ?? null);
@@ -163,7 +160,6 @@ function TripsPage() {
   const today = toLocalISODate(new Date());
   const lists = tripTabs(t.trips, today);
   // The same array until the trips change, so the header map is not redrawn on every render.
-  const hero = useMemo(() => heroTrips(tripTabs(t.trips, today)), [t.trips, today]);
   const beaSettings = useBeaSettings();
   // Picked once per visit, in the traveller's mix.
   const [emptyTrips] = useState(() => emptyLine({ kind: "noTrips", settings: beaSettings }));
@@ -220,7 +216,7 @@ function TripsPage() {
     ) : null;
   const draftsSection = (withSwitch: boolean) =>
     lists.drafts.length > 0 ? (
-      <TripsSection title="Drafts" aside={withSwitch ? switches(false) : undefined}>
+      <TripsSection title="Dates to set" aside={withSwitch ? switches(false) : undefined}>
         <div className="space-y-3">{lists.drafts.map(row)}</div>
       </TripsSection>
     ) : null;
@@ -270,45 +266,26 @@ function TripsPage() {
     <AppShell>
       <div className="space-y-6">
         <TripsHero
-          trips={hero}
-          today={today}
           actions={
             <>
               <Link
                 to="/calendar"
                 aria-label="Calendar view"
                 title="Calendar view"
-                className="trip-hero-btn"
+                className="grid min-h-11 place-items-center px-2 text-[13px] text-muted-foreground"
               >
-                <CalendarDays className="size-5" aria-hidden />
+                Calendar
               </Link>
-              {t.signedIn ? (
-                <button
-                  type="button"
-                  data-guide="new-trip"
-                  aria-label="New trip"
-                  aria-expanded={creating}
-                  onClick={openNew}
-                  className="trip-hero-add"
-                >
-                  <Plus className="size-6" aria-hidden />
-                </button>
-              ) : null}
             </>
           }
         />
         {t.signedIn ? (
           <>
-            <div
-              role="tablist"
-              aria-label="Which trips"
-              className="trips-tabs relative z-[1] -mt-12"
-            >
+            <div role="tablist" aria-label="Which trips" className="trips-tabs">
               {(
                 [
                   ["upcoming", "Upcoming"],
                   ["past", "Past"],
-                  ["drafts", "Drafts"],
                   ...(followed?.length ? ([["following", "Following"]] as const) : []),
                   ["all", "All"],
                 ] as const
@@ -324,6 +301,19 @@ function TripsPage() {
                 </button>
               ))}
             </div>
+
+            {view !== "past" && view !== "following" ? (
+              <button
+                type="button"
+                data-guide="new-trip"
+                aria-label="New trip"
+                aria-expanded={creating}
+                onClick={openNew}
+                className="trips-create"
+              >
+                Create trip →
+              </button>
+            ) : null}
 
             {view !== "past" && view !== "following" ? (
               <div className="grid grid-cols-2 gap-2.5">
@@ -377,41 +367,10 @@ function TripsPage() {
               {view === "upcoming" && (
                 <>
                   {ahead}
-                  {lists.drafts.length > 0 ? (
-                    <button
-                      type="button"
-                      onClick={() => setView("drafts")}
-                      className="plain-card flex w-full items-center gap-3 px-4 py-3 text-left"
-                    >
-                      <span className="min-w-0 flex-1">
-                        <span className="block text-[16px] font-semibold">
-                          {lists.drafts.length} {lists.drafts.length === 1 ? "draft" : "drafts"}{" "}
-                          with dates to set
-                        </span>
-                        <span className="block text-[14px] text-muted-foreground">
-                          {lists.drafts
-                            .slice(0, 3)
-                            .map((d) => d.title)
-                            .join(" · ")}
-                        </span>
-                      </span>
-                      <ChevronRight className="size-5 shrink-0 text-muted-foreground" aria-hidden />
-                    </button>
-                  ) : null}
+                  {draftsSection(false)}
                   {pastSection(false)}
                 </>
               )}
-
-              {view === "drafts" &&
-                (lists.drafts.length > 0 ? (
-                  draftsSection(true)
-                ) : !t.loading && t.trips.length > 0 ? (
-                  <NothingAhead
-                    title="No drafts."
-                    body="A trip with dates still to set waits here until it has them."
-                    onPlan={openNew}
-                  />
-                ) : null)}
 
               {view === "past" &&
                 (lists.past.length > 0 ? (

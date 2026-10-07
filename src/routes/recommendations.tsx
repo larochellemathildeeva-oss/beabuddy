@@ -766,7 +766,7 @@ function RecommendationsPage() {
   return (
     <AppShell
       {...(screen.kind === "home"
-        ? { eyebrow: `${visibleRows.length} saved`, title: "Places worth remembering." }
+        ? { eyebrow: `${visibleRows.length} saved`, title: "Places worth keeping." }
         : {})}
     >
       {nearbyOpen && (

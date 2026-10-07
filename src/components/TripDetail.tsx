@@ -75,7 +75,7 @@ import { StickyDayBar } from "@/components/day/StickyDayBar";
 import { nowTarget } from "@/lib/now-jump";
 import { SortableDay, SortableStop, type SortableBind } from "@/components/day/SortableStops";
 import { TripPageBanner } from "@/components/TripPageBanner";
-import { TripViews, TripBarOptions } from "@/components/day/TripViews";
+import { TripViews, TripBarOptions, MapModeSwitch } from "@/components/day/TripViews";
 import { useTripBarPosition } from "@/hooks/useTripBarPosition";
 import {
   TripMenuSheet,
@@ -85,7 +85,7 @@ import {
 import { dayLengthLabel, dayTitle } from "@/components/day/stop-words";
 import { bannerArtUrl, bannerSceneFor } from "@/lib/banner-art";
 import { countBookings, tripBookings } from "@/lib/trip-overview";
-import { TripBookings, type BookingFilter } from "@/components/day/TripBookings";
+import { TripBookings, BOOKING_TITLES, type BookingFilter } from "@/components/day/TripBookings";
 import { useTripBookingDocuments } from "@/hooks/useTripDocuments";
 import { useStopPhotos } from "@/hooks/useStopPhotos";
 import { useTripBanner } from "@/hooks/useTripBanner";
@@ -229,7 +229,6 @@ export function TripDetail({
   const navigate = useNavigate();
   const [barPosition, setBarPosition] = useTripBarPosition();
   const [bookingsOpen, setBookingsOpen] = useState(false);
-  const bookingsRef = useRef<HTMLElement>(null);
   const [plannerOpen, setPlannerOpen] = useState(false);
   const [plannerTab, setPlannerTab] = useState<PlannerTab>("start");
   /** Words carried into Build from the Plan with Béa page. */
@@ -1265,11 +1264,6 @@ export function TripDetail({
     setBookingFilter(kind);
     setPerspective("overview");
     setBookingsOpen(true);
-    requestAnimationFrame(() =>
-      requestAnimationFrame(() =>
-        bookingsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }),
-      ),
-    );
   };
 
   // Arriving with a request in the link (Plan with Béa, a booking link):
@@ -1681,6 +1675,9 @@ export function TripDetail({
 
       <TripViews position={barPosition} value={perspective} onChange={setPerspective} />
       <div className="trip-content section-stagger px-3 pb-4 pt-3">
+        {(perspective === "map" || perspective === "companion") && (
+          <MapModeSwitch value={perspective} onChange={setPerspective} />
+        )}
         {/* Only when someone else is on the trip right now (owner,
             2026-10-04: no "You're the only one here" line). */}
         {others.length > 0 && (
@@ -1812,22 +1809,6 @@ export function TripDetail({
             }}
             onOpenSaved={() => setSavedOpen(true)}
             onPrep={(tab) => setPrepAsk((cur) => ({ tab, n: (cur?.n ?? 0) + 1 }))}
-            bookings={
-              <section
-                ref={bookingsRef}
-                aria-label="Bookings"
-                hidden={!bookingsOpen}
-                className="scroll-mt-[var(--trip-sticky-offset)]"
-              >
-                <TripBookings
-                  filter={bookingFilter}
-                  onFilter={setBookingFilter}
-                  stops={stopItems}
-                  docs={bookingDocs.docs}
-                  onSaveBooking={(id, patch) => board.updateItem(id, patch)}
-                />
-              </section>
-            }
           />
         )}
 
@@ -2449,13 +2430,12 @@ export function TripDetail({
           <Sheet
             open={timelineMenuOpen}
             onClose={() => setTimelineMenuOpen(false)}
-            title="Timeline"
-            hint={`${stopItems.length} ${stopItems.length === 1 ? "stop" : "stops"} scheduled${
-              doneCount > 0 ? ` · ${doneCount} visited` : ""
-            }`}
-            width="sm"
+            title="The Timeline"
+            hint={`${trip.title} / Timeline options`}
+            page
+            crumb={`${trip.title} / Trip menu`}
           >
-            <div className="space-y-4">
+            <div>
               {stopItems.length > 0 && (
                 <TimeChangeBox
                   tripId={trip.id}
@@ -2515,11 +2495,14 @@ export function TripDetail({
                   <button
                     type="button"
                     aria-pressed={editingTimeline}
+                    aria-label={
+                      editingTimeline ? "Done editing the itinerary" : "Edit the itinerary"
+                    }
                     onClick={() => {
                       setEditingTimeline((v) => !v);
                       setTimelineMenuOpen(false);
                     }}
-                    className="flex min-h-12 items-center gap-2 rounded-2xl border border-border bg-card px-3 text-left text-[14.5px] font-semibold"
+                    className="menu-row menu-row-title"
                   >
                     {editingTimeline ? (
                       <Check className="size-4 text-primary" aria-hidden />
@@ -2527,6 +2510,7 @@ export function TripDetail({
                       <Pencil className="size-4 text-primary" aria-hidden />
                     )}
                     {editingTimeline ? "Done editing the itinerary" : "Edit the itinerary"}
+                    <span className="menu-row-note">Move and adjust the stops</span>
                   </button>
                 )}
                 {stopItems.length > 0 && (
@@ -2536,31 +2520,45 @@ export function TripDetail({
                       setTimelineMenuOpen(false);
                       setDayEditOpen(true);
                     }}
-                    className="flex min-h-12 items-center gap-2 rounded-2xl border border-border bg-card px-3 text-left text-[14.5px] font-semibold"
+                    aria-label="Change a day"
+                    className="menu-row menu-row-title"
                   >
                     <CalendarDays className="size-4 text-primary" aria-hidden />
                     Change a day
+                    <span className="menu-row-note">Ask Béa for a better order</span>
                   </button>
                 )}
                 {stopItems.length >= 2 && (
                   <button
                     type="button"
                     data-guide="optimize-trip"
+                    aria-label="Optimize the order"
                     onClick={() => {
                       setTimelineMenuOpen(false);
                       setPlannerTab("optimize");
                       setPlannerOpen(true);
                     }}
-                    className="flex min-h-12 items-center gap-2 rounded-2xl border border-border bg-card px-3 text-left text-[14.5px] font-semibold"
+                    className="menu-row menu-row-title"
                   >
                     <Route className="size-4 text-primary" aria-hidden />
                     Optimize the order
+                    <span className="menu-row-note">The shortest way round the day</span>
                   </button>
                 )}
               </div>
-              <p className="text-[12px] text-muted-foreground">
-                Tap a stop to edit it · the card between stops has the way there.
+              <p className="menu-row-note pt-3 text-[14px]">
+                {`${stopItems.length} ${stopItems.length === 1 ? "stop" : "stops"} scheduled${
+                  doneCount > 0 ? ` · ${doneCount} visited` : ""
+                }`}
+                {" · Tap a stop to edit it · the card between stops has the way there."}
               </p>
+              <button
+                type="button"
+                onClick={() => setTimelineMenuOpen(false)}
+                className="menu-done bg-primary mono-caps"
+              >
+                Done
+              </button>
             </div>
           </Sheet>
         </div>
@@ -2615,8 +2613,15 @@ export function TripDetail({
         )}
       </div>
 
-      <Sheet open={addOpen} onClose={() => setAddOpen(false)} title="Add to this trip" width="sm">
-        <div className="space-y-1">
+      <Sheet
+        open={addOpen}
+        onClose={() => setAddOpen(false)}
+        page
+        title="Add to this trip"
+        hint={`${trip.title} / Add`}
+        crumb={`${trip.title} / Trip menu`}
+      >
+        <div>
           <button
             type="button"
             onClick={() => {
@@ -2626,12 +2631,11 @@ export function TripDetail({
               setAddDay(addToDay ?? "");
               setAddingTimeline(true);
             }}
-            className="flex w-full items-start gap-3 rounded-xl px-3 py-3 text-left hover:bg-elevated"
+            className="menu-row"
           >
-            <Plus className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
             <span>
-              <span className="block text-[15px] font-semibold">A stop on the itinerary</span>
-              <span className="block text-[12px] text-muted-foreground">
+              <span className="menu-row-title block">A stop on the itinerary</span>
+              <span className="menu-row-note block">
                 A place, meal or activity, in the Timeline.
               </span>
             </span>
@@ -2642,12 +2646,11 @@ export function TripDetail({
               setAddOpen(false);
               setSavedOpen(true);
             }}
-            className="flex w-full items-start gap-3 rounded-xl px-3 py-3 text-left hover:bg-elevated"
+            className="menu-row"
           >
-            <Bookmark className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
             <span>
-              <span className="block text-[15px] font-semibold">From Saved</span>
-              <span className="block text-[12px] text-muted-foreground">
+              <span className="menu-row-title block">From Saved</span>
+              <span className="menu-row-note block">
                 A place you kept, with its address and map pin.
               </span>
             </span>
@@ -2658,14 +2661,11 @@ export function TripDetail({
               setAddOpen(false);
               setCitySignal((n) => n + 1);
             }}
-            className="flex w-full items-start gap-3 rounded-xl px-3 py-3 text-left hover:bg-elevated"
+            className="menu-row"
           >
-            <MapPin className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
             <span>
-              <span className="block text-[15px] font-semibold">Another city or location</span>
-              <span className="block text-[12px] text-muted-foreground">
-                Add a city to the trip's route.
-              </span>
+              <span className="menu-row-title block">Another city or location</span>
+              <span className="menu-row-note block">Add a city to the trip's route.</span>
             </span>
           </button>
         </div>
@@ -2781,6 +2781,26 @@ export function TripDetail({
           if (place) await onUpdate(place);
         }}
       />
+
+      <Sheet
+        open={bookingsOpen}
+        onClose={() => setBookingsOpen(false)}
+        page
+        crumb={`${trip.title} / Trip menu`}
+        title={BOOKING_TITLES[bookingFilter]}
+        hint={`${trip.title} / Bookings`}
+        tone={2}
+      >
+        <section aria-label="Bookings">
+          <TripBookings
+            filter={bookingFilter}
+            onFilter={setBookingFilter}
+            stops={stopItems}
+            docs={bookingDocs.docs}
+            onSaveBooking={(id, patch) => board.updateItem(id, patch)}
+          />
+        </section>
+      </Sheet>
 
       <TripMenuSheet
         open={settingsOpen}
@@ -3340,25 +3360,16 @@ function MenuChoice({
   options: readonly (readonly [boolean, string])[];
 }) {
   return (
-    <div>
-      <p className="mb-1.5 text-[12px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-        {label}
-      </p>
-      <div role="group" aria-label={label} className="flex gap-1 rounded-full bg-elevated p-1">
-        {options.map(([v, text]) => (
-          <button
-            key={text}
-            type="button"
-            aria-pressed={value === v}
-            onClick={() => onChange(v)}
-            className={`min-h-9 flex-1 rounded-full px-3 text-[13px] transition-colors ${
-              value === v
-                ? "bg-primary font-semibold text-primary-foreground"
-                : "text-muted-foreground"
-            }`}
-          >
-            {text}
-          </button>
+    <div className="menu-row menu-choice">
+      <p className="menu-row-title">{label}</p>
+      <div role="group" aria-label={label} className="menu-choice-opts">
+        {options.map(([v, text], i) => (
+          <span key={text} className="contents">
+            {i > 0 && <span aria-hidden>/</span>}
+            <button type="button" aria-pressed={value === v} onClick={() => onChange(v)}>
+              {text}
+            </button>
+          </span>
         ))}
       </div>
     </div>

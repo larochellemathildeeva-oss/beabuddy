@@ -10,10 +10,10 @@ export const HOME_WIDGET_SIZES: Record<HomeSectionKey, readonly [WidgetSize, ...
   now: ["wide", "large"],
   group: ["small", "wide", "large"],
   tools: ["large"],
-  weatherThere: ["small", "wide", "large"],
+  weatherThere: ["wide", "small", "large"],
   detour: ["wide", "large"],
   notes: ["wide", "large"],
-  weather: ["small", "wide", "large"],
+  weather: ["wide", "small", "large"],
   waiting: ["wide", "large"],
   future: ["wide", "large"],
 };

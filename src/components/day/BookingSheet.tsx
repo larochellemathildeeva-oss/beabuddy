@@ -57,7 +57,7 @@ export function BookingSheet({
   };
 
   return (
-    <Sheet open={open} onClose={onClose} title="Booking" hint={item.title} width="sm">
+    <Sheet open={open} onClose={onClose} page title={item.title} hint="Booking" crumb="Back">
       <div className="space-y-3">
         <BookingFields
           subject={item.title}
@@ -74,10 +74,10 @@ export function BookingSheet({
           <Link
             to="/profile/documents"
             search={{ event: item.id }}
-            className="flex items-center gap-3 rounded-xl border border-border bg-card px-3 py-2.5"
+            className="mono-caps flex min-h-12 items-center gap-3 border border-foreground px-3 py-2.5"
           >
             <FileText className="size-5 shrink-0 text-primary" aria-hidden />
-            <span className="min-w-0 flex-1 text-[14px] font-semibold">
+            <span className="min-w-0 flex-1">
               {linkedDocs === 1 ? "1 document" : `${linkedDocs} documents`} for this stop
             </span>
             <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
@@ -92,7 +92,7 @@ export function BookingSheet({
           type="button"
           disabled={busy}
           onClick={() => void save()}
-          className="w-full rounded-xl bg-primary px-4 py-2.5 text-[14.5px] font-semibold text-primary-foreground disabled:opacity-60"
+          className="menu-done bg-primary mono-caps disabled:opacity-60"
         >
           {busy ? "Saving…" : "Save booking"}
         </button>

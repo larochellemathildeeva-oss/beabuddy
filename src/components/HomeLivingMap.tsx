@@ -1,34 +1,30 @@
-import { useMemo, type CSSProperties, type ReactNode } from "react";
+import { useMemo, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
-import { ArrowRight, Check, Luggage, Plane, Search } from "@/components/icons";
+import { ArrowRight } from "@/components/icons";
 import { TripPicture } from "@/components/HomeTripCard";
-import { TripBannerMap } from "@/components/TripRouteMap";
 import type { TripPhotoRow } from "@/hooks/useTripPhotos";
 import type { TripRow } from "@/hooks/useTrips";
 import type { TripGlance } from "@/hooks/useTripGlances";
 import { useTripStops } from "@/hooks/useTripStops";
 import { useCityPositions } from "@/hooks/useCityPositions";
-import { tripCityStop, withCityPositions } from "@/lib/city-position";
-import { flightParts, heroWhen, routeStops } from "@/lib/home-route-map";
+import { tripCityStop } from "@/lib/city-position";
+import { flightParts, heroWhen } from "@/lib/home-route-map";
 import { placeArtUrl } from "@/lib/place-art";
+import { tripDateLine } from "@/lib/trip-card";
 import { heroTags, routeLine } from "@/lib/trip-glance";
 
-/** The picture the trip's cities are drawn over. */
-const UPCOMING_HERO_H = 300;
-
-const SOFT_SHADOW = "shadow-[0_4px_16px_rgb(0_0_0/0.06)]";
+/** The trip's picture: a flat strip, as wide as the box. */
+const UPCOMING_PHOTO_H = 112;
 
 /**
- * The top of Home, as the "three moods" design draws it: what kind of moment
- * it is, the trip's name and how soon in large serif, a round arrow into it,
- * and under them the living map of its cities — or, while their positions
- * are looked up or when the map knows none of them, its picture and where it
- * goes.
+ * Home's trip box, as the editorial design draws it: what kind of moment it
+ * is and how soon, the trip's name in large serif, where and when in one
+ * quiet line, its picture as a flat strip and one full-width button into it.
  */
 export function HomeUpcoming({
   trip,
   photos,
-  height = UPCOMING_HERO_H,
+  height = UPCOMING_PHOTO_H,
 }: {
   trip: TripRow;
   photos: TripPhotoRow[];
@@ -40,74 +36,36 @@ export function HomeUpcoming({
     () => (stops.length || loading ? stops : tripCityStop(trip)),
     [stops, loading, trip],
   );
-  // A city typed rather than picked has no position: found by its name.
-  const positions = useCityPositions(cityStops);
-  const route = useMemo(
-    () => routeStops(withCityPositions(cityStops, positions)),
-    [cityStops, positions],
-  );
+  // A city typed rather than picked has no position: found by its name, and
+  // kept on the stop so the Trips list and the globe can place it.
+  useCityPositions(cityStops);
   const tags = heroTags(trip.start_date, trip.end_date, trip.dates_status === "tentative");
   const when = heroWhen(tags.when);
-  const cities = route.map((s) => s.city).join(", ");
   const stopCities = stops.map((s) => s.city).filter(Boolean);
   const where =
     routeLine(stopCities) || trip.city?.split(",")[0] || stopCities[0] || trip.country || "";
+  const dates = tripDateLine(trip.start_date, trip.end_date);
+  const meta = [where, dates].filter(Boolean).join(" · ");
 
   return (
-    <section data-guide="home-trip">
-      <div className="trip-hero -mx-4" style={{ height }}>
+    <section data-guide="home-trip" className="editorial-box">
+      <p className="label-caps">{[tags.label, when].filter(Boolean).join(" · ")}</p>
+      <h2 className="mt-3 break-words font-display text-[44px] font-bold leading-[0.98] tracking-[-2px]">
+        <span className="line-clamp-2">{trip.title}</span>
+      </h2>
+      {meta ? <p className="mt-2 text-[12px] text-muted-foreground">{meta}</p> : null}
+      <div className="relative mt-3.5 overflow-hidden bg-muted" style={{ height }}>
         <TripPicture trip={trip} photos={photos} cities={stopCities} />
-        {route.length > 0 ? (
-          <TripBannerMap
-            over
-            pills
-            stops={route}
-            label={`Map of the trip: ${cities}`}
-            height={height}
-            current={-1}
-            done={0}
-            top={Math.min(130, height - 100)}
-            bottom={height - 35}
-          />
-        ) : null}
-        <span
-          aria-hidden
-          className="trip-hero-haze"
-          style={{ "--haze-end": "130px" } as CSSProperties}
-        />
-        <div className="relative flex items-start justify-between gap-3 px-5 pt-2">
-          <Link to="/trips/$tripId" params={{ tripId: trip.id }} viewTransition className="min-w-0">
-            <p className="text-[13px] font-semibold uppercase tracking-[0.16em] text-foreground/75">
-              {tags.label}
-            </p>
-            {/* The name is clamped, never the countdown under it. */}
-            <h2 className="mt-1 font-display text-[38px] leading-[0.98] tracking-[-0.02em]">
-              <span className="line-clamp-2 break-words">{trip.title}</span>
-              {when ? <span className="block">{when}</span> : null}
-            </h2>
-          </Link>
-          <Link
-            to="/trips/$tripId"
-            params={{ tripId: trip.id }}
-            viewTransition
-            aria-label={`Open ${trip.title}`}
-            className="mt-3 grid size-[50px] shrink-0 place-items-center rounded-full bg-[var(--home-ink)] text-[var(--home-ink-foreground)] shadow-[0_6px_16px_rgb(0_0_0/0.14)] transition-transform motion-safe:hover:translate-x-0.5"
-          >
-            <ArrowRight className="size-[22px]" />
-          </Link>
-        </div>
-        {route.length === 0 && where ? (
-          <>
-            <span
-              aria-hidden
-              className="absolute inset-x-0 bottom-0 h-24 bg-[linear-gradient(to_top,rgb(0_0_0/0.55),transparent)]"
-            />
-            <span className="absolute inset-x-5 bottom-3 truncate text-[15px] font-semibold text-white">
-              {where}
-            </span>
-          </>
-        ) : null}
       </div>
+      <Link
+        to="/trips/$tripId"
+        params={{ tripId: trip.id }}
+        viewTransition
+        aria-label={`Open ${trip.title}`}
+        className="bg-primary mt-3 flex h-[52px] w-full items-center justify-center text-[14px] font-semibold text-primary-foreground"
+      >
+        Open trip
+      </Link>
     </section>
   );
 }
@@ -123,19 +81,10 @@ function shortDay(iso: string | null | undefined): string {
 }
 
 /**
- * The trip in three numbers: to-dos left, the flight, how packed. Each opens
- * its own list.
+ * The trip in three plain facts: to-dos left, the flight, how packed. Each
+ * opens its own list. One line of words under the trip, never a row of pills.
  */
-export function HomeTripStats({
-  trip,
-  glance,
-  overlap = true,
-}: {
-  trip: TripRow;
-  glance: TripGlance | undefined;
-  /** Rising over the foot of the map above it; off when cards sit between. */
-  overlap?: boolean;
-}) {
+export function HomeTripStats({ trip, glance }: { trip: TripRow; glance: TripGlance | undefined }) {
   const open = glance?.todos.open ?? 0;
   const flight = glance?.flight ?? null;
   const parts = flight ? flightParts(`${flight.title} ${flight.detail ?? ""}`) : null;
@@ -144,13 +93,13 @@ export function HomeTripStats({
   const packed = packing
     ? new Intl.NumberFormat(undefined, { style: "percent" }).format(percent / 100)
     : "—";
-  const cell = "flex min-w-0 items-center gap-2 px-2.5 py-1";
+  const cell = "flex min-h-11 min-w-0 flex-col justify-center px-3 py-2";
 
   return (
     <section
       data-guide="home-next"
       aria-label="This trip at a glance"
-      className={`relative z-10 ${overlap ? "-mt-6" : ""} grid grid-cols-[0.85fr_1.3fr_1fr] divide-x divide-border/70 rounded-[24px] bg-card py-3.5 ${SOFT_SHADOW}`}
+      className="grid grid-cols-[0.8fr_1.4fr_1fr] divide-x divide-border border border-border bg-card"
     >
       <Link
         to="/trips/$tripId"
@@ -158,9 +107,6 @@ export function HomeTripStats({
         search={{ prep: "todo" }}
         className={cell}
       >
-        <span className="grid size-8 shrink-0 place-items-center rounded-full bg-[color-mix(in_oklch,var(--success)_16%,var(--card))] text-[var(--success)]">
-          <Check className="size-4" />
-        </span>
         <Stat big={String(open)} small={open === 1 ? "to-do" : "to-dos"} />
       </Link>
       <Link
@@ -169,7 +115,6 @@ export function HomeTripStats({
         search={flight ? {} : { view: "bookings" }}
         className={cell}
       >
-        <Plane className="size-6 shrink-0" />
         {flight ? (
           <Stat
             big={parts?.code ?? flight.title}
@@ -192,19 +137,7 @@ export function HomeTripStats({
         search={{ prep: "packing" }}
         className={cell}
       >
-        <Luggage className="size-6 shrink-0" />
-        <span className="min-w-0 flex-1">
-          <Stat big={packed} small={packing ? "packed" : "Packing list"} />
-          <span
-            aria-hidden
-            className="mt-1.5 block h-1 w-full max-w-[90px] overflow-hidden rounded-full bg-[var(--stat-track)]"
-          >
-            <span
-              className="block h-full rounded-full bg-[image:var(--stat-fill)]"
-              style={{ width: `${percent}%` }}
-            />
-          </span>
-        </span>
+        <Stat big={packed} small={packing ? "packed" : "Packing list"} />
       </Link>
     </section>
   );
@@ -213,8 +146,10 @@ export function HomeTripStats({
 function Stat({ big, small }: { big: string; small: ReactNode }) {
   return (
     <span className="block min-w-0">
-      <span className="block truncate text-[17px] font-bold leading-tight">{big}</span>
-      <span className="block whitespace-nowrap text-[12.5px] leading-snug text-muted-foreground">
+      <span className="block truncate font-display text-[34px] font-bold leading-none tracking-[-1px]">
+        {big}
+      </span>
+      <span className="block whitespace-nowrap text-[12px] leading-snug text-muted-foreground">
         {small}
       </span>
     </span>
@@ -224,15 +159,9 @@ function Stat({ big, small }: { big: string; small: ReactNode }) {
 /** "Where to next?": the way into planning another trip. */
 export function HomeWhereNext() {
   return (
-    <Link
-      to="/trips/plan"
-      className={`flex h-14 items-center gap-3 rounded-full bg-[var(--home-search)] ps-5 pe-1 ${SOFT_SHADOW}`}
-    >
-      <Search className="size-5 shrink-0 text-foreground" />
-      <span className="flex-1 text-[15.5px] text-muted-foreground">Where to next?</span>
-      <span className="grid size-[48px] place-items-center rounded-full bg-[var(--home-ink)] text-[var(--home-ink-foreground)]">
-        <ArrowRight className="size-[22px]" />
-      </span>
+    <Link to="/trips/plan" className="flex h-[52px] items-center gap-3 border border-border px-4">
+      <span className="flex-1 text-[14px] text-muted-foreground">Where to next?</span>
+      <ArrowRight className="size-[18px] shrink-0" aria-hidden />
     </Link>
   );
 }
@@ -271,6 +200,7 @@ export function HomeSuggested({
   ];
   return (
     <section data-guide="home-suggested">
+      <p className="label-caps mb-1">Béa suggests</p>
       <div className="mb-1.5 flex items-center justify-between gap-3">
         <h2 className="font-sans text-[16.5px] font-semibold">Suggested for your trip</h2>
         <Link
@@ -288,7 +218,7 @@ export function HomeSuggested({
             to="/trips/$tripId"
             params={{ tripId: trip.id }}
             search={{ plan: "build", ask: idea.ask }}
-            className="group relative aspect-square overflow-hidden rounded-[18px] bg-muted"
+            className="group relative aspect-square overflow-hidden rounded-[var(--r-card)] bg-muted"
           >
             <img
               src={idea.art}

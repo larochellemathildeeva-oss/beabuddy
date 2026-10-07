@@ -23,6 +23,9 @@ export type ModuleAction =
  */
 export function ModuleCard({
   title,
+  label,
+  big,
+  headline,
   sub,
   art,
   tone,
@@ -31,10 +34,16 @@ export function ModuleCard({
   guide,
 }: {
   title: string;
+  /** The small mono label shown instead of the title, when the title is the longer name. */
+  label?: string;
+  /** One large figure (a count, a temperature) under the label. */
+  big?: ReactNode;
+  /** A line in the headline face, larger than `sub`. */
+  headline?: ReactNode;
   sub?: ReactNode;
-  /** A picture filling the lower part of the card. */
+  /** A picture filling the right-hand panel of the card. */
   art?: string | null;
-  /** A pastel ground (tile-fill-N) when there is no picture. */
+  /** A pastel ground (tile-fill-N), kept for Colorful. */
   tone?: number;
   action?: ModuleAction;
   children?: ReactNode;
@@ -42,35 +51,39 @@ export function ModuleCard({
 }) {
   const ActionIcon = action?.icon ?? ArrowRight;
   const button = action ? (
-    <span className="module-card-action absolute bottom-3 right-3 grid size-11 place-items-center rounded-full bg-card text-foreground shadow-[0_4px_12px_rgb(0_0_0/0.16)]">
+    <span className="module-card-action absolute bottom-3 right-3 grid size-11 place-items-center bg-card text-foreground">
       <ActionIcon className="size-5" aria-hidden />
     </span>
   ) : null;
   const body = (
     <>
-      {art && (
-        <span className="absolute inset-x-0 bottom-0 h-[62%]">
-          <img src={art} alt="" className="art-dim size-full object-cover" />
-          <span
-            aria-hidden
-            className="absolute inset-0 bg-gradient-to-b from-[var(--card)] via-transparent to-transparent"
-          />
-        </span>
-      )}
-      <span className="relative block">
-        <span className="block font-display text-[19px] leading-tight">{title}</span>
+      <span className="relative flex min-w-0 flex-1 flex-col">
+        <span className="label-caps block">{label ?? title}</span>
+        {big ? (
+          <span className="module-big mt-1 block font-display font-bold tabular-nums">{big}</span>
+        ) : null}
+        {headline ? (
+          <span className="mt-2 block font-display text-[30px] leading-[34px] tracking-[-0.5px]">
+            {headline}
+          </span>
+        ) : null}
         {sub && (
-          <span className="mt-0.5 block text-[12.5px] leading-snug text-muted-foreground">
+          <span className="mt-1.5 block font-display text-[16px] leading-[22px] text-muted-foreground">
             {sub}
           </span>
         )}
+        {children && <span className="relative mt-2 block">{children}</span>}
       </span>
-      {children && <span className="relative mt-2 block">{children}</span>}
+      {art && (
+        <span className="module-photo relative -my-3.5 -mr-3.5 ml-3 block w-[112px] shrink-0 self-stretch overflow-hidden">
+          <img src={art} alt="" className="art-dim absolute inset-0 size-full object-cover" />
+        </span>
+      )}
       {button}
     </>
   );
-  const cls = `relative flex min-h-[168px] w-full flex-col overflow-hidden rounded-[var(--r-card)] border border-border/60 p-3.5 text-left shadow-[0_4px_16px_rgb(0_0_0/0.05)] transition-transform active:scale-[0.98] ${
-    art ? "bg-card" : tone ? `tile-fill-${tone}` : "bg-card"
+  const cls = `relative flex min-h-[168px] w-full overflow-hidden border border-border p-3.5 text-left ${
+    tone ? `tile-fill-${tone}` : "bg-card"
   }`;
   if (!action) {
     return (
@@ -199,26 +212,21 @@ export function WeatherThereCard({
   const now = usePlaceNow(lat, lon);
   const weather = now.status === "ready" ? now.weather : null;
   return (
-    <ModuleCard title="Weather there" sub={place} art={art} {...(guide ? { guide } : {})}>
-      {weather ? (
-        <span
-          className={
-            art
-              ? "module-weather-reading mt-[52px] inline-flex flex-col rounded-xl bg-black/45 px-2.5 py-1.5 text-white backdrop-blur-sm"
-              : "inline-flex flex-col"
-          }
-        >
-          <span className="font-display text-[28px] leading-none tabular-nums">
-            {temperature(weather.temp)}
-          </span>
-          <span className={`mt-1 text-[12px] leading-tight ${art ? "" : "text-muted-foreground"}`}>
-            {describeWeather(weather.code).label}
-            {weather.high !== null && weather.low !== null
-              ? ` · ${temperature(weather.high)} / ${temperature(weather.low)}`
-              : ""}
-          </span>
-        </span>
-      ) : (
+    <ModuleCard
+      title="Weather there"
+      big={weather ? temperature(weather.temp) : undefined}
+      sub={
+        weather
+          ? `${place} · ${describeWeather(weather.code).label}${
+              weather.high !== null && weather.low !== null
+                ? ` · ${temperature(weather.high)} / ${temperature(weather.low)}`
+                : ""
+            }`
+          : place
+      }
+      {...(guide ? { guide } : {})}
+    >
+      {weather ? null : (
         <span className="block text-[13px] text-muted-foreground">{waitingLine(now)}</span>
       )}
     </ModuleCard>

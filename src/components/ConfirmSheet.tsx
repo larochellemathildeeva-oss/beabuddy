@@ -33,25 +33,31 @@ export function ConfirmSheet({
   onConfirm: () => void;
 }) {
   return (
-    <Sheet open={open} onClose={onClose} title={title} width="sm" showClose={false} above>
-      <div className="text-center">
-        <p className="text-[14.5px] text-muted-foreground">{body}</p>
-        <div className="mt-4 flex gap-2">
-          <button
-            type="button"
-            onClick={onClose}
-            className="min-h-11 flex-1 rounded-xl border border-border px-3 py-2 text-[14.5px] font-semibold"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={onConfirm}
-            className="min-h-11 flex-1 rounded-xl bg-destructive px-3 py-2 text-[14.5px] font-semibold text-destructive-foreground"
-          >
-            {confirmLabel}
-          </button>
-        </div>
+    <Sheet
+      open={open}
+      onClose={onClose}
+      page
+      above
+      title={title}
+      hint="Before you go on"
+      crumb="Cancel"
+    >
+      <div>
+        <p className="menu-row-note pb-5 text-[18px] leading-snug">{body}</p>
+        <button
+          type="button"
+          onClick={onConfirm}
+          className="menu-done mono-caps bg-destructive text-destructive-foreground"
+        >
+          {confirmLabel}
+        </button>
+        <button
+          type="button"
+          onClick={onClose}
+          className="menu-done mono-caps mt-3 border border-foreground bg-transparent"
+        >
+          Cancel
+        </button>
       </div>
     </Sheet>
   );

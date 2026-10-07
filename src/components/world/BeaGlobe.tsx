@@ -164,6 +164,10 @@ export function BeaGlobe({
   const [earthFailed, setEarthFailed] = useState(false);
   const readyRef = useRef(false);
   readyRef.current = earthReady;
+  // Calm and Dark draw the original line globe: ink on white, white on black.
+  const lineLook = mood !== "colorful";
+  const lineInk = mood === "dark" ? "#ffffff" : "#111111";
+  const linePaper = mood === "dark" ? "#000000" : "#ffffff";
 
   const spin = useRef<Spin>({ rotation: initialRotation, vLam: 0, vPhi: 0 });
   const zoomRef = useRef(1);
@@ -433,6 +437,13 @@ export function BeaGlobe({
     let live = true;
     const canvas = canvasRef.current;
     if (!canvas) return;
+    if (lineLook) {
+      setEarthFailed(true);
+      return () => {
+        live = false;
+      };
+    }
+    setEarthFailed(false);
     // A setup that stalls (slow textures, a hung import) must not leave the globe blank.
     const stalled = window.setTimeout(() => live && setEarthFailed(true), EARTH_LOAD_PATIENCE_MS);
     void (async () => {
@@ -469,7 +480,7 @@ export function BeaGlobe({
     };
     // Textures are fixed for a mount; the mood is swapped in place below.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [lineLook]);
 
   useEffect(() => {
     const e = engine.current;
@@ -726,26 +737,31 @@ export function BeaGlobe({
           </defs>
           <path
             ref={sphereRef}
-            fill={earthReady ? "none" : "url(#bea-globe-sea)"}
+            fill={earthReady ? "none" : lineLook ? linePaper : "url(#bea-globe-sea)"}
             style={{
               stroke: earthReady
                 ? "none"
-                : "color-mix(in oklab, var(--visited, #4A7BF0) 25%, var(--border, #ddd))",
+                : lineLook
+                  ? lineInk
+                  : "color-mix(in oklab, var(--visited, #4A7BF0) 25%, var(--border, #ddd))",
             }}
           />
           {!earthReady && (
             <path
               ref={landRef}
               style={{
-                fill: "color-mix(in oklab, var(--foreground, #111) 16%, var(--card, #fff))",
+                fill: lineLook
+                  ? linePaper
+                  : "color-mix(in oklab, var(--foreground, #111) 16%, var(--card, #fff))",
+                ...(lineLook ? { stroke: lineInk, strokeWidth: 0.7 } : {}),
               }}
             />
           )}
           <path
             ref={bordersRef}
             fill="none"
-            stroke={earthReady ? "#FFFFFF" : "var(--card, #fff)"}
-            strokeOpacity={earthReady ? (mood === "dark" ? 0.22 : 0.3) : 1}
+            stroke={earthReady ? "#FFFFFF" : lineLook ? lineInk : "var(--card, #fff)"}
+            strokeOpacity={earthReady ? (mood === "dark" ? 0.22 : 0.3) : lineLook ? 0.55 : 1}
             strokeWidth={0.6}
             strokeLinejoin="round"
           />
@@ -754,15 +770,20 @@ export function BeaGlobe({
             style={{
               fill: earthReady
                 ? "color-mix(in oklab, var(--visited, #4A7BF0) 30%, transparent)"
-                : "color-mix(in oklab, var(--visited, #4A7BF0) 72%, var(--card, #fff))",
-              stroke: "color-mix(in oklab, var(--visited, #4A7BF0) 60%, #fff)",
+                : lineLook
+                  ? `color-mix(in oklab, ${lineInk} 22%, ${linePaper})`
+                  : "color-mix(in oklab, var(--visited, #4A7BF0) 72%, var(--card, #fff))",
+              stroke: lineLook ? lineInk : "color-mix(in oklab, var(--visited, #4A7BF0) 60%, #fff)",
             }}
             strokeWidth={0.8}
             strokeOpacity={0.7}
           />
           <path
             ref={regionsRef}
-            style={{ fill: "var(--visited, #4A7BF0)", stroke: "var(--card, #fff)" }}
+            style={{
+              fill: lineLook ? lineInk : "var(--visited, #4A7BF0)",
+              stroke: lineLook ? linePaper : "var(--card, #fff)",
+            }}
             strokeWidth={0.5}
             opacity={earthReady ? 0.5 : 0.9}
           />

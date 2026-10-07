@@ -20,8 +20,14 @@ import {
  * it as help. The overview comes first because a walk can only point at what
  * is on screen, and an empty page has little to point at.
  */
-/** `round`: Home's larger white button, beside its search. */
-export function PageGuide({ round = false }: { round?: boolean } = {}) {
+/** Fired by the header Menu to open this page's guide. */
+export const OPEN_GUIDE_EVENT = "bea:open-guide";
+
+/** `round`: Home's header word "Help", set beside "Search" in the same quiet type. */
+export function PageGuide({
+  round = false,
+  hideToggle = false,
+}: { round?: boolean; hideToggle?: boolean } = {}) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [open, setOpen] = useState(false);
   /** -1 is the overview; 0 and up are the spotlight steps. */
@@ -80,6 +86,16 @@ export function PageGuide({ round = false }: { round?: boolean } = {}) {
     setI(-1);
   }, [pathname]);
 
+  // The header's Menu opens help by this event, so the one guide stays mounted.
+  useEffect(() => {
+    const show = () => {
+      setI(-1);
+      setOpen(true);
+    };
+    window.addEventListener(OPEN_GUIDE_EVENT, show);
+    return () => window.removeEventListener(OPEN_GUIDE_EVENT, show);
+  }, []);
+
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -93,6 +109,7 @@ export function PageGuide({ round = false }: { round?: boolean } = {}) {
 
   const toggle = (
     <button
+      hidden={hideToggle && !open}
       onClick={() => {
         if (open) {
           setOpen(false);
@@ -103,7 +120,7 @@ export function PageGuide({ round = false }: { round?: boolean } = {}) {
       }}
       className={
         round
-          ? `grid size-11 place-items-center rounded-full bg-card text-foreground shadow-[0_3px_12px_rgb(0_0_0/0.07)] transition-colors ${open ? "ring-2 ring-primary" : ""}`
+          ? `mono-caps grid min-h-11 min-w-11 place-items-center px-1 text-[13px] text-muted-foreground transition-colors ${open ? "text-foreground underline underline-offset-4" : ""}`
           : `grid size-7 place-items-center rounded-full border bg-card transition-colors ${
               open
                 ? "border-primary text-primary"
@@ -114,7 +131,7 @@ export function PageGuide({ round = false }: { round?: boolean } = {}) {
       aria-expanded={open}
       title={open ? "Close help" : "Help for this page"}
     >
-      <HelpCircle className={round ? "size-[19px]" : "size-4"} />
+      {round ? "Help" : <HelpCircle className="size-4" />}
     </button>
   );
 

@@ -25,10 +25,11 @@ const executablePath = process.env.CHROMIUM_PATH || (existsSync("/opt/pw-browser
 const browser = await chromium.launch(executablePath ? { executablePath, args: ["--no-sandbox"] } : { channel: "chrome" });
 for (const theme of ["calm", "colorful", "dark"]) {
   const page = await browser.newPage({ viewport: { width: 390, height: Number(process.env.SHOTS_H ?? 1900) }, deviceScaleFactor: 2 });
-  await page.addInitScript((t) => {
+  await page.addInitScript(([t, extra]) => {
     localStorage.setItem("bea-theme", t);
     localStorage.setItem("bea-accent", "pink");
-  }, theme);
+    for (const [k, v] of Object.entries(extra)) localStorage.setItem(k, v);
+  }, [theme, JSON.parse(process.env.SHOTS_LS ?? "{}")]);
   await page.route("**/*", (route) => {
     const url = new URL(route.request().url());
     if (url.pathname.startsWith("/api/tile/")) return route.fulfill({ body: tile, contentType: "image/png" });

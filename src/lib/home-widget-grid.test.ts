@@ -42,7 +42,7 @@ describe("Home widget layouts", () => {
     assert.deepEqual(layout.order.slice(0, 2), ["saved", "trip"]);
     assert.equal(layout.sizes?.saved, "large");
     assert.equal(layout.sizes?.trip, "large");
-    assert.equal(layout.sizes?.weather, "small");
+    assert.equal(layout.sizes?.weather, "wide");
     assert.equal(layout.order.includes("missing" as HomeSectionKey), false);
   });
   it("round-trips order, switches and sizes through the existing synced homeLayout", () => {
@@ -101,6 +101,6 @@ describe("Home widget layouts", () => {
   it("falls back safely for malformed storage and resets to default sizes", () => {
     assert.deepEqual(load("bad JSON"), load(null));
     assert.deepEqual(load("null"), load(null));
-    assert.equal(load(null).sizes?.weather, "small");
+    assert.equal(load(null).sizes?.weather, "wide");
   });
 });

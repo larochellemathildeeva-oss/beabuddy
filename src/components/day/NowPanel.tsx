@@ -453,6 +453,34 @@ export function NowPanel({
               >
                 Not here yet
               </button>
+              {onRework && thisDay ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      onRework(
+                        thisDay,
+                        `Running late at ${current.title}. Re-plan the rest of the day so it still works.`,
+                      )
+                    }
+                    className={linkBtn}
+                  >
+                    Running late? Béa can replan
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      onRework(
+                        thisDay,
+                        `About ${current.title}: suggest a quieter or nearby alternative.`,
+                      )
+                    }
+                    className={linkBtn}
+                  >
+                    Ask Béa about this stop
+                  </button>
+                </>
+              ) : null}
             </div>
             <BookingAtHandCard stop={current} docs={bookingDocs} />
           </section>

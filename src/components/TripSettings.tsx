@@ -192,11 +192,9 @@ export function TripDeleteButton({
   const [confirming, setConfirming] = useState(false);
   return (
     <>
-      <button
-        onClick={() => setConfirming(true)}
-        className="w-full px-3 py-3 text-left text-[16px] font-semibold text-destructive"
-      >
-        Delete trip
+      <button onClick={() => setConfirming(true)} className="menu-row w-full text-destructive">
+        <span className="menu-row-title">Delete trip</span>
+        <span className="menu-row-note">Review before removing this journey</span>
       </button>
       <ConfirmSheet
         open={confirming}

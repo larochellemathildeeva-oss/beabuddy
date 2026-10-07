@@ -94,42 +94,39 @@ export function TripPrep({
       >
         <MoreHorizontal className="size-5" aria-hidden />
       </button>
-      {menuOpen && (
-        <>
-          <button
-            type="button"
-            aria-label="Close menu"
-            tabIndex={-1}
-            onClick={() => setMenuOpen(false)}
-            className="fixed inset-0 z-20 cursor-default"
-          />
-          <div
-            role="menu"
-            className="absolute right-0 top-11 z-30 w-56 overflow-hidden rounded-2xl border border-border bg-card py-1 text-[14px] shadow-lg"
-          >
-            {menu.map((item, i) => {
-              const Icon = item.icon;
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  role="menuitem"
-                  onClick={() => {
-                    setMenuOpen(false);
-                    item.onSelect();
-                  }}
-                  className={`flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left ${
-                    item.danger ? "text-destructive" : ""
-                  } ${i > 0 ? "border-t border-border" : ""}`}
-                >
-                  {Icon && <Icon className="size-4 shrink-0" aria-hidden />}
-                  {item.label}
-                </button>
-              );
-            })}
-          </div>
-        </>
-      )}
+      <Sheet
+        open={menuOpen}
+        onClose={() => setMenuOpen(false)}
+        page
+        above
+        title="Before you go"
+        hint={`${tab === "todo" ? "To do" : "Packing"} / More`}
+        crumb="Trip menu"
+      >
+        <div role="menu">
+          {menu.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setMenuOpen(false);
+                item.onSelect();
+              }}
+              className={`menu-row menu-row-title ${item.danger ? "text-destructive" : ""}`}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+        <button
+          type="button"
+          onClick={() => setMenuOpen(false)}
+          className="menu-done bg-primary mono-caps"
+        >
+          Done
+        </button>
+      </Sheet>
     </div>
   );
 

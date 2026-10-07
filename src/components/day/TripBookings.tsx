@@ -1,10 +1,9 @@
 import { useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { Check, ChevronRight, FileText, Plus } from "@/components/icons";
+import { Check, FileText, Plus } from "@/components/icons";
 import { BookingSheet, type BookingPatch } from "@/components/day/BookingSheet";
-import { DocumentIcon, KindTile } from "@/components/documents/DocumentParts";
 import type { ItineraryRow } from "@/hooks/useTrips";
-import { eventKind, eventWhenLabel, type TripDocument } from "@/lib/trip-documents";
+import { eventWhenLabel, type TripDocument } from "@/lib/trip-documents";
 import { bookingKind, tripBookings, type BookingKind } from "@/lib/trip-overview";
 
 export type BookingFilter = BookingKind | "all";
@@ -16,6 +15,15 @@ const FILTERS: { key: BookingFilter; label: string }[] = [
   { key: "transport", label: "Transport" },
   { key: "activity", label: "Activities" },
 ];
+
+/** The page's title for each kind: "Flights.", "Stays." … */
+export const BOOKING_TITLES: Record<BookingFilter, string> = {
+  all: "Bookings",
+  flight: "Flights",
+  stay: "Stays",
+  transport: "Transport",
+  activity: "Activities",
+};
 
 const EMPTY: Record<BookingFilter, string> = {
   all: "No bookings on this trip yet.",
@@ -72,33 +80,24 @@ export function TripBookings({
       key={stop.id}
       type="button"
       onClick={() => setEditing(stop)}
-      className="flex w-full items-center gap-3 px-3 py-3 text-left"
+      className="menu-row flex items-center gap-3"
     >
-      <KindTile kind={eventKind(stop.kind)} />
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-[17px] font-semibold leading-snug">{stop.title}</span>
+        <span className="menu-row-title block truncate">{stop.title}</span>
         {booked && stop.booking_ref ? (
-          <span className="block truncate text-[14px] text-muted-foreground">
-            {stop.booking_ref}
-          </span>
+          <span className="menu-row-note block truncate">{stop.booking_ref}</span>
         ) : null}
-        <span className="block truncate text-[14px] text-muted-foreground">
+        <span className="menu-row-note block truncate">
           {eventWhenLabel(stop.day_date, stop.time_label) || (booked ? "Booked" : "No date yet")}
         </span>
       </span>
       {booked ? (
-        <span
-          aria-hidden
-          className="grid size-6 shrink-0 place-items-center rounded-full bg-nexttime text-white"
-        >
+        <span aria-hidden className="bk-check">
           <Check className="size-3.5" strokeWidth={3} />
         </span>
       ) : (
-        <span className="shrink-0 rounded-full bg-elevated px-3 py-1.5 text-[14px] font-semibold">
-          Mark booked
-        </span>
+        <span className="mono-caps bk-mark">Mark booked</span>
       )}
-      <ChevronRight className="size-5 shrink-0 text-muted-foreground" aria-hidden />
     </button>
   );
 
@@ -107,56 +106,45 @@ export function TripBookings({
       key={doc.id}
       type="button"
       onClick={() => void navigate({ to: "/profile/documents", search: { doc: doc.id } })}
-      className="flex w-full items-center gap-3 px-3 py-3 text-left"
+      className="menu-row flex items-center gap-3"
     >
-      <DocumentIcon doc={doc} />
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-[17px] font-semibold leading-snug">{doc.title}</span>
+        <span className="menu-row-title block truncate">{doc.title}</span>
         {doc.lines.map((line) => (
-          <span key={line} className="block truncate text-[14px] text-muted-foreground">
+          <span key={line} className="menu-row-note block truncate">
             {line}
           </span>
         ))}
         {event ? (
-          <span className="block truncate text-[14px] text-muted-foreground">
+          <span className="menu-row-note block truncate">
             {eventWhenLabel(event.day_date, event.time_label) || event.title}
           </span>
         ) : null}
       </span>
-      <ChevronRight className="size-5 shrink-0 text-muted-foreground" aria-hidden />
     </button>
   );
 
   return (
-    <div className="space-y-4">
-      <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1 [scrollbar-width:none]">
+    <div className="bk">
+      <div className="bk-tabs" role="group" aria-label="Kind of booking">
         {FILTERS.map((f) => (
           <button
             key={f.key}
             type="button"
             aria-pressed={filter === f.key}
             onClick={() => onFilter(f.key)}
-            className={`inline-flex min-h-11 shrink-0 items-center rounded-full border px-3.5 text-[16px] font-semibold ${
-              filter === f.key
-                ? "border-primary bg-primary text-primary-foreground"
-                : "border-border bg-card text-muted-foreground"
-            }`}
+            className="mono-caps"
           >
             {f.label}
           </button>
         ))}
       </div>
 
-      <div className="flex items-baseline justify-between px-0.5">
-        <h3 className="font-display text-[22px] leading-none">Booked</h3>
-        <span className="text-[14px] text-muted-foreground">{shown.length}</span>
-      </div>
+      <h3 className="mono-caps menu-group-label">Booked</h3>
       {shown.length === 0 ? (
-        <p className="plain-card p-4 text-[16px] leading-snug text-muted-foreground">
-          {EMPTY[filter]}
-        </p>
+        <p className="menu-row-note py-4">{EMPTY[filter]}</p>
       ) : (
-        <div className="plain-card divide-y divide-border overflow-hidden">
+        <div>
           {shown.map((b) => {
             if (b.source === "stop") {
               const stop = byId.get(b.id);
@@ -170,24 +158,16 @@ export function TripBookings({
 
       {planned.length > 0 && (
         <section>
-          <div className="mb-2 flex items-baseline justify-between px-0.5">
-            <h3 className="font-display text-[22px] leading-none">Not booked yet</h3>
-            <span className="text-[14px] text-muted-foreground">From your days</span>
-          </div>
-          <div className="plain-card divide-y divide-border overflow-hidden">
-            {planned.map((stop) => stopRow(stop, false))}
-          </div>
+          <h3 className="mono-caps menu-group-label">Not booked yet</h3>
+          <div>{planned.map((stop) => stopRow(stop, false))}</div>
         </section>
       )}
 
-      <Link
-        to="/profile/documents"
-        className="btn-primary flex w-full items-center justify-center gap-2"
-      >
-        <Plus className="size-5" aria-hidden />
+      <Link to="/profile/documents" className="menu-done bg-primary mono-caps gap-2">
+        <Plus className="size-4" aria-hidden />
         Add a booking document
       </Link>
-      <p className="flex items-center gap-1.5 px-1 text-[14px] leading-snug text-muted-foreground">
+      <p className="menu-row-note flex items-center gap-1.5 pt-3 text-[14px] leading-snug">
         <FileText className="size-3.5 shrink-0" aria-hidden />
         Confirmations you add in Trip documents and assign to this trip show up here.
       </p>

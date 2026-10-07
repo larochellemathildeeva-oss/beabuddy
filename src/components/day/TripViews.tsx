@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Columns2, LocateFixed, MapIcon, ListOrdered } from "@/components/icons";
-import { TRIP_PERSPECTIVES, type TripPerspective } from "@/lib/trip-perspective";
+import { TRIP_PERSPECTIVES, TRIP_TABS, tabOf, type TripPerspective } from "@/lib/trip-perspective";
 import { BAR_POSITIONS, type TripBarPosition } from "@/hooks/useTripBarPosition";
 import { TRIP_PICTURES, type TripPicture } from "@/lib/trip-picture";
 
@@ -66,17 +66,18 @@ export function TripViews({
           : undefined
       }
     >
-      {TRIP_PERSPECTIVES.map((p) => {
+      {TRIP_PERSPECTIVES.filter((p) => TRIP_TABS.includes(p.id)).map((p) => {
         const Icon = icons[p.id];
         return (
           <button
             key={p.id}
             type="button"
             role="tab"
-            aria-selected={p.id === value}
+            aria-selected={p.id === tabOf(value)}
             aria-label={p.label}
             title={p.label}
-            onClick={() => onChange(p.id)}
+            // Map keeps the live Companion side when that is where you were.
+            onClick={() => onChange(p.id === "map" && value === "companion" ? "companion" : p.id)}
           >
             <Icon className="size-5 shrink-0" aria-hidden />
             {position !== "side" && <span>{p.label}</span>}
@@ -160,5 +161,32 @@ export function TripPictureOptions({
         ))}
       </div>
     </fieldset>
+  );
+}
+
+/**
+ * Map | Companion, under the Map tab: the plain day map, or the live view of
+ * where you are, what is next and when to leave.
+ */
+export function MapModeSwitch({
+  value,
+  onChange,
+}: {
+  value: TripPerspective;
+  onChange: (value: TripPerspective) => void;
+}) {
+  return (
+    <div role="group" aria-label="Map or Companion" className="map-mode mb-3">
+      {(
+        [
+          ["map", "Map"],
+          ["companion", "Companion"],
+        ] as const
+      ).map(([id, label]) => (
+        <button key={id} type="button" aria-pressed={value === id} onClick={() => onChange(id)}>
+          {label}
+        </button>
+      ))}
+    </div>
   );
 }

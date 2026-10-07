@@ -14,6 +14,12 @@ import { BrandMark } from "@/components/PageHeader";
 /** How far the sheet must be pulled down before letting go closes it. */
 const PULL_CLOSE_PX = 90;
 
+/** A page title's size in px: the Figma's 64, smaller when one word would not fit the line. */
+function titleSize(heading: string): number {
+  const longest = Math.max(...heading.split(/\s+/).map((word) => word.length));
+  return longest >= 12 ? 40 : longest >= 10 ? 48 : longest >= 8 ? 56 : 64;
+}
+
 const FOCUSABLE =
   'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
@@ -46,6 +52,7 @@ export function Sheet({
   tall = false,
   dismissible = true,
   page = false,
+  crumb,
   backLabel,
   tone = 5,
   children,
@@ -86,6 +93,8 @@ export function Sheet({
    * focus rules as the panel.
    */
   page?: boolean;
+  /** The mono breadcrumb beside a page's arrow ("Japan / Trip menu"). */
+  crumb?: string;
   /** What a page's back arrow is called, when it goes back rather than closes. */
   backLabel?: string;
   /** The pastel (1–5) behind a page's header in Colorful; the others stay plain. */
@@ -184,18 +193,6 @@ export function Sheet({
       >
         <header className="sub-page-head shrink-0 px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
           <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={onBack ?? onClose}
-              // Where the arrow is the only way out, a busy page keeps it from closing.
-              disabled={!showClose && !onBack}
-              aria-label={backLabel ?? (onBack ? "Back" : `Close ${title.toLowerCase()}`)}
-              className="tap-target grid shrink-0 place-items-center rounded-full"
-            >
-              <span className="grid size-10 place-items-center rounded-full border border-border bg-card shadow-xs">
-                <ArrowLeft className="size-5" aria-hidden />
-              </span>
-            </button>
             <BrandMark />
             <div className="ms-auto flex shrink-0 items-center gap-1.5">
               {actions}
@@ -213,8 +210,22 @@ export function Sheet({
               )}
             </div>
           </div>
-          {hint ? <p className="label-caps mt-3 max-w-[34ch]">{hint}</p> : null}
-          <h1 className="mt-1 break-words font-display text-[38px] leading-[1.05] tracking-[-0.02em]">
+          <button
+            type="button"
+            onClick={onBack ?? onClose}
+            // Where the arrow is the only way out, a busy page keeps it from closing.
+            disabled={!showClose && !onBack}
+            aria-label={backLabel ?? (onBack ? "Back" : `Close ${title.toLowerCase()}`)}
+            className="sub-page-crumb mono-caps mt-3 flex min-h-11 items-center gap-3 text-left"
+          >
+            <ArrowLeft className="size-4 shrink-0" aria-hidden />
+            <span className="truncate">{crumb ?? (onBack ? "Back" : "Close")}</span>
+          </button>
+          {hint ? <p className="label-caps mt-2 max-w-[34ch]">{hint}</p> : null}
+          <h1
+            style={{ fontSize: `calc(${titleSize(heading)}px * var(--text-scale, 1))` }}
+            className="sub-page-title mt-1 break-words font-display text-[38px] leading-[1.05] tracking-[-0.02em]"
+          >
             {heading}
           </h1>
         </header>
@@ -241,7 +252,7 @@ export function Sheet({
         tabIndex={-1}
         onClick={(e) => e.stopPropagation()}
         style={pull ? { transform: `translateY(${pull}px)`, transition: "none" } : undefined}
-        className={`rise card-raised transition-transform flex ${tall ? "max-h-[94dvh]" : "max-h-[88dvh]"} w-full flex-col overflow-hidden outline-none rounded-t-2xl sm:rounded-2xl ${
+        className={`sheet-panel rise card-raised transition-transform flex ${tall ? "max-h-[94dvh]" : "max-h-[88dvh]"} w-full flex-col overflow-hidden outline-none rounded-t-2xl sm:rounded-2xl ${
           width === "sm" ? "max-w-sm" : width === "lg" ? "max-w-xl" : "max-w-md"
         }`}
       >
@@ -271,7 +282,9 @@ export function Sheet({
             )}
             {icon && <div className="shrink-0">{icon}</div>}
             <div className="min-w-0 flex-1">
-              <p className="font-display text-[19px] leading-tight text-foreground">{title}</p>
+              <p className="sheet-title font-display text-[19px] leading-tight text-foreground">
+                {title}
+              </p>
               {hint ? <p className="mt-0.5 text-[12.5px] text-muted-foreground">{hint}</p> : null}
             </div>
             {actions ? <div className="flex shrink-0 items-center gap-1.5">{actions}</div> : null}
