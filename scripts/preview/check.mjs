@@ -907,6 +907,24 @@ await flow("shell: the main bar shows an icon and a label per tab, 48px tall, on
   if (clipped.length) throw new Error(`labels wider than their tab at 320px and 1.45x: ${clipped.join(", ")}`);
 }, "shell");
 
+await flow("shell: buttons are 8px, flat and sentence case; round icon buttons stay round", async (page) => {
+  const read = (k) => page.locator(`[data-k="${k}"]`).evaluate((el) => {
+    const css = getComputedStyle(el);
+    return { radius: css.borderTopLeftRadius, shadow: css.boxShadow, image: css.backgroundImage, upper: css.textTransform, tracking: css.letterSpacing, height: el.getBoundingClientRect().height };
+  });
+  for (const k of ["default", "secondary", "destructive", "raw", "pill"]) {
+    const b = await read(k);
+    if (b.radius !== "8px") throw new Error(`${k} radius is ${b.radius}`);
+    if (b.shadow !== "none") throw new Error(`${k} has a shadow: ${b.shadow}`);
+    if (b.image !== "none") throw new Error(`${k} has a background image`);
+    if (b.upper !== "none") throw new Error(`${k} is ${b.upper}`);
+    if (b.tracking !== "normal" && b.tracking !== "0px") throw new Error(`${k} tracking is ${b.tracking}`);
+  }
+  for (const k of ["default", "secondary", "destructive"]) if ((await read(k)).height < 48) throw new Error(`${k} is under 48px`);
+  const round = await read("round");
+  if (parseFloat(round.radius) < 16) throw new Error(`the round icon button lost its shape: ${round.radius}`);
+}, "buttons");
+
 await flow("shell: compressed long titles stay on one line in both header layouts", async (page) => {
   const title = "Places worth remembering on a long journey through several cities.";
   for (const beside of [false, true]) {

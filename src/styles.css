@@ -329,25 +329,6 @@
     text-rendering: optimizeLegibility;
   }
 
-  /**
-   * Every primary action gets a soft top-light and a colour-matched glow.
-   * Applied here rather than in forty components: `background-image` layers
-   * over the `bg-primary` colour utility instead of fighting it.
-   */
-  button.bg-primary,
-  a.bg-primary,
-  [role="button"].bg-primary {
-    background-image: linear-gradient(
-      145deg,
-      color-mix(in oklch, white 14%, transparent),
-      transparent 58%
-    );
-    box-shadow: var(--shadow-primary);
-  }
-
-  button.bg-primary:disabled {
-    box-shadow: none;
-  }
 
   /* Tappables feel like tappables. */
   button,
@@ -3612,9 +3593,15 @@ html:not(.dark)
 [data-theme="colorful"]:not(.dark)[data-contrast="more"] {
   --border: color-mix(in oklch, var(--foreground) 42%, var(--background));
 }
-/* A pill with words in it is a flat label; a round icon button or a dot stays round. */
+/* A pill with words in it takes the button corner; a round icon button or a dot stays round. */
 :is(button, a, span, [role="tab"]).rounded-full[class*="px-"] {
-  border-radius: 0;
+  border-radius: var(--r-button);
+}
+/* Every filled primary action that is not a round icon button: the 8px corner. */
+button.bg-primary:not(.rounded-full),
+a.bg-primary:not(.rounded-full),
+[role="button"].bg-primary:not(.rounded-full) {
+  border-radius: var(--r-button);
 }
 /* Primary actions are ink on white and white on black; Colorful keeps its accent. */
 button.bg-primary,
@@ -3795,14 +3782,13 @@ h2:not([class*="font-"]) {
   display: none;
 }
 
-/* Words set like the design's labels: DM Mono, small caps, loose. */
+/* Filled actions are plain words in the sans, sentence case. */
 button.bg-primary,
 a.bg-primary {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 400;
-  letter-spacing: 1px;
-  text-transform: uppercase;
+  font-family: var(--font-sans);
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
 }
 :root[data-bold="on"] :is(.label-caps, .mono-caps, button.bg-primary, a.bg-primary, .trips-tabs button, .trip-views button) {
   font-weight: 500;

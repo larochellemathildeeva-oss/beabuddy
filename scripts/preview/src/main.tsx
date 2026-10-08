@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/AppShell";
+import { Button } from "@/components/ui/button";
 import { ThemePicker } from "@/components/ThemePicker";
 import { createRoot } from "react-dom/client";
 import { Toaster } from "sonner";
@@ -127,6 +128,18 @@ if (sample === "docs-open") {
   // The Trips tab itself, in the app's frame.
   const TripsPage = (TripsRoute as unknown as { options: { component: () => JSX.Element } }).options.component;
   createRoot(document.getElementById("root")!).render(<TripsPage />);
+} else if (sample === "buttons") {
+  // Every kind of button the shell styles, side by side.
+  createRoot(document.getElementById("root")!).render(
+    <div className="space-y-3 p-4">
+      <Button data-k="default">Save</Button>
+      <Button data-k="secondary" variant="secondary">Not now</Button>
+      <Button data-k="destructive" variant="destructive">Delete</Button>
+      <button data-k="raw" type="button" className="rounded-xl bg-primary px-4 py-3 text-[15px] font-semibold text-primary-foreground">Raw primary</button>
+      <button data-k="pill" type="button" className="rounded-full bg-primary px-4 py-3 text-[15px] font-semibold text-primary-foreground">Word pill</button>
+      <button data-k="round" aria-label="Round" type="button" className="size-10 rounded-full bg-primary text-primary-foreground">+</button>
+    </div>,
+  );
 } else if (sample === "shell") {
   const shellParams = new URLSearchParams(location.search);
   startAccountSettingsSync();
