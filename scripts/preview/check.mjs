@@ -750,21 +750,39 @@ await flow("world: four views, filters, search, add sheet, bucket menu, stats op
   if ((await page.getByRole("button", { name: /^Bucket list/ }).count()) !== 1) throw new Error("the Bucket list tile is gone");
 }, "world");
 
-await flow("recs: header, pills, list chips, saved-for-trip cards, More ways and Add to a day", async (page) => {
+await flow("recs: header, pills, list chips, saved-for-trip cards, More ways and Add to trip", async (page) => {
   const text = async () => page.locator("body").innerText();
   for (const word of ["Places worth keeping.", "Add place", "Nearby map", "More ways", "Recently saved", "Explore nearby"])
     if (!(await text()).includes(word)) throw new Error(`Recs lost "${word}"`);
-  await page.getByRole("button", { name: /^Wishlist/ }).click();
-  if (await page.getByRole("button", { name: /^Wishlist/ }).getAttribute("aria-pressed") !== "true") throw new Error("the Wishlist chip did not apply");
+  await page.getByRole("button", { name: /^Bucket list/ }).click();
+  if (await page.getByRole("button", { name: /^Bucket list/ }).getAttribute("aria-pressed") !== "true") throw new Error("the Bucket list chip did not apply");
   await page.getByRole("button", { name: /^All/ }).click();
   if (!(await text()).includes("Saved for ")) throw new Error("no Saved for the next trip's city");
-  await page.getByRole("button", { name: "Add to a day" }).first().click();
+  await page.getByRole("button", { name: "Add to trip" }).first().click();
   await page.waitForTimeout(300);
-  if ((await page.getByRole("dialog").count()) === 0) throw new Error("Add to a day opened nothing");
+  if ((await page.getByRole("dialog").count()) === 0) throw new Error("Add to trip opened nothing");
   await page.keyboard.press("Escape");
   await page.getByRole("button", { name: /More ways/ }).click();
   for (const word of ["From my trips", "I'm here now", "By hand", "Paste a list", "Send places", "Open a share", "Pin somewhere nearby"])
     if (!(await text()).includes(word)) throw new Error(`More ways lost "${word}"`);
+}, "recs");
+
+await flow("recs: chips read All, Recs, Bucket list, Been there; no city or old list name shows", async (page) => {
+  const chips = await page.getByRole("group", { name: "Lists" }).getByRole("button").evaluateAll((els) => els.map((e) => e.childNodes[0]?.textContent?.trim()));
+  if (chips.join("|") !== "All|Recs|Bucket list|Been there") throw new Error(`chips are ${chips.join(", ")}`);
+  if ((await page.getByText(/Wishlist|Next time|Visited/).count()) !== 0) throw new Error("an old list name is still on the page");
+  if ((await page.getByText("Porto", { exact: true }).count()) !== 0) throw new Error("a saved city shows in Recs");
+  if ((await page.getByRole("button", { name: /Add to a day/ }).count()) !== 0) throw new Error("a card still says Add to a day");
+  if ((await page.getByRole("button", { name: /Add to trip/ }).count()) === 0) throw new Error("no card offers Add to trip");
+}, "recs");
+
+await flow("recs: the add-or-search box has a name; the list chips fit at 320px and the largest text", async (page) => {
+  if ((await page.getByRole("textbox", { name: "Search or add a place" }).count()) === 0) throw new Error("the add-or-search box has no name");
+  await page.setViewportSize({ width: 320, height: 800 });
+  await page.evaluate(() => document.documentElement.style.setProperty("--text-scale", "1.45"));
+  await page.waitForTimeout(400);
+  const row = await page.getByRole("group", { name: "Lists" }).evaluate((el) => ({ scroll: el.scrollWidth, width: el.clientWidth }));
+  if (row.scroll > row.width + 1) throw new Error(`the list chips run off the screen (${row.scroll} > ${row.width})`);
 }, "recs");
 
 await flow("save sheet: lists are Recommendation, Bucket list, Been there; Next time opens as Bucket list", async (page) => {

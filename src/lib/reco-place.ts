@@ -22,9 +22,9 @@ const GENERIC_CATEGORIES = new Set(["", "place", "places"]);
 
 export type RecoPlaceFields = {
   name: string;
-  city?: string | null;
-  country?: string | null;
-  category?: string | null;
+  city?: string | null | undefined;
+  country?: string | null | undefined;
+  category?: string | null | undefined;
 };
 
 export function placeChipLabel(city: string): string {

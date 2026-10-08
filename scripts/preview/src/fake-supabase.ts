@@ -228,6 +228,8 @@ const recsDb: Record<string, Row[]> = {
   profiles: [{ id: "me", display_name: "Mattie", home_city: "Montréal", app_settings: {} }],
   recommendations: [
     ...savedPlaces,
+    // A city saved to the Bucket list: it belongs on World, never in Recs.
+    { id: "tc-city", user_id: "me", name: "Porto", city: "Porto", country: "Portugal", address: null, category: "City", notes: null, recommended_by: null, source: null, url: null, lat: 41.15, lon: -8.61, visited: false, pin_type: "wishlist", created_at: ago(50) },
     ...[["Grand Central Market", "Food", "reco", "Go at golden hour."], ["Griffith Observatory", "Viewpoint", "wishlist", null], ["Venice Canals", "Park", "nexttime", null]].map(([name, category, pin_type, notes], i) => ({
       id: `tc-${i}`, user_id: "me", name, city: tripCity, country: "United States", address: null, category, notes, recommended_by: i === 1 ? "Sam" : null, source: null, url: null, lat: 34.05 + i * 0.01, lon: -118.24, visited: false, pin_type, created_at: ago(100 + i),
     })),

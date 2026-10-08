@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { friendlyError } from "@/lib/friendly-error";
 import { RowListSkeleton } from "@/components/Skeletons";
 import { confirm } from "@/lib/haptics";
@@ -46,7 +46,7 @@ import { beaCheer, useBeaSettings } from "@/hooks/useBeaSettings";
 import { useTrips } from "@/hooks/useTrips";
 import { pinColorClass, pinLabel, type Pin, type PinType } from "@/data/atlas";
 import { groupCountLabel, groupRecosByType } from "@/lib/reco-groups";
-import { listOf, SAVE_LISTS } from "@/lib/place-lists";
+import { isLocation, listOf, SAVE_LISTS } from "@/lib/place-lists";
 import { useRecommendations, type RecoRowDB } from "@/hooks/useRecommendations";
 import {
   PLACE_TRAVEL_TAGS,
@@ -208,6 +208,26 @@ function RecommendationsPage() {
   };
 
   const vault = useRecommendations();
+  const navigate = useNavigate();
+  // Recs holds businesses, landmarks and attractions; a city or country saved
+  // here goes to World's lists (place-lists.ts), on the Bucket list unless it
+  // was saved as been there, and says so with the way there.
+  const listForSave = (
+    place: Parameters<typeof isLocation>[0],
+    pin?: PinType | null,
+  ): PinType | undefined =>
+    isLocation(place) && (pin ?? "reco") === "reco" ? "wishlist" : (pin ?? undefined);
+  const announceOnWorld = (place: Parameters<typeof isLocation>[0], pin?: PinType | null) => {
+    if (!isLocation(place)) return false;
+    const been = pin === "visited";
+    toast.success(`Added to your ${been ? "Been there" : "Bucket list"} on World`, {
+      action: {
+        label: "Open World",
+        onClick: () => void navigate({ to: "/world", search: { tab: been ? "been" : "bucket" } }),
+      },
+    });
+    return true;
+  };
   const { user } = useAuth();
   // Profiles are readable only by their owner, so a recipient can never look
   // this up — it is captured onto the share row when the share is made.
@@ -479,12 +499,16 @@ function RecommendationsPage() {
     setError(null);
     try {
       const captured = capturedFromParsedPlace(found);
+      const row = toNewReco(captured, { category: prettyPlaceCategory(found) });
+      const pin = listForSave(row);
       const id = await vault.add({
-        ...toNewReco(captured, { category: prettyPlaceCategory(found) }),
+        ...row,
+        ...(pin ? { pin_type: pin } : {}),
         travel_tags: suggestTravelTags({ name: found.name, category: prettyPlaceCategory(found) }),
       });
       setDraft(null);
       confirm();
+      if (announceOnWorld(row, pin)) return;
       if (id) setJustSaved({ id, name: found.name });
       else {
         const line = beaLine("recs.saved");
@@ -504,11 +528,14 @@ function RecommendationsPage() {
     }
     setBusy("save");
     try {
-      const savedId = await vault.add(draft);
+      const pin = listForSave(draft, draft.pin_type);
+      const savedId = await vault.add({ ...draft, ...(pin ? { pin_type: pin } : {}) });
       confirm();
-      const line = beaLine("recs.saved");
-      toast.success(line.title, { description: beaCheer("recommendations") ?? line.body });
-      if (savedId) setJustSaved({ id: savedId, name: draft.name.trim() });
+      if (!announceOnWorld(draft, pin)) {
+        const line = beaLine("recs.saved");
+        toast.success(line.title, { description: beaCheer("recommendations") ?? line.body });
+        if (savedId) setJustSaved({ id: savedId, name: draft.name.trim() });
+      }
       setDraft(null);
       setDraftField2(null);
       setTagsTouched(false);
@@ -541,13 +568,14 @@ function RecommendationsPage() {
         ...(place.source ? { source: place.source } : {}),
         ...(place.lat != null ? { lat: place.lat } : {}),
         ...(place.lon != null ? { lon: place.lon } : {}),
-        ...(pin ? { pin_type: pin } : {}),
+        ...(listForSave(place, pin) ? { pin_type: listForSave(place, pin) } : {}),
         travel_tags: suggestTravelTags({
           name: place.name,
           ...(place.category ? { category: place.category } : {}),
         }),
       });
       confirm();
+      if (announceOnWorld(place, listForSave(place, pin))) return;
       if (id) {
         setJustSaved({ id, name: place.name });
         setScreen((s) =>
@@ -737,6 +765,7 @@ function RecommendationsPage() {
               ? `“${r.notes}”`
               : [
                   r.recommended_by ? `From ${r.recommended_by}` : null,
+                  r.city?.split(",")[0],
                   pinLabel[(r.pin_type ?? "reco") as PinType],
                 ]
                   .filter(Boolean)
@@ -758,7 +787,7 @@ function RecommendationsPage() {
           onClick={() => setTripSheet(placeFromRow(r))}
           className="recs-pill min-h-11 text-[14px] font-semibold"
         >
-          Add to a day
+          Add to trip
         </button>
       </div>
     </article>
@@ -1047,6 +1076,7 @@ function RecommendationsPage() {
                   at={searchAt}
                   onLocate={locateForSearch}
                   onPick={openFound}
+                  ariaLabel="Search or add a place"
                   placeholder={
                     views.length > 0 ? "Search places, cities, people…" : addPlaceholder(false)
                   }
@@ -1408,11 +1438,7 @@ function RecommendationsPage() {
             </section>
           ) : (
             <div data-guide="reco-list" className="space-y-6">
-              <div
-                className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none]"
-                role="group"
-                aria-label="Lists"
-              >
+              <div className="flex flex-wrap gap-2 pb-1" role="group" aria-label="Lists">
                 {(
                   [
                     ["all", "All", visibleRows.length],
