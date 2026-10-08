@@ -126,9 +126,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   const css = readFileSync(fileURLToPath(new URL("../src/styles.css", import.meta.url)), "utf8");
   const failures = checkContrast(css);
   for (const f of failures) {
-    console.error(
-      `${f.theme}/${f.accent}: ${f.pair} is ${f.ratio.toFixed(2)}:1, needs ${f.min}:1`,
-    );
+    console.error(`${f.theme}/${f.accent}: ${f.pair} is ${f.ratio.toFixed(2)}:1, needs ${f.min}:1`);
   }
   if (failures.length) process.exit(1);
   console.log("contrast: every theme and accent passes");
