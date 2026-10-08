@@ -549,31 +549,38 @@ function TripsPage() {
 
         {/* The other ways in, as the design lists them under the trips. The vault
             moved into Trip documents (its Protected section). */}
-        {t.signedIn && view !== "past" && view !== "following" ? (
+        {t.signedIn ? (
           <div className="space-y-3">
-            <button
-              type="button"
-              data-guide="join-trip"
-              aria-expanded={joining}
-              onClick={() => {
-                setError("");
-                setJoining(true);
-                setCreating(false);
-              }}
-              className={moreWay}
-            >
-              Join with a code
-            </button>
+            {view !== "past" && view !== "following" ? (
+              <button
+                type="button"
+                data-guide="join-trip"
+                aria-expanded={joining}
+                onClick={() => {
+                  setError("");
+                  setJoining(true);
+                  setCreating(false);
+                }}
+                className={moreWay}
+              >
+                Join with a code
+              </button>
+            ) : null}
+            {/* The calendar covers every trip, so it shows under every tab. */}
             <Link to="/calendar" className={moreWay}>
               Calendar
             </Link>
-            {/* Plan with Béa: build, import, optimize or compare, from one place. */}
-            <Link to="/trips/plan" data-guide="plan-with-bea" className={moreWay}>
-              Plan with Béa
-            </Link>
-            <Link to="/profile/documents" data-guide="document-vault" className={moreWay}>
-              Trip documents
-            </Link>
+            {view !== "past" && view !== "following" ? (
+              <>
+                {/* Plan with Béa: build, import, optimize or compare, from one place. */}
+                <Link to="/trips/plan" data-guide="plan-with-bea" className={moreWay}>
+                  Plan with Béa
+                </Link>
+                <Link to="/profile/documents" data-guide="document-vault" className={moreWay}>
+                  Trip documents
+                </Link>
+              </>
+            ) : null}
           </div>
         ) : null}
       </div>

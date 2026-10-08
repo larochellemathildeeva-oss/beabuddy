@@ -355,7 +355,7 @@ export const guides: Record<string, Guide> = {
       },
       {
         title: "Data & imports",
-        body: "Open the trip calendar, and see what is kept on this phone. Appearance, beside it, sets the theme and what Home shows.",
+        body: "Open the trip calendar, and see what is kept on this phone. Appearance, higher up the list, sets the theme and what Home shows.",
         selector: "[data-guide='offline-options']",
       },
       {

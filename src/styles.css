@@ -1931,18 +1931,6 @@
 .trips-row-tag[data-tone="draft"] {
   background: color-mix(in oklab, var(--warning) 22%, var(--card));
 }
-.trips-action {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 10px;
-  min-height: 72px;
-  padding: 14px;
-  border-radius: 22px;
-  box-shadow: var(--shadow-sm);
-  border: 1px solid color-mix(in oklch, var(--border) 55%, transparent);
-  color: var(--foreground);
-}
 
 /*
  * Béa — World (step 9) tokens. MERGE, don't overwrite: append to the end of
@@ -3627,15 +3615,6 @@ h2:not([class*="font-"]) {
   border-bottom-color: var(--acc);
 }
 /* The two ways to start a trip: flat, bordered, words only. */
-.trips-action {
-  background: transparent;
-  border: 1px solid var(--border);
-  border-radius: 0;
-  box-shadow: none;
-}
-.trips-action svg {
-  display: none;
-}
 
 /* Map | Companion: two words, the chosen one underlined, like the tabs above. */
 .map-mode {
@@ -3794,23 +3773,6 @@ a.bg-primary {
 .trips-row > div:nth-child(2) > p.text-muted-foreground {
   font-family: var(--font-sans);
   font-size: 14px;
-}
-.trips-action {
-  min-height: 52px;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  font-family: var(--font-mono);
-  text-transform: none;
-  letter-spacing: 0;
-}
-.trips-action span.block {
-  font-family: var(--font-mono) !important;
-  font-size: 12px !important;
-  line-height: 16px;
-}
-.trips-action span.block + span.block {
-  display: none;
 }
 
 .trips-feature,
@@ -4330,6 +4292,11 @@ main [class*="rounded-2xl"] {
   border: 0;
   border-top: 0.5px solid var(--foreground);
   box-shadow: none;
+}
+@media (min-width: 640px) {
+  .sheet-panel {
+    border-radius: 16px !important;
+  }
 }
 .sheet-panel .sheet-title {
   font-size: 28px;
