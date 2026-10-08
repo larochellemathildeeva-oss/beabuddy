@@ -298,7 +298,8 @@ export function AppShell({
                   to="/recommendations"
                   search={{ find: true }}
                   aria-label="Search your places"
-                  className="grid size-12 place-items-center rounded-[var(--r-button)] text-foreground"
+                  // A trip's own actions take this row; Search stays on every other page.
+                  className="grid size-12 place-items-center rounded-[var(--r-button)] text-foreground group-has-[#app-header-slot:not(:empty)]/hdr:hidden"
                 >
                   <Search className="size-6" aria-hidden />
                 </Link>

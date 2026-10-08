@@ -5,7 +5,6 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type React
 import {
   Bookmark,
   Check,
-  Coins,
   LocateFixed,
   Download,
   MapPin,
@@ -1613,15 +1612,6 @@ export function TripDetail({
                 className="trip-hero-btn"
               >
                 <ListChecks className="size-5" aria-hidden />
-              </button>
-              <button
-                type="button"
-                onClick={() => setCurrencyOpen(true)}
-                title="Convert prices into your money"
-                aria-label="Currency"
-                className="trip-hero-btn"
-              >
-                <Coins className="size-5" aria-hidden />
               </button>
               <button
                 type="button"
