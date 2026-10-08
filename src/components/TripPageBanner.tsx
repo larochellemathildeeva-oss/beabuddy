@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
+import { Link } from "@tanstack/react-router";
 import { useSignedPhoto } from "@/hooks/useTripPhotos";
 import { useTownPhoto } from "@/hooks/useTownPhoto";
 import { formatTripLocation } from "@/lib/place-label";
@@ -38,6 +39,7 @@ export function TripPageBanner({
   actions,
   tracker,
   viewTransitionName,
+  card,
 }: {
   title: string;
   city?: string | null;
@@ -58,6 +60,11 @@ export function TripPageBanner({
   /** Under the picture: the trip's day-by-day progress. */
   tracker?: ReactNode;
   viewTransitionName?: string;
+  /**
+   * Home's card, as the minimalist design draws it: a small label, the name,
+   * the places and dates, the picture, and one ink button. Any look.
+   */
+  card?: { kicker: string; tripId: string };
 }) {
   const mine = look !== "illustration" && look !== "stock" && own.length > 0;
   const [turn, setTurn] = useState(0);
@@ -107,6 +114,61 @@ export function TripPageBanner({
         ? () => setBrokenOwn(ownUrl)
         : undefined,
   };
+
+  if (card) {
+    return (
+      <section className="home-trip-card" aria-label={title}>
+        <div className="px-4 pb-3 pt-3">
+          <p className="truncate text-[12px] leading-[1.4]">
+            {[card.kicker, pill].filter(Boolean).join(" · ")}
+          </p>
+          <h2 className="mt-1.5 line-clamp-2 break-words text-[28px] font-bold leading-[1.2]">
+            {title}
+          </h2>
+          {where ? <p className="mt-1.5 truncate text-[20px] leading-[1.4]">{where}</p> : null}
+          {dates ? (
+            <p className="mt-1.5 truncate text-[12px] leading-[1.4]">
+              {[dates, tentative ? "tentative" : "", companions ?? ""].filter(Boolean).join(" · ")}
+            </p>
+          ) : null}
+        </div>
+        <Link
+          to="/trips/$tripId"
+          params={{ tripId: card.tripId }}
+          viewTransition
+          tabIndex={-1}
+          aria-hidden
+          className="home-trip-photo relative block h-[125px] w-full overflow-hidden bg-muted"
+          style={viewTransitionName ? { viewTransitionName } : undefined}
+        >
+          {imageUrl ? (
+            <img
+              key={imageUrl}
+              {...photoProps}
+              alt=""
+              className="art-dim absolute inset-0 size-full object-cover"
+            />
+          ) : null}
+          {credited ? (
+            <span
+              title={photoCredit(credited)}
+              className="absolute start-3 top-2 max-w-[60%] truncate bg-black/70 px-2.5 py-0.5 text-[12px] text-white"
+            >
+              {photoCredit(credited)}
+            </span>
+          ) : null}
+        </Link>
+        <Link
+          to="/trips/$tripId"
+          params={{ tripId: card.tripId }}
+          viewTransition
+          className="flex h-[52px] w-full items-center justify-center bg-primary text-[14px] font-medium text-primary-foreground"
+        >
+          View trip
+        </Link>
+      </section>
+    );
+  }
 
   if (look === "compact") {
     return (

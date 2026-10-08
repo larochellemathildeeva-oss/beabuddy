@@ -53,8 +53,8 @@ export function HomeOnTrip({
   const tags = heroTags(trip.start_date, trip.end_date, trip.dates_status === "tentative");
 
   return (
-    <section>
-      <HomeTripBanner trip={trip} photos={photos} cities={cityNames} />
+    <section className="flex flex-col">
+      <HomeTripBanner trip={trip} photos={photos} cities={cityNames} kicker="Happening now" />
       <div className="trip-panel -mx-4 space-y-3 px-4 pt-4">
         {showStops && <NowCards trip={trip} glance={glance} day={tags.when} />}
       </div>
@@ -205,9 +205,7 @@ export function HomeNoTripHero({
         <p className="text-[13px] font-semibold uppercase tracking-[0.16em] text-foreground/75">
           {greeting}
         </p>
-        <h2 className="mt-1 font-display text-[38px] leading-[1] tracking-[-0.02em]">
-          Where to next?
-        </h2>
+        <h2 className="mt-1 text-[28px] font-bold leading-[1.2]">Where to next?</h2>
         <p className="mt-1.5 text-[14px] font-medium text-foreground/80">{date}</p>
       </div>
       {placed.length > 0 ? (

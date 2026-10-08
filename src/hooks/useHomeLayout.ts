@@ -55,15 +55,31 @@ export const HOME_SECTIONS: ModuleInfo<HomeSectionKey>[] = [
   { key: "future", label: "Future me note", hint: "The newest note you left for yourself." },
 ];
 
-/** What Home showed before it had modules, with the stops the mockup's phones show. */
+/**
+ * With a trip ahead, as the minimalist design draws Home: the trip, Places
+ * saved and Travellers side by side, Weather there, Notes from Béa (and the
+ * current and next stop once it is under way). With none, the weather here,
+ * the saved places waiting and the newest note, as before. The others are a
+ * tap away in Customize home.
+ */
 export const DEFAULT_HOME_MODULES: HomeSectionKey[] = [
   "trip",
   "stops",
-  "suggested",
+  "saved",
+  "group",
+  "weatherThere",
+  "notes",
   "weather",
   "waiting",
   "future",
 ];
+
+/** Default modules for Home with no trip: left out while one is ahead, unless chosen. */
+export const NO_TRIP_DEFAULTS: ReadonlySet<HomeSectionKey> = new Set([
+  "weather",
+  "waiting",
+  "future",
+]);
 
 /** Wide modules take a row; the others sit two to a row as cards. */
 export const HOME_SMALL: ReadonlySet<HomeSectionKey> = new Set([

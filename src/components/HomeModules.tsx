@@ -35,6 +35,7 @@ export function HomeTripModule({
           title="Saved for this trip"
           label="Places saved"
           big={String(ctx.savedHere.length)}
+          figure
           action={{ label: "Open your saved places", icon: Bookmark, to: "/recommendations" }}
         />
       );
@@ -55,7 +56,7 @@ export function HomeTripModule({
           place={ctx.here.city || trip.title}
           lat={ctx.here.lat}
           lon={ctx.here.lon}
-          art={ctx.art}
+          art={null}
         />
       );
     case "group":
@@ -65,6 +66,7 @@ export function HomeTripModule({
           title="Group plans"
           label={ctx.people.length === 1 ? "Traveller" : "Travellers"}
           big={String(ctx.people.length)}
+          figure
           tone={3}
           action={{ label: "Invite someone", icon: Plus, ...tripLink({ menu: "invite" }) }}
         >

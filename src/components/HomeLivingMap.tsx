@@ -1,12 +1,10 @@
-import { useMemo, type ReactNode } from "react";
+import { useMemo } from "react";
 import { Link } from "@tanstack/react-router";
 import { ArrowRight } from "@/components/icons";
 import { HomeTripBanner } from "@/components/HomeTripBanner";
 import type { TripPhotoRow } from "@/hooks/useTripPhotos";
 import type { TripRow } from "@/hooks/useTrips";
-import type { TripGlance } from "@/hooks/useTripGlances";
 import { useTripStops } from "@/hooks/useTripStops";
-import { flightParts } from "@/lib/home-route-map";
 import { placeArtUrl } from "@/lib/place-art";
 
 const SOFT_SHADOW = "";
@@ -17,95 +15,9 @@ export function HomeUpcoming({ trip, photos }: { trip: TripRow; photos: TripPhot
   const stopCities = useMemo(() => stops.map((s) => s.city).filter(Boolean), [stops]);
 
   return (
-    <section>
-      <HomeTripBanner trip={trip} photos={photos} cities={stopCities} />
+    <section className="flex flex-col">
+      <HomeTripBanner trip={trip} photos={photos} cities={stopCities} kicker="Upcoming trip" />
     </section>
-  );
-}
-
-function shortDay(iso: string | null | undefined): string {
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso ?? "");
-  if (!m) return "";
-  return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])).toLocaleDateString(undefined, {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-  });
-}
-
-/**
- * The trip in three numbers: to-dos left, the flight, how packed. Each opens
- * its own list.
- */
-export function HomeTripStats({ trip, glance }: { trip: TripRow; glance: TripGlance | undefined }) {
-  const open = glance?.todos.open ?? 0;
-  const flight = glance?.flight ?? null;
-  const parts = flight ? flightParts(`${flight.title} ${flight.detail ?? ""}`) : null;
-  const packing = glance?.packing ?? null;
-  const percent = packing ? Math.round(packing.ratio * 100) : 0;
-  const packed = packing
-    ? new Intl.NumberFormat(undefined, { style: "percent" }).format(percent / 100)
-    : "—";
-  const cell = "flex min-h-11 min-w-0 flex-col justify-center px-3 py-2";
-
-  return (
-    <section
-      data-guide="home-next"
-      aria-label="This trip at a glance"
-      className="grid grid-cols-[0.8fr_1.4fr_1fr] divide-x divide-border border border-border bg-card"
-    >
-      <Link
-        to="/trips/$tripId"
-        params={{ tripId: trip.id }}
-        search={{ prep: "todo" }}
-        className={cell}
-      >
-        <Stat big={String(open)} small={open === 1 ? "to-do" : "to-dos"} />
-      </Link>
-      <Link
-        to="/trips/$tripId"
-        params={{ tripId: trip.id }}
-        search={flight ? {} : { view: "bookings" }}
-        className={cell}
-      >
-        {flight ? (
-          <Stat
-            big={parts?.code ?? flight.title}
-            small={
-              <>
-                {parts?.route ? <span className="block truncate">{parts.route}</span> : null}
-                {shortDay(flight.day_date) ? (
-                  <span className="block truncate">{shortDay(flight.day_date)}</span>
-                ) : null}
-              </>
-            }
-          />
-        ) : (
-          <Stat big="Flight" small="Not added yet" />
-        )}
-      </Link>
-      <Link
-        to="/trips/$tripId"
-        params={{ tripId: trip.id }}
-        search={{ prep: "packing" }}
-        className={cell}
-      >
-        <Stat big={packed} small={packing ? "packed" : "Packing list"} />
-      </Link>
-    </section>
-  );
-}
-
-function Stat({ big, small }: { big: string; small: ReactNode }) {
-  return (
-    <span className="block min-w-0">
-      <span className="block truncate font-display text-[34px] font-bold leading-none tracking-[-1px]">
-        {big}
-      </span>
-      <span className="block whitespace-nowrap text-[12px] leading-snug text-muted-foreground">
-        {small}
-      </span>
-    </span>
   );
 }
 
@@ -155,7 +67,7 @@ export function HomeSuggested({
     <section data-guide="home-suggested">
       <p className="label-caps mb-1">Béa suggests</p>
       <div className="mb-1.5 flex items-center justify-between gap-3">
-        <h2 className="font-sans text-[16.5px] font-semibold">Suggested for your trip</h2>
+        <h2>Suggested for your trip</h2>
         <Link
           to="/recommendations"
           className="-me-2 flex min-h-11 min-w-11 shrink-0 items-center justify-center gap-1 px-2 text-[14px] font-medium"

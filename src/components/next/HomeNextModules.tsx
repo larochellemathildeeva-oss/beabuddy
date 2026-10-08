@@ -325,7 +325,7 @@ function WeatherThere({
     <NextModuleCard guide="home-module-weather" title="Weather there" sub={place} art={art}>
       {weather ? (
         <span className="block">
-          <span className="block font-display text-[34px] leading-none tabular-nums">
+          <span className="block text-[28px] font-bold leading-[1.2] tabular-nums">
             {temperature(weather.temp)}
           </span>
           <span className="mt-1 block text-[13px] leading-tight text-muted-foreground">

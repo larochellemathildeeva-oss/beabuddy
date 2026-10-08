@@ -81,13 +81,13 @@ export function CustomizeModules<K extends string>({
         <Plus className="size-4" aria-hidden /> Add modules
       </button>
     ) : variant === "card" ? (
-      // A quiet link at the foot of the page, not a banner.
+      // The secondary button at the foot of the page, as the minimalist design draws it.
       <button
         type="button"
         data-guide={guide}
-        className="mx-auto flex min-h-11 items-center gap-1.5 rounded-full px-4 text-[13.5px] font-medium text-muted-foreground transition-colors hover:text-foreground"
+        className="flex h-[52px] w-full items-center justify-center rounded-[var(--r-card)] border border-border bg-card px-4 text-[14px] font-medium text-foreground"
       >
-        <LayoutGrid className="size-4" aria-hidden /> {title}
+        {title}
       </button>
     ) : variant === "list" ? (
       // A row in You's grouped lists: pastel bubble, title, one line, chevron.

@@ -3275,7 +3275,8 @@ html:not(.dark)
   grid-template-columns: repeat(2, minmax(0, 1fr));
   /* Rows follow their content, so a small reading never sits in a big empty box. */
   grid-auto-rows: auto;
-  gap: 12px;
+  /* Joined, as the design's grid: each module keeps its own hairline. */
+  gap: 0;
 }
 .home-widget {
   min-width: 0;
@@ -3688,11 +3689,64 @@ a.bg-primary {
 }
 .home-widget h2,
 .home-widget h3 {
-  font-family: var(--font-display);
-  font-weight: 400;
-  font-size: 30px;
-  line-height: 34px;
-  letter-spacing: -0.5px;
+  font-family: var(--font-sans);
+  font-weight: 600;
+  font-size: 20px;
+  line-height: 28px;
+  letter-spacing: 0;
+}
+/* Inside a module, 16px from its edge, as the design's panels sit. */
+.home-widget :is([data-guide="home-suggested"], [data-guide="home-near"]) {
+  padding: 16px;
+}
+/* The design's cells: Small and Wide 175px tall, Large 350, at a 350px grid. */
+.home-widget[data-size="small"],
+.home-widget[data-size="wide"] {
+  min-height: 50cqw;
+}
+.home-widget[data-size="large"] {
+  min-height: 100cqw;
+}
+.home-widget .home-widget-content {
+  display: flex;
+  flex-direction: column;
+}
+.home-widget .home-widget-content > * {
+  flex: 1;
+}
+/* Labels in the grid are ink, as the design sets every word on Home. */
+.home-widget .label-caps {
+  color: var(--foreground);
+}
+.home-widget [data-guide="home-trip"] {
+  flex: 1;
+}
+/* The whole module opens; the design draws no corner button. */
+.home-widget .module-card-action {
+  display: none;
+}
+.home-widget [data-guide="home-trip"] {
+  display: flex;
+  flex-direction: column;
+}
+.home-trip-card {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+/* A Small Travellers cell is the figure alone, as drawn; Wide and Large keep the faces. */
+.home-widget[data-size="small"] [data-guide="home-module-group"] .\-space-x-2 {
+  display: none;
+}
+.home-trip-card > .home-trip-photo {
+  flex: 1;
+  min-height: 125px;
+}
+/* The trip's name on Home's card is the one 28px title in the grid. */
+.home-widget .home-trip-card h2 {
+  font-weight: 700;
+  font-size: 28px;
+  line-height: 1.2;
 }
 
 /* The trip box on Trips: joined square cells under the photo, one ink button. */
@@ -3810,14 +3864,9 @@ main [class*="rounded-\\[var(--r-"] {
 
 /* Home's number modules: one large figure and a mono label, as the design sets them. */
 .module-big {
-  font-size: 82px;
-  line-height: 78px;
-  letter-spacing: -3px;
-}
-.home-widget[data-module="weatherThere"] .module-big {
-  font-size: 64px;
-  line-height: 62px;
-  letter-spacing: -2px;
+  font-size: 28px;
+  line-height: 1.2;
+  letter-spacing: 0;
 }
 .home-widget-content > .module-card,
 .home-widget [data-guide^="home-module"] {
