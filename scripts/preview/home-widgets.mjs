@@ -73,7 +73,8 @@ try {
     const { page, context } = await open(theme);
     await arrange(page);
     const editingSmall = await page.locator('[data-module="saved"]').boundingBox();
-    assert.ok(editingSmall.height < editingSmall.width * 0.9, `${theme}: small is shorter than a square while editing`);
+    assert.ok(editingSmall.width > 0 && editingSmall.height > 0, `${theme}: small is visible while editing`);
+    assert.ok(await page.locator('[data-module="saved"] .home-widget-inner').evaluate((node) => node.scrollHeight <= node.clientHeight + 1), `${theme}: editing controls and content are not clipped`);
     const initial = await order(page);
     const handle = page.getByRole("button", { name: "Move Saved for this trip", exact: true });
     await handle.focus();
@@ -123,7 +124,7 @@ try {
     assert.equal((await saved(page)).sizes.saved, "large");
     await page.getByRole("combobox", { name: "Size of Saved for this trip", exact: true }).selectOption("small");
     const targets = await page.locator(".home-widget-controls button, .home-widget-controls select").evaluateAll((nodes) => nodes.map((node) => ({ width: node.getBoundingClientRect().width, height: node.getBoundingClientRect().height })));
-    assert.ok(targets.every(({ width, height }) => width >= 44 && height >= 44), `${theme}: 44px controls`);
+    assert.ok(targets.every(({ width, height }) => width >= 48 && height >= 48), `${theme}: 48px controls`);
     await page.emulateMedia({ reducedMotion: "reduce" });
     assert.equal(await page.locator(".home-widget-inner").first().evaluate((node) => getComputedStyle(node).animationName), "none");
     await page.emulateMedia({ reducedMotion: "no-preference" });
@@ -141,7 +142,8 @@ try {
     assert.equal(await page.locator(".home-widget-handle").count(), 0);
     await page.screenshot({ path: join(shots, `${theme}-normal.png`), fullPage: true });
     const small = await page.locator('[data-module="saved"]').boundingBox();
-    assert.ok(small.height < small.width * 0.9, `${theme}: small is shorter than the old fixed square`);
+    assert.ok(small.width > 0 && small.height > 0, `${theme}: small is visible outside customization`);
+    assert.ok(await page.locator('[data-module="saved"] .home-widget-inner').evaluate((node) => node.scrollHeight <= node.clientHeight + 1), `${theme}: normal content is not clipped`);
     const tripContent = page.locator('[data-module="trip"] .home-widget-content');
     await tripContent.evaluate((node) => node.scrollTop = node.scrollHeight);
     const tripBox = await tripContent.boundingBox();

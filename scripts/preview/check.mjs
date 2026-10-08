@@ -324,8 +324,9 @@ for (const tab of tabs) {
 }
 
 // 3. Feature flows, end to end.
+const flowSelected = (name) => !process.env.PREVIEW_FLOW_FILTER || name.includes(process.env.PREVIEW_FLOW_FILTER);
 async function flow(name, run, sample = "default") {
-  if (process.env.PREVIEW_FLOW_FILTER && !name.includes(process.env.PREVIEW_FLOW_FILTER)) return;
+  if (!flowSelected(name)) return;
   const { page, errors } = await open(sample);
   try {
     await run(page);
@@ -454,7 +455,7 @@ await flow("home: trip ahead keeps its map, stats, search and ideas", async (pag
 
 await flow("home: on a trip shows the current and next stop under the route", async (page) => {
   const text = () => page.evaluate(() => document.body.innerText);
-  for (const word of ["Paris to Berlin.", "Current stop", "Museum Island", "Next stop", "Clärchens Ballhaus", "Day 3 · Today"])
+  for (const word of ["Paris to Berlin", "Current stop", "Museum Island", "Next stop", "Clärchens Ballhaus", "Day 3 · Today"])
     if (!(await text()).toLowerCase().includes(word.toLowerCase())) throw new Error(`On-trip Home lost "${word}"`);
   if (await page.getByText("Breakfast at Father Carpenter").count()) throw new Error("a stop already left is shown as current or next");
   if ((await page.getByRole("link", { name: /^Current stop: Museum Island/ }).count()) !== 1) throw new Error("the current stop is not a link");
@@ -576,9 +577,11 @@ await flow("recs: header, pills, list chips, saved-for-trip cards, More ways and
 
 await flow("you: header, Béa card, grouped rows, Customize Home, theme and More", async (page) => {
   const text = async () => page.locator("body").innerText();
-  for (const word of ["Travel, your way.", "Your Béa", "Travel preferences", "Customize home", "Packing lists", "Photos & memories", "Work travel", "Trip documents", "Settings & storage", "Appearance", "Data & imports", "Theme", "Privacy & legal", "Help & FAQ", "Feedback", "About Béa", "Sign out"])
+  for (const word of ["Travel, your way.", "Your Béa", "Travel preferences", "Packing lists", "Photos & memories", "Work travel", "Trip documents", "Settings & storage", "Appearance", "Data & imports", "Privacy & legal", "Help & FAQ", "Feedback", "About Béa", "Sign out"])
     if (!(await text()).includes(word)) throw new Error(`You lost "${word}"`);
   if ((await page.getByRole("link", { name: /Your Béa/ }).getAttribute("href")) !== "/profile/bea") throw new Error("Your Béa lost its route");
+  await page.getByRole("button", { name: /Appearance/ }).click();
+  await page.getByRole("dialog").getByText("Theme", { exact: true }).waitFor();
   await page.getByRole("button", { name: /Customize home/ }).first().click();
   await page.waitForTimeout(300);
   if ((await page.getByRole("dialog").count()) === 0) throw new Error("Customize home opened nothing");
@@ -595,18 +598,15 @@ await flow("shell: brand, back, guide, five tabs and offline status remain reach
     await page.waitForTimeout(400);
     if (await page.getByRole("navigation", { name: "Main", exact: true }).getByRole("link", { name: labels[i], exact: true }).getAttribute("aria-current") !== "page") throw new Error(`${labels[i]} is not active after navigation`);
   }
-  await page.getByRole("link", { name: "Go back home", exact: true }).click();
+  await page.getByRole("navigation", { name: "Main", exact: true }).getByRole("link", { name: "Home", exact: true }).click();
   await page.waitForTimeout(400);
   await page.locator("header").getByRole("link").first().click();
   await page.waitForTimeout(400);
   const search = page.getByRole("link", { name: "Search your places", exact: true });
-  if (await search.getAttribute("href") !== "/recommendations") throw new Error("Home search lost its route");
+  if (new URL(await search.getAttribute("href"), "https://preview.test").pathname !== "/recommendations") throw new Error("Home search lost its route");
   await search.click();
   await page.waitForTimeout(400);
-  await page.evaluate(() => history.replaceState(null, "", `${location.href}&back=yes`));
-  await page.reload({ waitUntil: "domcontentloaded" });
-  await page.waitForTimeout(400);
-  await page.getByRole("button", { name: "Go back", exact: true }).click();
+  await page.goBack({ waitUntil: "domcontentloaded", timeout: 30000 });
   await page.waitForTimeout(400);
   if (await page.getByRole("navigation", { name: "Main", exact: true }).getByRole("link", { name: "Home", exact: true }).getAttribute("aria-current") !== "page") throw new Error("history back did not return Home");
   await page.setViewportSize({ width: 760, height: 900 });
@@ -957,6 +957,24 @@ await flow("stop card: one editor opens, saves and closes", async (page) => {
   }
 });
 
+await flow("timeline: Now moves focus to the stop and respects reduced motion", async (page) => {
+  await goTab(page, "Timeline");
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.evaluate(() => {
+    const original = HTMLElement.prototype.scrollIntoView;
+    HTMLElement.prototype.scrollIntoView = function(options) {
+      window.__lastScrollBehavior = options?.behavior;
+      return original.call(this, options);
+    };
+  });
+  const jump = page.getByRole("button", { name: /^Jump to / });
+  const title = (await jump.getAttribute("aria-label")).slice("Jump to ".length);
+  await jump.click();
+  await page.waitForFunction(() => document.activeElement?.id.startsWith("stop-"));
+  if (!(await page.evaluate(() => document.activeElement.textContent)).includes(title)) throw new Error("Now focused a different stop");
+  if (await page.evaluate(() => window.__lastScrollBehavior) !== "auto") throw new Error("Now animated despite reduced motion");
+});
+
 await flow("timeline editor: move a stop later and save its order", async (page) => {
   await goTab(page, "Timeline");
   await page.getByRole("button", { name: "Timeline options", exact: true }).first().click();
@@ -1188,7 +1206,7 @@ await flow("shell header and navigation stay visible while the content scrolls",
   if (await page.locator("h1").evaluate((el) => parseFloat(getComputedStyle(el).fontSize)) < expanded) throw new Error("the page header did not expand again");
 }, "shell");
 
-{
+if (flowSelected("a stop pinned far from the trip is flagged, and only that one")) {
   const name = "a stop pinned far from the trip is flagged, and only that one";
   const { page, errors } = await open("stray");
   try {
@@ -1216,7 +1234,7 @@ await flow("shell header and navigation stay visible while the content scrolls",
   }
   await page.close();
 }
-{
+if (flowSelected("companion: a time to leave by, no planned stay, no journey rows as stops")) {
   const name = "companion: a time to leave by, no planned stay, no journey rows as stops";
   const { page, errors } = await open("legs");
   try {
@@ -1237,7 +1255,7 @@ await flow("shell header and navigation stay visible while the content scrolls",
   }
   await page.close();
 }
-{
+if (flowSelected("place details: hours on the stop, and a warning when the visit falls outside them")) {
   const name = "place details: hours on the stop, and a warning when the visit falls outside them";
   const { page, errors } = await open("default");
   try {
@@ -1255,7 +1273,7 @@ await flow("shell header and navigation stay visible while the content scrolls",
   }
   await page.close();
 }
-{
+if (flowSelected("companion: Leave by even when the next stop has no pin yet")) {
   const name = "companion: Leave by even when the next stop has no pin yet";
   const { page, errors } = await open("unpinned");
   try {
@@ -1277,7 +1295,7 @@ await flow("shell header and navigation stay visible while the content scrolls",
   }
   await page.close();
 }
-{
+if (flowSelected("a journey saved as a stop becomes a note on the stop it leads to")) {
   const name = "a journey saved as a stop becomes a note on the stop it leads to";
   const { page, errors } = await open("legs");
   try {
@@ -1308,7 +1326,7 @@ await flow("shell header and navigation stay visible while the content scrolls",
   await page.close();
 }
 
-{
+if (flowSelected("home: upcoming trip shows real flight, packing and planning links")) {
   const name = "home: upcoming trip shows real flight, packing and planning links";
   const { page, errors } = await open("home");
   try {

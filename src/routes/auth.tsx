@@ -284,7 +284,7 @@ function AuthPage() {
               onClick={() => setShowPassword((v) => !v)}
               aria-label={showPassword ? "Hide password" : "Show password"}
               aria-pressed={showPassword}
-              className="grid size-11 shrink-0 place-items-center rounded-full text-muted-foreground"
+              className="grid size-12 shrink-0 place-items-center rounded-full text-muted-foreground"
             >
               {showPassword ? (
                 <Eye className="size-5" aria-hidden />
@@ -300,7 +300,7 @@ function AuthPage() {
           )}
           {signup && (
             <div className="space-y-2.5 rounded-[var(--r-card)] border border-border bg-card p-3.5">
-              <label className="flex cursor-pointer items-start gap-2.5 text-[14.5px] leading-relaxed">
+              <label className="flex min-h-12 cursor-pointer items-start gap-2.5 text-[14.5px] leading-relaxed">
                 <input
                   type="checkbox"
                   checked={agreeTerms}
@@ -319,7 +319,7 @@ function AuthPage() {
                   .
                 </span>
               </label>
-              <label className="flex cursor-pointer items-start gap-2.5 text-[14.5px] leading-relaxed">
+              <label className="flex min-h-12 cursor-pointer items-start gap-2.5 text-[14.5px] leading-relaxed">
                 <input
                   type="checkbox"
                   checked={agreeDisclaimer}
@@ -344,7 +344,14 @@ function AuthPage() {
               {message}
             </p>
           )}
+          {signup && !consented && (
+            <p id="signup-consent-help" className="text-[14px] text-muted-foreground">
+              To create an account, review and accept both agreements above.
+            </p>
+          )}
           <button
+            aria-describedby={signup && !consented ? "signup-consent-help" : undefined}
+            aria-busy={busy}
             type="submit"
             disabled={busy || (signup && !consented)}
             className="btn-primary flex w-full items-center justify-center gap-2 rounded-full px-4 text-[18px] disabled:opacity-60"

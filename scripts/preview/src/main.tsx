@@ -171,5 +171,5 @@ const detail = (
     />
   </div>
 );
-createRoot(document.getElementById("root")!).render(new URLSearchParams(location.search).get("frame") === "yes" ? <AppShell flush>{detail}</AppShell> : detail);
+createRoot(document.getElementById("root")!).render(new URLSearchParams(location.search).get("frame") !== "no" ? <AppShell flush>{detail}</AppShell> : detail);
 }

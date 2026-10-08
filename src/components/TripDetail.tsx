@@ -1122,17 +1122,7 @@ export function TripDetail({
   const todayGroup = timelineGroups.find((group) => group.key === todayKey);
   const nowStop = todayGroup ? nowTarget(todayGroup.items, minutesNow) : null;
   const jumpToNow = () => {
-    if (!nowStop) return;
-    if (timelineByDay && chosenDay !== ALL_DAYS && chosenDay !== todayKey) setDayChoice(todayKey);
-    setCollapsedDays((prev) => ({ ...prev, [todayKey]: false }));
-    // After the day has rendered: two frames, one for the state, one for layout.
-    requestAnimationFrame(() =>
-      requestAnimationFrame(() =>
-        document
-          .getElementById(`stop-${nowStop.id}`)
-          ?.scrollIntoView({ behavior: "smooth", block: "center" }),
-      ),
-    );
+    if (nowStop) jumpToStop(nowStop.id);
   };
   /** Open a stop on the timeline from somewhere else (the trip checkup). */
   const jumpToStop = (stopId: string) => {
@@ -1147,11 +1137,16 @@ export function TripDetail({
     if (timelineByDay && chosenDay !== ALL_DAYS && chosenDay !== day) setDayChoice(day);
     setCollapsedDays((prev) => ({ ...prev, [day]: false }));
     requestAnimationFrame(() =>
-      requestAnimationFrame(() =>
-        document
-          .getElementById(`stop-${stopId}`)
-          ?.scrollIntoView({ behavior: "smooth", block: "center" }),
-      ),
+      requestAnimationFrame(() => {
+        const target = document.getElementById(`stop-${stopId}`);
+        if (!target) return;
+        target.tabIndex = -1;
+        target.focus({ preventScroll: true });
+        const reduced =
+          window.matchMedia("(prefers-reduced-motion: reduce)").matches ||
+          document.documentElement.dataset["motion"] === "reduce";
+        target.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "center" });
+      }),
     );
   };
   /** The day cards, for the sticky day bar to know when they scroll away. */
@@ -2296,7 +2291,7 @@ export function TripDetail({
                   type="button"
                   onClick={jumpToNow}
                   aria-label={`Jump to ${nowStop.title}`}
-                  className="pointer-events-auto inline-flex min-h-11 items-center gap-1.5 rounded-full bg-primary px-4 text-[14px] font-semibold text-primary-foreground shadow-lg"
+                  className="pointer-events-auto inline-flex min-h-12 items-center gap-1.5 rounded-full bg-primary px-4 text-[14px] font-semibold text-primary-foreground shadow-lg"
                 >
                   <LocateFixed className="size-4" aria-hidden />
                   Now
