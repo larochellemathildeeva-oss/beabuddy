@@ -117,21 +117,15 @@ function TripPictureFill({
 /* ------------------------------------------------------------------ */
 
 /**
- * The top of Trips, as the editorial design draws it: a small label, "Your
- * trips." in large serif over a rule, and the two ways to start (the calendar
- * and a new trip) as plain words. Each trip is one tap away in the list under
- * the tabs, so the top carries no map.
+ * The top of Trips, as the minimalist design draws it: a small label, "Your
+ * trips." in bold over a rule. The ways to start a trip sit under the tabs
+ * and the list, so the top carries no map.
  */
-export function TripsHero({ actions }: { trips?: TripRow[]; today?: string; actions: ReactNode }) {
+export function TripsHero({ section }: { section?: string | undefined }) {
   return (
     <section data-guide="trips-header" className="page-title-rule border-b border-border pb-4">
-      <div className="flex items-center justify-between gap-3">
-        <p className="label-caps">Trips</p>
-        <div className="flex shrink-0 items-center gap-1">{actions}</div>
-      </div>
-      <h1 className="mt-3 font-display text-[46px] leading-[1.08] tracking-[-0.01em]">
-        Your trips.
-      </h1>
+      <p className="label-caps">{section ? `Trips / ${section}` : "Trips"}</p>
+      <h1 className="mt-3 font-display text-[28px] font-bold leading-[1.2]">Your trips.</h1>
     </section>
   );
 }
@@ -347,14 +341,10 @@ export function TripFeature({
           {[kicker, live ? `Stop ${live.step} of ${live.total}` : when].filter(Boolean).join(" · ")}
           {peopleCount > 1 ? ` · ${peopleCount} travellers` : ""}
         </p>
-        <h3 className="mt-2 line-clamp-2 break-words font-display text-[46px] font-bold leading-[0.98] tracking-[-2px]">
+        <h3 className="mt-2 line-clamp-2 break-words font-display text-[28px] font-bold leading-[1.2]">
           {headline}
         </h3>
-        {places ? (
-          <p className="mt-1.5 font-display text-[24px] leading-[28px] tracking-[-0.5px]">
-            {places}
-          </p>
-        ) : null}
+        {places ? <p className="mt-1 font-display text-[20px] leading-[28px]">{places}</p> : null}
         <p className="label-caps mt-2.5">
           {tripDateLine(trip.start_date, trip.end_date)}
           {trip.dates_status === "tentative" ? " · tentative" : ""}
@@ -386,8 +376,8 @@ export function TripFeature({
           })}
         </ol>
       ) : leg ? (
-        <p className="px-4 pt-3 text-[13px] font-bold uppercase tracking-[0.08em] text-foreground/80">
-          {leg.label} · <span className="normal-case tracking-normal">{short(leg.city)}</span>
+        <p className="px-4 pt-3 text-[14px] font-medium text-foreground/80">
+          {leg.label} · <span>{short(leg.city)}</span>
         </p>
       ) : null}
 

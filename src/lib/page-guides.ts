@@ -125,7 +125,7 @@ export const guides: Record<string, Guide> = {
     about: "Every trip you're planning, on, or back from — each one its own folder.",
     features: [
       "Plan with Béa: build a trip, import your plan, optimize it or compare options",
-      "Start a trip with the +: a name, a city and dates (confirmed or tentative)",
+      "Start a trip with Create trip: a name, a city and dates (confirmed or tentative)",
       "Join a friend's trip with their invite code",
       "Switch between Upcoming, Past, Drafts (no dates yet) and All",
       "See every trip on the Calendar",
@@ -134,24 +134,24 @@ export const guides: Record<string, Guide> = {
     ],
     steps: [
       {
-        title: "Plan with Béa",
-        body: "Béa's planner: build a trip from what you saved, import a plan you already have, optimize the order of a trip's stops, or compare options. You approve before anything saves.",
-        selector: "[data-guide='plan-with-bea']",
-      },
-      {
         title: "Start a trip",
         body: "Name it, search the starting city, pick your dates if you know them, mark them Tentative or Confirmed, and tick a budget only if you want one. You can still change all of this after the trip exists.",
         selector: "[data-guide='new-trip']",
       },
       {
-        title: "Join with a code",
-        body: "Someone already made the folder? Type their invite code here. A trip with only you says Flying Solo until a friend joins. Calendar, beside it, shows every trip month by month.",
-        selector: "[data-guide='join-trip']",
-      },
-      {
         title: "Open a trip",
         body: "Next up, then the rest. Each card shows the flight, to-dos and packing at a glance. Tap one to open its own page: the plan, the people, bookings and everything still to do.",
         selector: "[data-guide='trip-list']",
+      },
+      {
+        title: "Join with a code",
+        body: "Someone already made the folder? Type their invite code here. A trip with only you says Flying Solo until a friend joins. Calendar, under it, shows every trip month by month.",
+        selector: "[data-guide='join-trip']",
+      },
+      {
+        title: "Plan with Béa",
+        body: "Béa's planner: build a trip from what you saved, import a plan you already have, optimize the order of a trip's stops, or compare options. You approve before anything saves.",
+        selector: "[data-guide='plan-with-bea']",
       },
       {
         title: "Trip documents",
@@ -325,7 +325,7 @@ export const guides: Record<string, Guide> = {
     steps: [
       {
         title: "Your account",
-        body: "Your name, home city, and how many trips and places you've saved. Edit profile changes them; everything stays synced across your phone and laptop.",
+        body: "How many trips and countries, your name and home city. Profile settings, at the bottom, changes them; everything stays synced across your phone and laptop.",
         selector: "[data-guide='profile-account']",
       },
       {
@@ -350,12 +350,12 @@ export const guides: Record<string, Guide> = {
       },
       {
         title: "Your Béa",
-        body: "Her personality, and how much she suggests and helps. The pill shows the preset you picked.",
+        body: "Her personality, and how much she suggests and helps. The line under it names the preset you picked.",
         selector: "[data-guide='your-bea']",
       },
       {
         title: "Data & imports",
-        body: "Open the trip calendar, and see what is kept on this phone. Appearance, beside it, sets the theme and what Home shows.",
+        body: "Open the trip calendar, and see what is kept on this phone. Appearance, higher up the list, sets the theme and what Home shows.",
         selector: "[data-guide='offline-options']",
       },
       {
