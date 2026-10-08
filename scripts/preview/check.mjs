@@ -925,6 +925,36 @@ await flow("shell: buttons are 8px, flat and sentence case; round icon buttons s
   if (parseFloat(round.radius) < 16) throw new Error(`the round icon button lost its shape: ${round.radius}`);
 }, "buttons");
 
+await flow("shell: text fields are 52px with a 3:1 edge and a 16px value", async (page) => {
+  const input = page.locator('input[type="email"]').first();
+  const m = await input.evaluate((el) => {
+    const css = getComputedStyle(el);
+    const label = el.id ? document.querySelector(`label[for="${el.id}"]`) : null;
+    return { height: el.getBoundingClientRect().height, border: css.borderTopColor, radius: css.borderTopLeftRadius, size: css.fontSize, label: label ? getComputedStyle(label).fontSize : null };
+  });
+  if (m.height < 52) throw new Error(`field height ${m.height}`);
+  if (m.border !== "rgb(138, 132, 126)") throw new Error(`field edge is ${m.border}, not --field-border`);
+  if (m.radius !== "8px") throw new Error(`field radius ${m.radius}`);
+  if (m.size !== "16px") throw new Error(`field text is ${m.size}`);
+  if (m.label !== "14px") throw new Error(`field label is ${m.label}`);
+}, "page-forgot");
+
+await flow("shell: the sign-in fields are 8px, flat boxes with a 3:1 edge", async (page) => {
+  const box = await page.locator('input[type="email"]').first().evaluate((el) => {
+    const css = getComputedStyle(el.parentElement);
+    return { radius: css.borderTopLeftRadius, shadow: css.boxShadow, border: css.borderTopColor, height: el.parentElement.getBoundingClientRect().height };
+  });
+  if (box.radius !== "8px") throw new Error(`sign-in field radius ${box.radius}`);
+  if (box.shadow !== "none") throw new Error(`sign-in field has a shadow`);
+  if (box.border !== "rgb(138, 132, 126)") throw new Error(`sign-in field edge ${box.border}`);
+  if (box.height < 52) throw new Error(`sign-in field height ${box.height}`);
+}, "auth");
+
+await flow("shell: switches have a 48px target and a visible edge when off", async (page) => {
+  const box = await page.locator('[data-k="switch"]').boundingBox();
+  if (!box || box.width < 48 || box.height < 48) throw new Error(`switch is ${box?.width}x${box?.height}`);
+}, "buttons");
+
 await flow("shell: compressed long titles stay on one line in both header layouts", async (page) => {
   const title = "Places worth remembering on a long journey through several cities.";
   for (const beside of [false, true]) {

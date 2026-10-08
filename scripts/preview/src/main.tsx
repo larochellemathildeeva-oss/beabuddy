@@ -1,5 +1,6 @@
 import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import { ThemePicker } from "@/components/ThemePicker";
 import { createRoot } from "react-dom/client";
 import { Toaster } from "sonner";
@@ -137,6 +138,7 @@ if (sample === "docs-open") {
       <Button data-k="destructive" variant="destructive">Delete</Button>
       <button data-k="raw" type="button" className="rounded-xl bg-primary px-4 py-3 text-[15px] font-semibold text-primary-foreground">Raw primary</button>
       <button data-k="pill" type="button" className="rounded-full bg-primary px-4 py-3 text-[15px] font-semibold text-primary-foreground">Word pill</button>
+      <Switch data-k="switch" aria-label="Test switch" />
       <button data-k="round" aria-label="Round" type="button" className="size-10 rounded-full bg-primary text-primary-foreground">+</button>
     </div>,
   );

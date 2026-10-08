@@ -418,7 +418,7 @@ function PillField({
   children: ReactNode;
 }) {
   return (
-    <div className="flex h-[56px] items-center gap-3 rounded-2xl border border-[var(--field-border)] bg-card ps-5 pe-2 shadow-sm focus-within:border-primary">
+    <div className="flex h-[56px] items-center gap-3 rounded-[var(--r-input)] border border-[var(--field-border)] bg-card ps-5 pe-2 focus-within:border-primary">
       <Glyph className="size-5 shrink-0 text-muted-foreground" aria-hidden />
       {children}
     </div>
