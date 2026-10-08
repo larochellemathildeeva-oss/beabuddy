@@ -1,28 +1,10 @@
+import { interestLine } from "@/lib/interest-line";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { friendlyError } from "@/lib/friendly-error";
 import { formatTripLocation } from "@/lib/place-label";
 import { useQueryClient } from "@tanstack/react-query";
-import { useEffect, useRef, useState, type ComponentType, type ReactNode } from "react";
-import {
-  BookOpen,
-  Briefcase,
-  CalendarDays,
-  Camera,
-  ChevronRight,
-  CloudUpload,
-  FileText,
-  HelpCircle,
-  Globe,
-  House,
-  Info,
-  Luggage,
-  MapPin,
-  MessageCircle,
-  Palette,
-  Plane,
-  ShieldCheck,
-  type LucideProps,
-} from "@/components/icons";
+import { useEffect, useRef, useState, type ComponentType } from "react";
+import { BookOpen, CalendarDays, ChevronRight, type LucideProps } from "@/components/icons";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { rememberedProfileName, rememberProfileName, shownName } from "@/lib/profile-name";
@@ -47,14 +29,11 @@ import { listSavedDirectionTripIds } from "@/hooks/useOfflineDirections";
 
 import { useTrips } from "@/hooks/useTrips";
 import { useCountriesVisited } from "@/hooks/useCountriesVisited";
-import { useTripPhotos } from "@/hooks/useTripPhotos";
-import { toLocalISODate } from "@/lib/trip-dates";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { hasDismissedSampleCta } from "@/lib/auto-seed";
 import { clearDemoSeed } from "@/lib/demo-seed";
 import { ThemePicker } from "@/components/ThemePicker";
-import { TripPicture } from "@/components/HomeTripCard";
 import { StopPicturesPicker } from "@/components/StopPicturesPicker";
 import { TripBannerPicker } from "@/components/TripBannerPicker";
 import { AccessibilityPicker } from "@/components/AccessibilityPicker";
@@ -116,8 +95,6 @@ function ProfilePage() {
   );
   const [profileLoaded, setProfileLoaded] = useState(false);
   const [homeCity, setHomeCity] = useState("");
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-  const [placeCount, setPlaceCount] = useState<number | null>(null);
   const [saved, setSaved] = useState(false);
   const [seeding, setSeeding] = useState(false);
   const [confirmSample, setConfirmSample] = useState(false);
@@ -140,7 +117,7 @@ function ProfilePage() {
     setDisplayName((current) => current || rememberedProfileName(safeStorage(), user.id));
     supabase
       .from("profiles")
-      .select("display_name, home_city, preferences, avatar_url")
+      .select("display_name, home_city, preferences")
       .eq("id", user.id)
       .maybeSingle()
       .then(({ data, error }) => {
@@ -150,16 +127,7 @@ function ProfilePage() {
         setDisplayName(data.display_name ?? "");
         rememberProfileName(safeStorage(), user.id, data.display_name ?? "");
         setHomeCity(data.home_city ?? "");
-        setAvatarUrl(data.avatar_url ?? null);
         if (data.preferences?.length) setInterests(data.preferences);
-      });
-    // The places figure is a count, not the list: no rows come back.
-    supabase
-      .from("recommendations")
-      .select("id", { count: "exact", head: true })
-      .eq("user_id", user.id)
-      .then(({ count, error }) => {
-        if (active && !error) setPlaceCount(count ?? 0);
       });
     return () => {
       active = false;
@@ -188,19 +156,9 @@ function ProfilePage() {
     shownName({ profileName: displayName, profileLoaded, email: user?.email }) ||
     (profileLoaded ? "Traveller" : "");
   const offlineTrips = t.trips.filter((trip) => offlineTripIds.includes(trip.id));
-  // A Google account brings its photo; one saved on the profile wins.
-  const metaAvatar = user?.user_metadata?.["avatar_url"];
-  const photo = avatarUrl || (typeof metaAvatar === "string" ? metaAvatar : null);
   const tripCount = t.trips.length;
-  const { photos: tripPhotos } = useTripPhotos(t.uid);
-  const todayKey = toLocalISODate(new Date());
-  // Trips that have started: an upcoming destination is not "been there" yet.
-  const startedTrips = t.trips.filter((trip) => (trip.start_date ?? "") <= todayKey);
   // The same figure as World: places been there and trips started.
   const countryCount = useCountriesVisited(t.trips);
-  const highlights = [...startedTrips]
-    .sort((x, y) => (y.start_date ?? "").localeCompare(x.start_date ?? ""))
-    .slice(0, 3);
 
   const signingOut = useRef(false);
   const signOut = async () => {
@@ -234,7 +192,10 @@ function ProfilePage() {
   };
 
   return (
-    <AppShell eyebrow="You" title="Travel, your way.">
+    <AppShell
+      eyebrow={user && signedInName ? `You / ${signedInName}` : "You"}
+      title="Travel, your way."
+    >
       <div className="you-page space-y-6">
         {!loading && !user && (
           <div data-guide="profile-account" className={`${PLAIN} p-4`}>
@@ -252,262 +213,108 @@ function ProfilePage() {
         )}
 
         {user && (
-          <section data-guide="profile-account" className="you-head">
-            <div className="flex items-center gap-4">
-              <span className="you-avatar">
-                {photo ? (
-                  <img
-                    src={photo}
-                    alt=""
-                    referrerPolicy="no-referrer"
-                    className="size-full rounded-full object-cover"
-                  />
-                ) : (
-                  <span
-                    aria-hidden
-                    className="grid size-full place-items-center rounded-full bg-primary-soft font-display text-[40px] text-primary"
-                  >
-                    {signedInName[0]?.toUpperCase()}
-                  </span>
-                )}
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="truncate font-display text-[30px] leading-[1.05]">{signedInName}</p>
-                {homeCity ? (
-                  <p className="mt-1 flex items-center gap-1.5 truncate text-[15px]">
-                    <MapPin className="size-4 shrink-0" aria-hidden />
-                    <span className="truncate">{homeCity}</span>
-                  </p>
-                ) : null}
-                <p className="mt-0.5 truncate text-[14px] text-muted-foreground">
-                  {saved ? "Saved" : user.email}
-                </p>
-                <button
-                  type="button"
-                  onClick={() => setPanel("settings")}
-                  className="you-edit mt-2 inline-flex min-h-11 items-center gap-1 rounded-full px-4 text-[14px] font-semibold"
-                >
-                  Edit profile
-                  <ChevronRight className="size-3.5" aria-hidden />
-                </button>
-              </div>
-            </div>
-            <div className="you-stats mt-5 grid grid-cols-4 gap-2">
+          <section data-guide="profile-account" className="space-y-3">
+            <div className="grid grid-cols-2 overflow-hidden rounded-[var(--r-card)] border border-border">
+              <Figure value={String(tripCount)} label="Trips" to="/trips" />
               <Figure
-                icon={House}
-                tone={1}
-                value={homeCity || "Add"}
-                label="Home city"
-                onClick={() => setPanel("settings")}
-              />
-              <Figure icon={Plane} tone={2} value={String(tripCount)} label="Trips" to="/trips" />
-              <Figure
-                icon={MapPin}
-                tone={3}
-                value={placeCount === null ? "–" : String(placeCount)}
-                label="Places"
-                to="/recommendations"
-              />
-              <Figure
-                icon={Globe}
-                tone={4}
                 value={String(countryCount)}
                 label={countryCount === 1 ? "Country" : "Countries"}
                 to="/world"
               />
             </div>
+            <div className="border-t border-border pt-2">
+              <p className="label-caps">
+                {[signedInName, homeCity].filter(Boolean).join(" / ")}
+                {saved ? " · Saved" : ""}
+              </p>
+            </div>
+            <Link
+              to="/preferences"
+              data-guide="travel-preferences"
+              className="block text-[20px] leading-[28px]"
+            >
+              {interests.length > 0 ? interestLine(interests) : "Add your interests"}
+            </Link>
           </section>
         )}
 
-        {user && (
-          <section
-            aria-label="Travel preferences"
-            data-guide="travel-preferences"
-            className="you-section"
-          >
-            <div className="flex items-baseline justify-between">
-              <SectionTitle>Travel preferences</SectionTitle>
-              <Link
-                to="/preferences"
-                className="-me-2 inline-flex min-h-11 items-center px-2 text-[14px] font-semibold text-muted-foreground"
-              >
-                See all
-              </Link>
-            </div>
-            <div className="you-chips mt-3 flex flex-wrap gap-2">
-              {interests.slice(0, 6).map((tag, i) => (
-                <Link
-                  key={tag}
-                  to="/preferences"
-                  className={`you-chip tile-fill-${(i % 5) + 1} rounded-full px-4 py-2 text-[15px] font-semibold`}
-                >
-                  {tag}
-                </Link>
-              ))}
-              {interests.length === 0 ? (
-                <Link
-                  to="/preferences"
-                  className="you-chip tile-fill-1 rounded-full px-4 py-2 text-[15px] font-semibold"
-                >
-                  Add your interests
-                </Link>
-              ) : null}
-            </div>
-          </section>
-        )}
-
-        {highlights.length > 0 && (
-          <section aria-label="Recent highlights" className="you-section">
-            <div className="flex items-baseline justify-between">
-              <SectionTitle>Recent highlights</SectionTitle>
-              <Link
-                to="/trips"
-                className="-me-2 inline-flex min-h-11 items-center px-2 text-[14px] font-semibold text-muted-foreground"
-              >
-                See all
-              </Link>
-            </div>
-            <div className="you-highlights mt-3 grid grid-cols-3 gap-2">
-              {highlights.map((trip) => (
-                <Link
-                  key={trip.id}
-                  to="/trips/$tripId"
-                  params={{ tripId: trip.id }}
-                  className="you-highlight"
-                >
-                  <TripPicture trip={trip} photos={tripPhotos} cities={[]} />
-                  <span aria-hidden className="you-highlight-shade" />
-                  <span className="you-highlight-text">
-                    <span className="block truncate text-[14px] font-semibold">
-                      {trip.city?.split(",")[0] || trip.title}
-                    </span>
-                    <span className="block truncate text-[13px] opacity-90">
-                      {highlightWhen(trip.start_date)}
-                    </span>
-                  </span>
-                </Link>
-              ))}
-            </div>
-          </section>
-        )}
-
-        <Link
-          to="/profile/bea"
-          data-guide="your-bea"
-          className="flex items-center gap-3 rounded-[var(--r-card)] border border-border/55 bg-gradient-to-br from-[var(--acc-soft)] to-tile-3 p-3.5 shadow-sm"
-        >
-          <img
-            src="/bea/bea-think-static.png"
-            alt=""
-            aria-hidden
-            className="art-dim -my-1 size-20 shrink-0 object-contain"
+        <div>
+          {user ? (
+            <YouRow title="Travel preferences" note="How you like to travel" to="/preferences" />
+          ) : null}
+          <YouRow
+            title="Béa"
+            note={`${modeName(bea.mix)} · Personality and assistance`}
+            to="/profile/bea"
+            guide="your-bea"
           />
-          <span className="min-w-0 flex-1">
-            <span className="block font-display text-[24px] leading-tight">Your Béa</span>
-            <span className="block text-[14px] leading-snug text-foreground/70">
-              {modeName(bea.mix)} · personality, suggestions and assistance
-            </span>
-          </span>
-          <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
-        </Link>
-
-        <div className={`${PLAIN} divide-y divide-border/60 overflow-hidden`}>
-          <ListRow
-            icon={Luggage}
-            tone={2}
-            title="Packing lists"
-            hint="Create and manage your reusable lists"
-            onClick={() => setPanel("packing")}
-            guide="packing-lists"
+          <YouRow
+            title="Appearance"
+            note="Your look and reading options"
+            onClick={() => setPanel("appearance")}
           />
-          <ListRow
-            icon={Camera}
-            tone={3}
-            title="Photos & memories"
-            hint="Import photos and revisit trips"
-            to="/photos"
-          />
-          <ListRow
-            icon={Briefcase}
-            tone={3}
+          <YouRow title="Photos and memories" note="Your travels, kept together" to="/photos" />
+          <YouRow
             title="Work travel"
-            hint="Receipts, expenses and reports"
+            note="Receipts and expenses"
             to="/expenses"
             guide="work-travel"
           />
-          <ListRow
-            icon={FileText}
-            tone={4}
+          <YouRow
             title="Trip documents"
-            hint="Bookings, confirmations and trip files"
+            note="Protected when you need them"
             href="/profile/documents"
             guide="trip-documents"
           />
-        </div>
-
-        <div className="space-y-3">
-          <SectionTitle>Settings & storage</SectionTitle>
-          <div className={`${PLAIN} divide-y divide-border/60 overflow-hidden`}>
-            <ListRow
-              icon={Palette}
-              tone={4}
-              title="Appearance"
-              hint="Theme, text size and what Home shows"
-              onClick={() => setPanel("appearance")}
-            />
-            {/* Links & formats and Notifications are in the master but not
-                built yet, so their rows stay hidden. */}
-            <ListRow
-              icon={CloudUpload}
-              tone={3}
-              title="Data & imports"
-              hint="Calendar, offline trips on this phone"
-              onClick={() => setPanel("data")}
-              guide="offline-options"
-            />
-          </div>
-        </div>
-
-        <div className="space-y-3">
-          <SectionTitle>More</SectionTitle>
-          <div className={`${PLAIN} divide-y divide-border/60 px-4`}>
-            <Row
-              icon={ShieldCheck}
-              label="Privacy & legal"
-              onClick={() => setPanel("legal")}
-              guide="legal"
-            />
-            <Row icon={HelpCircle} label="Help & FAQ" to="/help" />
-            <Row
-              icon={MessageCircle}
-              label="Feedback"
-              onClick={() => setPanel("feedback")}
-              guide="feedback"
-            />
-            <Row
-              icon={Info}
-              label="About Béa"
-              onClick={() => setPanel("about")}
-              guide="replay-tour"
-            />
-          </div>
+          <YouRow
+            title="Packing lists"
+            note="Your reusable lists"
+            onClick={() => setPanel("packing")}
+            guide="packing-lists"
+          />
+          <YouRow
+            title="Data & imports"
+            note="Calendar, offline trips on this phone"
+            onClick={() => setPanel("data")}
+            guide="offline-options"
+          />
+          <YouRow
+            title="Privacy & legal"
+            note="How your data is kept"
+            onClick={() => setPanel("legal")}
+            guide="legal"
+          />
+          <YouRow title="Help & FAQ" note="Questions and answers" to="/help" />
+          <YouRow
+            title="Feedback"
+            note="Tell Béa something"
+            onClick={() => setPanel("feedback")}
+            guide="feedback"
+          />
+          <YouRow
+            title="About Béa"
+            note="How Béa works and the tour"
+            onClick={() => setPanel("about")}
+            guide="replay-tour"
+          />
         </div>
 
         {user && (
-          <button
-            type="button"
-            onClick={() => void signOut()}
-            className="mx-auto block rounded-full border border-border bg-card px-5 py-2.5 text-[14.5px] font-semibold"
-          >
-            Sign out
-          </button>
+          <div className="space-y-3">
+            <button type="button" onClick={() => setPanel("settings")} className={SECONDARY}>
+              Profile settings
+            </button>
+            <button type="button" onClick={() => void signOut()} className={SECONDARY}>
+              Sign out
+            </button>
+          </div>
         )}
       </div>
 
       <Sheet
         open={panel === "settings"}
         onClose={close}
-        title="Edit profile"
+        title="Profile settings"
         hint="Your name and home city"
       >
         <div className="space-y-4">
@@ -719,101 +526,46 @@ function ProfilePage() {
   );
 }
 
-function highlightWhen(iso: string | null): string {
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso ?? "");
-  if (!m) return "";
-  return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])).toLocaleDateString(undefined, {
-    month: "short",
-    year: "numeric",
-  });
-}
-
-function SectionTitle({ children }: { children: ReactNode }) {
-  return <h2 className="font-display text-[27px] leading-none">{children}</h2>;
-}
-
-type Tone = 1 | 2 | 3 | 4 | 5;
-
-/** A figure under the profile: an icon in its colour, a value and a caption. */
-function Figure({
-  icon: Glyph,
-  tone,
-  value,
-  label,
-  to,
-  onClick,
-}: {
-  icon: Icon;
-  tone: Tone;
-  value: string;
-  label: string;
-  to?: "/trips" | "/recommendations" | "/world";
-  onClick?: () => void;
-}) {
-  const body = (
-    <>
-      <Glyph className={`seq-text-${tone} size-6 shrink-0`} aria-hidden />
-      <span className="line-clamp-2 max-w-full text-[16px] font-semibold leading-tight [overflow-wrap:anywhere]">
-        {value}
-      </span>
-      <span className="block max-w-full truncate text-[13px] text-foreground/80">{label}</span>
-    </>
-  );
-  const cls =
-    "you-figure flex min-w-0 flex-col items-center gap-1 rounded-2xl px-1 py-3 text-center";
-  return to ? (
-    <Link to={to} className={cls}>
-      {body}
+/** A figure in the joined pair under the title: a large number and its word. */
+function Figure({ value, label, to }: { value: string; label: string; to: "/trips" | "/world" }) {
+  return (
+    <Link
+      to={to}
+      className="flex min-w-0 flex-col gap-1 px-4 py-3 [&+&]:border-s [&+&]:border-border"
+    >
+      <span className="text-[28px] font-bold leading-[1.2]">{value}</span>
+      <span className="text-[12px] leading-[16px]">{label}</span>
     </Link>
-  ) : (
-    <button type="button" onClick={onClick} className={cls}>
-      {body}
-    </button>
   );
 }
 
-// Whole class names, so Tailwind finds every tone.
-const BUBBLE: Record<Tone, string> = {
-  1: "bg-tile-1",
-  2: "bg-tile-2",
-  3: "bg-tile-3",
-  4: "bg-tile-4",
-  5: "bg-tile-5",
-};
+/** A secondary action: a hairline box, the words in the middle. */
+const SECONDARY =
+  "flex min-h-[52px] w-full items-center justify-center rounded-[var(--r-button)] border border-border bg-card px-4 text-[14px] font-medium";
 
-/** A row in a grouped list: a pastel bubble, a serif title, one line, a chevron. */
-function ListRow({
-  icon: Glyph,
-  tone,
+/** A row of the You list: a title, one line under it, a hairline. */
+function YouRow({
   title,
-  hint,
+  note,
   to,
   href,
   onClick,
   guide,
 }: {
-  icon: Icon;
-  tone: Tone;
   title: string;
-  hint: string;
-  to?: "/preferences" | "/expenses" | "/photos";
+  note: string;
+  to?: "/preferences" | "/expenses" | "/photos" | "/help" | "/profile/bea";
   href?: string;
   onClick?: () => void;
   guide?: string;
 }) {
+  const cls = "block w-full border-b border-border py-3 text-start";
   const body = (
     <>
-      <span className={`grid size-11 shrink-0 place-items-center rounded-full ${BUBBLE[tone]}`}>
-        <Glyph className={`seq-text-${tone} size-5`} aria-hidden />
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="block font-display text-[19px] leading-tight">{title}</span>
-        <span className="block text-[14px] leading-snug text-muted-foreground">{hint}</span>
-      </span>
-      <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+      <span className="block text-[16px] leading-[22px]">{title}</span>
+      <span className="mt-1 block text-[14px] leading-[20px] text-muted-foreground">{note}</span>
     </>
   );
-  const cls = "flex min-h-14 w-full items-center gap-3 px-4 py-3 text-left";
   if (to)
     return (
       <Link to={to} data-guide={guide} className={cls}>
@@ -827,98 +579,6 @@ function ListRow({
       </a>
     );
   return (
-    <button type="button" onClick={onClick} data-guide={guide} className={cls}>
-      {body}
-    </button>
-  );
-}
-
-/**
- * A small 2×2 tile: pastel in Colorful (`tile-card-N`), its icon in the
- * matching accent (`seq-text-N`); a quiet card in Calm and Dark.
- */
-function Tile({
-  icon: Glyph,
-  card,
-  tone,
-  title,
-  hint,
-  to,
-  href,
-  onClick,
-  guide,
-}: {
-  icon: Icon;
-  card: Tone;
-  tone: Tone;
-  title: string;
-  hint: string;
-  to?: "/preferences" | "/expenses";
-  href?: string;
-  onClick?: () => void;
-  guide?: string;
-}) {
-  const body = (
-    <>
-      <Glyph className={`seq-text-${tone} mt-0.5 size-6 shrink-0`} aria-hidden />
-      <span className="min-w-0 flex-1">
-        <span className="flex items-start justify-between gap-1">
-          <span className="font-display text-[16.5px] leading-tight">{title}</span>
-          <ChevronRight className="mt-1 size-3.5 shrink-0 text-muted-foreground" aria-hidden />
-        </span>
-        <span className="mt-0.5 line-clamp-2 text-[12px] leading-snug text-muted-foreground">
-          {hint}
-        </span>
-      </span>
-    </>
-  );
-  const cls = `tile-card-${card} flex min-h-[92px] items-start gap-2 p-3 text-left`;
-  if (to)
-    return (
-      <Link to={to} data-guide={guide} className={cls}>
-        {body}
-      </Link>
-    );
-  if (href)
-    return (
-      <a href={href} data-guide={guide} className={cls}>
-        {body}
-      </a>
-    );
-  return (
-    <button type="button" onClick={onClick} data-guide={guide} className={cls}>
-      {body}
-    </button>
-  );
-}
-
-/** A row in the More list. */
-function Row({
-  icon: Glyph,
-  label,
-  to,
-  onClick,
-  guide,
-}: {
-  icon: Icon;
-  label: string;
-  to?: "/help";
-  onClick?: () => void;
-  guide?: string;
-}) {
-  const body = (
-    <>
-      <Glyph className="seq-text-1 size-5 shrink-0" aria-hidden />
-      <span className="min-w-0 flex-1 text-[15px]">{label}</span>
-      <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
-    </>
-  );
-  const cls = "flex w-full items-center gap-3 py-3.5 text-left";
-  return to ? (
-    <Link to={to} data-guide={guide} className={cls}>
-      {body}
-    </Link>
-  ) : (
     <button type="button" onClick={onClick} data-guide={guide} className={cls}>
       {body}
     </button>

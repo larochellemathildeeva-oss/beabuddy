@@ -13,7 +13,7 @@ import { friendlyError } from "@/lib/friendly-error";
 import type { PlannerTab } from "@/components/ItineraryImport";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { CalendarDays, ChevronRight, FileText, Plus, Sparkles, Users, X } from "@/components/icons";
+import { ChevronRight, Plus, X } from "@/components/icons";
 import { Sheet } from "@/components/Sheet";
 import { AppShell } from "@/components/AppShell";
 import { DateRangeField } from "@/components/DateRangeField";
@@ -70,6 +70,10 @@ type TripsSearch = {
 };
 
 const PLAN_AFTER_CREATE: readonly PlannerTab[] = ["build", "import"];
+
+/** A secondary way in under the trips: a hairline box, words in the middle. */
+const moreWay =
+  "flex min-h-[52px] w-full items-center justify-center rounded-[var(--r-button)] border border-border bg-card px-4 text-[14px] font-medium";
 
 export const Route = createFileRoute("/trips")({
   staticData: { plane: "tab" },
@@ -416,20 +420,7 @@ function TripsPage() {
   return (
     <AppShell>
       <div className="space-y-6">
-        <TripsHero
-          actions={
-            <>
-              <Link
-                to="/calendar"
-                aria-label="Calendar view"
-                title="Calendar view"
-                className="grid min-h-11 place-items-center px-2 text-[13px] text-muted-foreground"
-              >
-                Calendar
-              </Link>
-            </>
-          }
-        />
+        <TripsHero section={t.signedIn ? view : undefined} />
         {t.signedIn ? (
           <>
             <div role="tablist" aria-label="Which trips" className="trips-tabs relative z-[1]">
@@ -462,48 +453,8 @@ function TripsPage() {
                 onClick={openNew}
                 className="trips-create"
               >
-                Create trip →
+                Create trip
               </button>
-            ) : null}
-
-            {view !== "past" && view !== "following" ? (
-              <div className="grid grid-cols-2 gap-2.5">
-                {/* Plan with Béa: build, import, optimize or compare, from one place. */}
-                <Link
-                  to="/trips/plan"
-                  data-guide="plan-with-bea"
-                  className="trips-action tile-fill-5"
-                >
-                  <Sparkles className="size-6 shrink-0 text-primary" aria-hidden />
-                  <span className="min-w-0">
-                    <span className="block font-display text-[18px] leading-tight">
-                      Plan with Béa
-                    </span>
-                    <span className="block text-[13px] text-foreground/75">
-                      Build, import, optimize or compare
-                    </span>
-                  </span>
-                </Link>
-                <button
-                  type="button"
-                  data-guide="join-trip"
-                  aria-expanded={joining}
-                  onClick={() => {
-                    setError("");
-                    setJoining(true);
-                    setCreating(false);
-                  }}
-                  className="trips-action tile-fill-3 text-left"
-                >
-                  <Users className="size-6 shrink-0 text-primary" aria-hidden />
-                  <span className="min-w-0">
-                    <span className="block font-display text-[18px] leading-tight">
-                      Join with a code
-                    </span>
-                    <span className="block text-[13px] text-foreground/75">Trips with friends</span>
-                  </span>
-                </button>
-              </div>
             ) : null}
 
             {error && !creating && !joining && (
@@ -596,28 +547,34 @@ function TripsPage() {
           </div>
         )}
 
-        {/* The vault moved into Trip documents (its Protected section). */}
-        {t.signedIn && view === "upcoming" ? (
-          <TripsSection title="Trip documents">
-            <Link
-              to="/profile/documents"
-              data-guide="document-vault"
-              className="plain-card flex items-center gap-3 p-4"
+        {/* The other ways in, as the design lists them under the trips. The vault
+            moved into Trip documents (its Protected section). */}
+        {t.signedIn && view !== "past" && view !== "following" ? (
+          <div className="space-y-3">
+            <button
+              type="button"
+              data-guide="join-trip"
+              aria-expanded={joining}
+              onClick={() => {
+                setError("");
+                setJoining(true);
+                setCreating(false);
+              }}
+              className={moreWay}
             >
-              <span className="tile-fill-3 grid size-11 shrink-0 place-items-center rounded-full text-primary">
-                <FileText className="size-5" aria-hidden />
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block text-[17px] font-semibold leading-tight">
-                  Bookings and tickets
-                </span>
-                <span className="block text-[14px] text-muted-foreground">
-                  And Protected files, encrypted on this device
-                </span>
-              </span>
-              <ChevronRight className="size-5 shrink-0 text-muted-foreground" aria-hidden />
+              Join with a code
+            </button>
+            <Link to="/calendar" className={moreWay}>
+              Calendar
             </Link>
-          </TripsSection>
+            {/* Plan with Béa: build, import, optimize or compare, from one place. */}
+            <Link to="/trips/plan" data-guide="plan-with-bea" className={moreWay}>
+              Plan with Béa
+            </Link>
+            <Link to="/profile/documents" data-guide="document-vault" className={moreWay}>
+              Trip documents
+            </Link>
+          </div>
         ) : null}
       </div>
 

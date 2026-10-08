@@ -428,7 +428,8 @@ await flow("trips: tabs, layout and picture switches, New trip and Join sheets",
   await page.waitForTimeout(300);
   if ((await page.getByRole("dialog").getByPlaceholder("Invite code").count()) !== 1) throw new Error("Join lost its code field");
   await page.keyboard.press("Escape");
-  if ((await page.getByRole("link", { name: "Calendar view" }).getAttribute("href")) !== "/calendar") throw new Error("Calendar lost its route");
+  if ((await page.getByRole("link", { name: "Calendar", exact: true }).getAttribute("href")) !== "/calendar") throw new Error("Calendar lost its route");
+  if ((await page.getByRole("link", { name: "Trip documents", exact: true }).getAttribute("href")) !== "/profile/documents") throw new Error("Trip documents lost its route");
   if ((await page.getByRole("link", { name: /Plan with Béa/ }).getAttribute("href")) !== "/trips/plan") throw new Error("Plan with Béa lost its route");
 }, "trips");
 
@@ -861,11 +862,15 @@ await flow("save sheet: lists are Recommendation, Bucket list, Been there; Next 
   if ((await page.getByText(/Next time|Wishlist/).count()) !== 0) throw new Error("the page still says Next time or Wishlist");
 }, "recs");
 
-await flow("you: header, Béa card, grouped rows, Customize Home, theme and More", async (page) => {
+await flow("you: figures, rows, Profile settings, Customize Home, theme and Sign out", async (page) => {
   const text = async () => page.locator("body").innerText();
-  for (const word of ["Travel, your way.", "Your Béa", "Travel preferences", "Packing lists", "Photos & memories", "Work travel", "Trip documents", "Settings & storage", "Appearance", "Data & imports", "Privacy & legal", "Help & FAQ", "Feedback", "About Béa", "Sign out"])
+  for (const word of ["Travel, your way.", "Trips", "Countries", "Travel preferences", "Béa", "Packing lists", "Photos and memories", "Work travel", "Trip documents", "Appearance", "Data & imports", "Privacy & legal", "Help & FAQ", "Feedback", "About Béa", "Profile settings", "Sign out"])
     if (!(await text()).includes(word)) throw new Error(`You lost "${word}"`);
-  if ((await page.getByRole("link", { name: /Your Béa/ }).getAttribute("href")) !== "/profile/bea") throw new Error("Your Béa lost its route");
+  if ((await page.locator("[data-guide='your-bea']").getAttribute("href")) !== "/profile/bea") throw new Error("Béa lost its route");
+  await page.getByRole("button", { name: "Profile settings", exact: true }).click();
+  await page.getByRole("dialog").getByLabel("Home city").waitFor();
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(300);
   await page.getByRole("button", { name: /Appearance/ }).click();
   await page.getByRole("dialog").getByText("Theme", { exact: true }).waitFor();
   await page.getByRole("button", { name: /Customize home/ }).first().click();

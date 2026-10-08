@@ -2963,98 +2963,6 @@ html:not(.dark)
   --world-wash: none;
 }
 
-/* You: profile header, stats, preferences, theme, highlights. */
-.you-head {
-  padding: 4px 0 0;
-}
-.you-avatar {
-  display: block;
-  flex-shrink: 0;
-  width: 92px;
-  height: 92px;
-  padding: 3px;
-  border-radius: 999px;
-  border: 2px solid var(--acc, #f6466e);
-  background: var(--background);
-}
-.you-edit {
-  border: 1px solid var(--border);
-  background: var(--card);
-  color: var(--foreground);
-}
-.you-stats {
-  border-top: 1px solid var(--border);
-  padding-top: 14px;
-}
-.dark .you-stats {
-  border-top-color: var(--border);
-}
-.you-figure {
-  border: 1px solid var(--border);
-  background: var(--card);
-}
-.dark .you-figure {
-  border-color: var(--border);
-}
-[data-theme="colorful"] .you-figure:nth-child(1) {
-  background: var(--blush, #fbdce7);
-  border-color: transparent;
-}
-[data-theme="colorful"] .you-figure:nth-child(2) {
-  background: var(--powder, #dbecfa);
-  border-color: transparent;
-}
-[data-theme="colorful"] .you-figure:nth-child(3) {
-  background: var(--mint, #ddf1e8);
-  border-color: transparent;
-}
-[data-theme="colorful"] .you-figure:nth-child(4) {
-  background: var(--butter, #fcf2cc);
-  border-color: transparent;
-}
-.you-section .font-display {
-  font-size: 24px;
-}
-.you-chip {
-  border: 1px solid var(--border);
-  color: var(--foreground);
-}
-.dark .you-chip {
-  border-color: var(--border);
-}
-[data-theme="calm"] .you-chip {
-  background: var(--card);
-}
-.you-section [role="radiogroup"] button {
-  min-height: 56px;
-}
-.you-section > div > .rounded-xl.bg-elevated {
-  background: transparent;
-  padding: 0;
-}
-.you-section > div > .rounded-xl.bg-elevated > p:first-child,
-.you-section > div > .rounded-xl.bg-elevated > p:nth-child(2) {
-  display: none;
-}
-.you-highlight {
-  position: relative;
-  display: block;
-  aspect-ratio: 3 / 4;
-  overflow: hidden;
-  border-radius: 18px;
-  background: var(--muted);
-  color: #fff;
-}
-.you-highlight-shade {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(to top, rgb(0 0 0 / 0.6), rgb(0 0 0 / 0) 55%);
-}
-.you-highlight-text {
-  position: absolute;
-  inset: auto 8px 8px;
-}
-
 /* ===== companion restyle ===== */
 .companion-hero {
   position: relative;
@@ -3753,18 +3661,18 @@ h2:not([class*="font-"]) {
 /* The small switches and tags are flat too. */
 .trips-switch,
 .trips-switch button {
-  border-radius: 0;
+  border-radius: var(--r-card);
 }
 
-/* The Original Editorial type: bold Didone headlines, mono caps for labels. */
+/* Tabs: small sentence-case words, as the minimalist design sets them. */
 .trips-tabs button,
 .trip-views button {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 12px;
   line-height: 16px;
   font-weight: 400;
-  letter-spacing: 1px;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
 }
 .page-title-rule:not([data-compressed]) h1 {
   font-weight: 700;
@@ -3774,9 +3682,9 @@ h2:not([class*="font-"]) {
 .home-subtitle {
   font-family: var(--font-display);
   font-weight: 400;
-  font-size: 30px;
-  line-height: 34px;
-  letter-spacing: -0.5px;
+  font-size: 20px;
+  line-height: 28px;
+  letter-spacing: 0;
 }
 .page-title-rule[data-compressed] .home-subtitle {
   display: none;
@@ -3797,7 +3705,7 @@ a.bg-primary {
 /* Home's modules: square, one heading size, like the joined grid in the design. */
 .home-widget [class*="rounded"]:not(.rounded-full),
 .home-widget .rounded-full:not([class*="size-1"]):not([class*="size-2"]) {
-  border-radius: 0;
+  border-radius: var(--r-card);
 }
 .home-widget h2,
 .home-widget h3 {
@@ -3835,10 +3743,10 @@ a.bg-primary {
   width: 100%;
   min-height: 52px;
   font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-  font-weight: 400;
+  font-size: 14px;
+  letter-spacing: 0;
+  text-transform: none;
+  font-weight: 500;
 }
 .editorial-feature a[class*="underline-offset"] svg {
   color: inherit;
@@ -3846,10 +3754,10 @@ a.bg-primary {
 
 .trips-section-title {
   font-family: var(--font-mono) !important;
-  font-size: 11px !important;
+  font-size: 12px !important;
   line-height: 16px !important;
-  letter-spacing: 1px !important;
-  text-transform: uppercase;
+  letter-spacing: 0 !important;
+  text-transform: none;
   font-weight: 400 !important;
 }
 .editorial-feature > div:last-child {
@@ -3879,13 +3787,13 @@ a.bg-primary {
   padding: 16px 48px 16px 0;
 }
 .trips-row > div:nth-child(2) > p:first-child {
-  font-size: 26px;
-  line-height: 30px;
-  letter-spacing: -0.5px;
+  font-size: 16px;
+  line-height: 22px;
+  letter-spacing: 0;
 }
 .trips-row > div:nth-child(2) > p.text-muted-foreground {
-  font-family: var(--font-display);
-  font-size: 18px;
+  font-family: var(--font-sans);
+  font-size: 14px;
 }
 .trips-action {
   min-height: 52px;
@@ -3893,12 +3801,12 @@ a.bg-primary {
   justify-content: center;
   text-align: center;
   font-family: var(--font-mono);
-  text-transform: uppercase;
-  letter-spacing: 1px;
+  text-transform: none;
+  letter-spacing: 0;
 }
 .trips-action span.block {
   font-family: var(--font-mono) !important;
-  font-size: 11px !important;
+  font-size: 12px !important;
   line-height: 16px;
 }
 .trips-action span.block + span.block {
@@ -3907,7 +3815,7 @@ a.bg-primary {
 
 .trips-feature,
 .editorial-feature {
-  border-radius: 0;
+  border-radius: var(--r-card);
 }
 :root:not([data-theme="colorful"]) .editorial-feature a[class*="underline-offset"],
 :root.dark .editorial-feature a[class*="underline-offset"] {
@@ -3916,7 +3824,7 @@ a.bg-primary {
 }
 .editorial-feature .trips-ribbon + div,
 .editorial-feature .trips-ribbon {
-  border-radius: 0;
+  border-radius: var(--r-card);
 }
 
 .editorial-strip .trip-strip-photo {
@@ -3925,7 +3833,7 @@ a.bg-primary {
   margin-inline: 16px;
 }
 
-/* Every card and box on a screen is square, whatever its own class says. */
+/* Every card and box on a screen has the same 8px corner, whatever its own class says. */
 main .rounded-lg,
 main .rounded-xl,
 main .rounded-2xl,
@@ -3935,7 +3843,7 @@ main [class*="rounded-[2"],
 main [class*="rounded-[3"],
 main [class*="rounded-card"],
 main [class*="rounded-\\[var(--r-"] {
-  border-radius: 0;
+  border-radius: var(--r-card);
 }
 
 /* Home's number modules: one large figure and a mono label, as the design sets them. */
@@ -3967,12 +3875,13 @@ main [class*="rounded-\\[var(--r-"] {
   min-height: 52px !important;
   justify-content: center;
   border: 1px solid var(--foreground);
-  border-radius: 0 !important;
+  border-radius: var(--r-card) !important;
   font-family: var(--font-mono);
-  font-size: 11px !important;
-  letter-spacing: 1px;
-  text-transform: uppercase;
+  font-size: 14px !important;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--foreground) !important;
+  font-weight: 500;
 }
 [data-guide="customize-home"] svg,
 [data-guide="customize-world"] svg {
@@ -4055,9 +3964,10 @@ main [class*="rounded-\\[var(--r-"] {
   background: var(--foreground);
   color: var(--background);
   font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 1px;
-  text-transform: uppercase;
+  font-size: 14px;
+  letter-spacing: 0;
+  text-transform: none;
+  font-weight: 500;
 }
 [data-theme="colorful"]:not(.dark) .trips-create {
   background: var(--acc);
@@ -4083,7 +3993,7 @@ main [class*="rounded-\\[var(--r-"] {
 }
 .sub-page-head .rounded-full,
 .sub-page .rounded-full:is(button > span, a > span) {
-  border-radius: 0;
+  border-radius: var(--r-card);
 }
 .sub-page-head button > span.grid {
   border: 0;
@@ -4206,9 +4116,9 @@ main [class*="rounded-\\[var(--r-"] {
   color: #111111;
 }
 
-/* Inside a subpage every box is flat and square, with a hairline. */
+/* Inside a subpage every box is flat, with an 8px corner and a hairline. */
 .sub-page :is(.rounded-lg, .rounded-xl, .rounded-2xl, .rounded-3xl, .rounded-md, .plain-card, input, textarea, select) {
-  border-radius: 0;
+  border-radius: var(--r-card);
   box-shadow: none;
 }
 .sub-page .plain-card {
@@ -4223,20 +4133,20 @@ main [class*="rounded-\\[var(--r-"] {
   background-image: none;
   background-color: var(--foreground);
   color: var(--background);
-  border-radius: 0;
+  border-radius: var(--r-card);
   box-shadow: none;
   font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 400;
-  letter-spacing: 1px;
-  text-transform: uppercase;
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
 }
 [data-theme="colorful"]:not(.dark) .btn-primary {
   background-color: var(--acc);
   color: #111111;
 }
 .sub-page .rounded-full.border {
-  border-radius: 0;
+  border-radius: var(--r-card);
 }
 
 .menu-choice-opts {
@@ -4288,10 +4198,10 @@ main [class*="rounded-\\[var(--r-"] {
   background: none !important;
   box-shadow: none !important;
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 400;
-  letter-spacing: 1px;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--muted-foreground);
   border-bottom: 1px solid transparent;
 }
@@ -4311,128 +4221,37 @@ main [class*="rounded-\\[var(--r-"] {
   box-shadow: 0 2px 0 var(--acc) !important;
 }
 
-/* You: the figures large, the lists as plain ruled rows, no boxes. */
-.you-page .plain-card,
-.you-page .you-section,
-.you-page .you-head,
-.you-page > a {
-  background: none;
-  border: 0;
-  border-radius: 0;
-  box-shadow: none;
-}
-.you-page .you-avatar {
-  width: 56px;
-  height: 56px;
-  padding: 0;
-  border: 1px solid var(--border);
-  border-radius: 0;
-  overflow: hidden;
-}
-.you-page .you-avatar img,
-.you-page .you-avatar > span {
-  border-radius: 0;
-}
-.you-page .you-edit svg,
-.you-page .plain-card svg,
-.you-page > a svg,
-.you-page > a img {
-  display: none;
-}
-.you-page .plain-card > * {
-  border-bottom: 0.5px solid var(--border);
-}
-.you-page .plain-card [class*="bg-tile"],
-.you-page .plain-card [class*="rounded-full"][class*="size-"] {
-  display: none;
-}
-.you-page .you-stats {
-  gap: 0;
-  border-block: 0.5px solid var(--border);
-}
-.you-page .you-figure {
-  background: none !important;
-  border-radius: 0;
-  align-items: flex-start;
-  padding: 14px 8px;
-  text-align: start;
-}
-.you-page .you-figure > svg {
-  display: none;
-}
-.you-page .you-figure > span:nth-of-type(1) {
-  font-family: var(--font-display);
-  font-size: 34px;
-  font-weight: 700;
-  line-height: 1;
-  letter-spacing: -1px;
-}
-.you-page .you-figure > span:nth-of-type(2) {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-}
-.you-page .you-edit {
-  border-radius: 0;
-  background: none;
-  border: 0.5px solid var(--foreground);
-  font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-  font-weight: 400;
-}
-
-/* Square buttons everywhere: a pill with words in it becomes a flat box. */
+/* One button shape everywhere: a pill with words in it becomes an 8px box. */
 main button.rounded-full.border:not([class*="size-"]),
 main a.rounded-full.border:not([class*="size-"]),
 main button[class*="rounded-full"]:not([class*="size-"]):not([class*="bg-primary"]),
 main a[class*="rounded-full"]:not([class*="size-"]):not([class*="bg-primary"]) {
-  border-radius: 0;
+  border-radius: var(--r-card);
 }
 
 main [class*="rounded-["],
 main [class*="rounded-3xl"],
 main [class*="rounded-2xl"] {
-  border-radius: 0;
-}
-.you-page .you-figure:first-child {
-  grid-column: 1 / -1;
-  flex-direction: row;
-  align-items: baseline;
-  gap: 12px;
-  border-bottom: 0.5px solid var(--border);
-}
-.you-page .you-figure:first-child > span:nth-of-type(1) {
-  font-size: 24px;
-}
-.you-page .you-stats {
-  grid-template-columns: repeat(3, 1fr);
-}
-.you-page > a img {
-  display: block;
-  width: 56px;
-  height: 56px;
+  border-radius: var(--r-card);
 }
 
 /* Form fields on a subpage: a hairline box, the value in serif. */
 .sub-page :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), textarea, select):not([class*="bg-transparent"]):not([class*="border-0"]) {
   border: 0.5px solid var(--foreground);
-  border-radius: 0;
+  border-radius: var(--r-card);
   background: transparent;
   min-height: 56px;
   padding: 10px 14px;
-  font-family: var(--font-display);
-  font-size: 20px;
-  line-height: 26px;
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 22px;
   color: var(--foreground);
 }
 .sub-page :is(input, textarea)::placeholder {
   font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 1px;
-  text-transform: uppercase;
+  font-size: 12px;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--muted-foreground);
 }
 .sub-page :is(input, textarea, select) {
@@ -4460,15 +4279,15 @@ main [class*="rounded-2xl"] {
   background: none !important;
   padding-inline: 14px;
   font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 1px;
-  text-transform: uppercase;
+  font-size: 12px;
+  letter-spacing: 0;
+  text-transform: none;
   font-weight: 400;
   color: var(--muted-foreground);
 }
 [role="group"][aria-label="Lists"] > button span {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 12px;
 }
 [role="group"][aria-label="Lists"] > button[aria-pressed="true"],
 [role="tablist"][aria-label="Which list"] > button[aria-selected="true"] {
@@ -4486,7 +4305,7 @@ main [class*="rounded-2xl"] {
 .recs-box,
 .recs-pill,
 .recs-nearby {
-  border-radius: 0;
+  border-radius: var(--r-card);
 }
 .recs-card,
 .recs-box,
@@ -4502,12 +4321,12 @@ main [class*="rounded-2xl"] {
   border: 0.5px solid var(--foreground);
 }
 .recs-act-ico {
-  border-radius: 0;
+  border-radius: var(--r-card);
 }
 
 /* Panels that rise from the bottom: flat, hairline-topped, no handle. */
 .sheet-panel {
-  border-radius: 0 !important;
+  border-radius: 16px 16px 0 0 !important;
   border: 0;
   border-top: 0.5px solid var(--foreground);
   box-shadow: none;
@@ -4519,7 +4338,7 @@ main [class*="rounded-2xl"] {
   letter-spacing: -0.5px;
 }
 .sheet-panel .rounded-full:is(button > span) {
-  border-radius: 0;
+  border-radius: var(--r-card);
 }
 .menu-done.border {
   color: var(--foreground);
@@ -4527,7 +4346,7 @@ main [class*="rounded-2xl"] {
 }
 .menu-done.bg-destructive { color: var(--destructive-foreground); }
 .sub-page [class*="rounded"]:not(.rounded-full):not(.rounded-none) {
-  border-radius: 0;
+  border-radius: var(--r-card);
 }
 .surface,
 .sub-page .surface {
