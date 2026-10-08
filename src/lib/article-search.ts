@@ -68,6 +68,9 @@ export function readArticles(text: string): FoundArticle[] {
   return out;
 }
 
+/** The host of Google's grounding redirect links, which name no site of their own. */
+const GOOGLE_REDIRECT_HOST = "vertexaisearch.cloud.google.com";
+
 /**
  * The articles whose site the search actually returned. A grounded answer can
  * still write a plausible link that does not exist; Google's sources name the
@@ -88,7 +91,7 @@ export function keepSourcedArticles(
     .flatMap((s) => {
       const host = hostOf(s.url);
       // Google's own redirect links say nothing about the site; the title then names it.
-      const fromUrl = host && !host.endsWith("vertexaisearch.cloud.google.com") ? [host] : [];
+      const fromUrl = host && host !== GOOGLE_REDIRECT_HOST ? [host] : [];
       return [...fromUrl, s.title.trim().toLowerCase()];
     })
     .map((d) => d.replace(/^www\./, ""))

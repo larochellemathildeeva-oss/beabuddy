@@ -103,3 +103,23 @@ test("a source named by its page title still vouches for its site through its li
     ["Real"],
   );
 });
+
+test("only Google's own redirect host is treated as saying nothing about the site", () => {
+  const articles = [{ title: "Lookalike", url: "https://evilvertexaisearch.cloud.google.com/x" }];
+  // A host that merely ends with Google's redirect host's name is a site like any other.
+  const lookalike = [{ title: "Some page", url: "https://evilvertexaisearch.cloud.google.com/x" }];
+  assert.deepEqual(
+    keepSourcedArticles(articles, lookalike).map((a) => a.title),
+    ["Lookalike"],
+  );
+  const redirect = [
+    { title: "Some page", url: "https://vertexaisearch.cloud.google.com/grounding-api-redirect/a" },
+  ];
+  assert.deepEqual(
+    keepSourcedArticles(
+      [{ title: "T", url: "https://vertexaisearch.cloud.google.com/a" }],
+      redirect,
+    ),
+    [],
+  );
+});
