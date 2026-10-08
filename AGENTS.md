@@ -645,6 +645,8 @@ painting the illustrations in `public/places/`, `public/banners/` and
 
 ## Notes
 
+- **UI redesign in progress:** read `docs/superpowers/HANDOVER.md` first. The live app is being
+  restyled to the Figma "Minimalist complete" page (file `ozW1QFqodeqcpK9wQmkg1S`, node `123:268`).
 - Product philosophy: `docs/WHAT_BEA_BELIEVES.md`. Brand: `docs/BRANDING.md`.
   Voice: `src/lib/bea-voice.ts`. Security checklist: `docs/SECURITY_REVIEW_CHECKLIST.md`;
   sign-in settings that live in the Supabase dashboard: `docs/AUTH_SECURITY_BASELINE.md`.
