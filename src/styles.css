@@ -126,6 +126,8 @@
   --pad-screen: 20px;
   --success: #58745c;
   --warning: #b47a35;
+  /* Text on a finished stop's pin: 4.5:1 on every theme's --acc-done (check:contrast). */
+  --journal-done-ink: #111111;
 
   /* Calm keeps a white ground. All themes share the chosen accent. */
   --background: #ffffff;
@@ -1131,7 +1133,7 @@
 }
 .journal-pin--done {
   background: var(--acc-done);
-  color: var(--journal-ink);
+  color: var(--journal-done-ink);
 }
 /* Inside another stop: a smaller ring beside its parent, numbered like its card. */
 .journal-pin--nested {

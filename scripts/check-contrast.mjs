@@ -21,6 +21,7 @@ const PAIRS = [
   ["--destructive-foreground", "--destructive", 4.5],
   ["--field-border", "--card", 3],
   ["--ring", "--background", 3],
+  ["--journal-done-ink", "--acc-done", 4.5],
 ];
 
 const HEX = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i;

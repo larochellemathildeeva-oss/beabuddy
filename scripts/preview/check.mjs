@@ -348,7 +348,10 @@ const writes = (page) => page.evaluate(() => window.__writes);
 async function chooseAccent(page, name) {
   const radio = page.getByRole("radio", { name, exact: true });
   if (await radio.count()) return radio.click();
-  await page.evaluate((n) => { document.documentElement.dataset.accent = n.toLowerCase(); }, name);
+  await page.evaluate((n) => {
+    document.documentElement.dataset.accent = n.toLowerCase();
+    localStorage.setItem("bea-accent", n.toLowerCase());
+  }, name);
 }
 
 await flow("shell: every theme and accent saves, restores and responds to account changes", async (page) => {
@@ -916,7 +919,7 @@ await flow("shell: text tokens cover hover, opacity, sequence and dark error con
       }
       const map = document.createElement("div");
       map.className = "journal-map";
-      for (const tone of ["", "journal-pin--nested", "journal-pin--food", "journal-pin--transit", "journal-pin--stay"]) for (const selected of ["", "journal-pin--on"]) {
+      for (const tone of ["", "journal-pin--nested", "journal-pin--food", "journal-pin--transit", "journal-pin--stay", "journal-pin--done"]) for (const selected of ["", "journal-pin--on"]) {
         const pin = document.createElement("p");
         pin.className = `journal-pin ${tone} ${selected}`;
         pin.textContent = "1";

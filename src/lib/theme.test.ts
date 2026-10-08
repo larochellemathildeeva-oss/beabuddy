@@ -1,4 +1,5 @@
 import { strict as assert } from "node:assert";
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import {
   applyTheme,
@@ -133,4 +134,12 @@ test("status-bar boot script paints the saved theme's colour", () => {
     new Function(THEME_COLOR_BOOT_SCRIPT)();
     assert.equal(meta.content, THEME_COLORS[theme]);
   }
+});
+
+test("the installed app's launch colours are the default theme's page colour", () => {
+  const manifest = JSON.parse(
+    readFileSync(new URL("../../public/manifest.webmanifest", import.meta.url), "utf8"),
+  );
+  assert.equal(manifest.theme_color, THEME_COLORS[DEFAULT_THEME]);
+  assert.equal(manifest.background_color, THEME_COLORS[DEFAULT_THEME]);
 });
