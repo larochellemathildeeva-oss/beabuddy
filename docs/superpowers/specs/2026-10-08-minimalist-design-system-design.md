@@ -209,25 +209,26 @@ Direction for its own spec (not built in the redesign):
 - Nav: five tabs stay (Home, Friends, Trips, Recs, You). This also resolves the
   first-time-user finding that World and Recs looked interchangeable.
 
-## 12. Companion = the live map and the companion card, as one view (owner)
+## 12. One Map view: Companion replaces the live map (owner)
 
 Today, under the Trips "Map" tab, `Map | Companion` switches between two
 separate things: the day map (`DayMapView`, with its own small stop card) and
 the Companion card list (`NowPanel`: no map). Earlier drafts of this spec wrongly
-called that a regression. The owner's intent is different:
+called that a regression. The owner's intent: **Companion replaced the live map
+in order to simplify the views**, so there is one view, not two.
 
-- **Companion is the "live" map view.** One view, not two: the day map with the
-  traveller's live position on top, and below it the full **Current stop** card
-  (art, stay-time and "Here now" chips, address, leave-by, Leaving / Directions /
-  photo / "Not here yet" / "Running late?" / "Ask Béa") and the **Next stop**
-  card, plus Follow along and the day picker.
-- **Map is the plain day map** for planning and reading the route, without the
-  live panel. The separate live map behaviour in `DayMapView` is absorbed into
-  Companion rather than kept twice.
+- **The Map tab is the Companion view.** No `Map | Companion` switch. It is the
+  day map with the traveller's live position, and below it the full **Current
+  stop** card (art, stay-time and "Here now" chips, address, leave-by, Leaving /
+  Directions / photo / "Not here yet" / "Running late?" / "Ask Béa") and the
+  **Next stop** card, plus Follow along and the day picker.
+- **When nothing is current** (before the trip, between stops, after it) the
+  same view shows the day's map and stops, with the next stop's card first; it
+  never falls back to a second, separate map view.
+- The separate live-map behaviour in `DayMapView` is absorbed, not kept twice.
 - The Figma Companion and Map frames (`116:988`, `116:1060`) show a stripped
-  card and a line drawing; they must be redrawn to this, not implemented as they
-  are.
+  card and a line drawing; they must be redrawn as this one view.
 
 Built in Phase 4 (trip views), as its own PR with tests: the Current-stop card
-contents, the Next-stop card, and that Companion shows the day map. No app code
-changes in Phase 0 or Phase 1.
+contents, the Next-stop card, the day map in the same view, and the not-live
+state. No app code changes in Phase 0 or Phase 1.
