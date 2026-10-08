@@ -426,17 +426,6 @@
     font-weight: 500;
   }
 
-  /* The traveller's other choice, Instrument Serif, has one weight. */
-  :root[data-headline="instrument"] {
-    --font-display: "Instrument Serif", ui-serif, Georgia, serif;
-  }
-  :root[data-headline="instrument"] .font-display,
-  :root[data-headline="instrument"] h1,
-  :root[data-headline="instrument"] h2,
-  :root[data-headline="instrument"] h3 {
-    font-weight: 400;
-  }
-
   h1,
   h2,
   h3 {

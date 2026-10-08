@@ -1,5 +1,5 @@
 /**
- * Reading settings under You → Appearance: text size, font, headline font, reduced motion,
+ * Reading settings under You → Appearance: text size, font, reduced motion,
  * more contrast and bolder text. One choice for the whole app, kept with the
  * account like the theme (account-settings.ts) and on the device for first
  * paint.
@@ -29,14 +29,9 @@ export const FONT_HREF: Partial<Record<ReadingFont, string>> = {
   lexend: "https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700;800&display=swap",
 };
 
-/** The serif for titles. Bodoni Moda is the default; Instrument Serif is the north star's. */
-export const HEADLINE_FONTS = ["bodoni", "instrument"] as const;
-export type HeadlineFont = (typeof HEADLINE_FONTS)[number];
-
 export type Accessibility = {
   textSize: TextSize;
   font: ReadingFont;
-  headline: HeadlineFont;
   reduceMotion: boolean;
   moreContrast: boolean;
   boldText: boolean;
@@ -45,7 +40,6 @@ export type Accessibility = {
 export const DEFAULT_ACCESSIBILITY: Accessibility = {
   textSize: "default",
   font: "bea",
-  headline: "bodoni",
   reduceMotion: false,
   moreContrast: false,
   boldText: false,
@@ -73,7 +67,6 @@ export function parseAccessibility(raw: string | null | undefined): Accessibilit
   return {
     textSize: oneOf(TEXT_SIZES, data["textSize"], "default"),
     font: oneOf(READING_FONTS, data["font"], "bea"),
-    headline: oneOf(HEADLINE_FONTS, data["headline"], "bodoni"),
     reduceMotion: data["reduceMotion"] === true,
     moreContrast: data["moreContrast"] === true,
     boldText: data["boldText"] === true,
@@ -85,7 +78,6 @@ export function serializeAccessibility(a: Accessibility): string | null {
   const out: Partial<Accessibility> = {};
   if (a.textSize !== "default") out.textSize = a.textSize;
   if (a.font !== "bea") out.font = a.font;
-  if (a.headline !== "bodoni") out.headline = a.headline;
   if (a.reduceMotion) out.reduceMotion = true;
   if (a.moreContrast) out.moreContrast = true;
   if (a.boldText) out.boldText = true;
@@ -121,7 +113,6 @@ export function applyAccessibility(a: Accessibility, root: Root): void {
   if (a.textSize === "default") root.style.removeProperty("--text-scale");
   else root.style.setProperty("--text-scale", String(TEXT_SCALE[a.textSize]));
   flag(root, "font", a.font === "bea" ? null : a.font);
-  flag(root, "headline", a.headline === "bodoni" ? null : a.headline);
   flag(root, "motion", a.reduceMotion ? "reduce" : null);
   flag(root, "contrast", a.moreContrast ? "more" : null);
   flag(root, "bold", a.boldText ? "on" : null);
@@ -132,4 +123,4 @@ export function applyAccessibility(a: Accessibility, root: Root): void {
  * Runs in `<head>` so the reading settings are on before first paint. Kept in
  * step with `parseAccessibility` and `applyAccessibility` by the tests.
  */
-export const ACCESSIBILITY_BOOT_SCRIPT = `try{var a=JSON.parse(localStorage.getItem("${ACCESSIBILITY_KEY}")||"null");if(a&&typeof a==="object"){var r=document.documentElement,s=${JSON.stringify(TEXT_SCALE)}[a.textSize];if(typeof s==="number"&&s!==1)r.style.setProperty("--text-scale",String(s));var h=${JSON.stringify(FONT_HREF)}[a.font];if(typeof h==="string"){r.dataset.font=a.font;var l=document.createElement("link");l.id="${FONT_LINK_ID}";l.rel="stylesheet";l.href=h;document.head.appendChild(l)}else if(a.font==="system")r.dataset.font="system";if(a.headline==="instrument")r.dataset.headline="instrument";if(a.reduceMotion===true)r.dataset.motion="reduce";if(a.moreContrast===true)r.dataset.contrast="more";if(a.boldText===true)r.dataset.bold="on"}}catch(e){}`;
+export const ACCESSIBILITY_BOOT_SCRIPT = `try{var a=JSON.parse(localStorage.getItem("${ACCESSIBILITY_KEY}")||"null");if(a&&typeof a==="object"){var r=document.documentElement,s=${JSON.stringify(TEXT_SCALE)}[a.textSize];if(typeof s==="number"&&s!==1)r.style.setProperty("--text-scale",String(s));var h=${JSON.stringify(FONT_HREF)}[a.font];if(typeof h==="string"){r.dataset.font=a.font;var l=document.createElement("link");l.id="${FONT_LINK_ID}";l.rel="stylesheet";l.href=h;document.head.appendChild(l)}else if(a.font==="system")r.dataset.font="system";if(a.reduceMotion===true)r.dataset.motion="reduce";if(a.moreContrast===true)r.dataset.contrast="more";if(a.boldText===true)r.dataset.bold="on"}}catch(e){}`;
