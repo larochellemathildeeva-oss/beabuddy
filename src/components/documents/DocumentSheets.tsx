@@ -582,7 +582,7 @@ export function AssignSheet({
         </button>
       }
     >
-      <div className="space-y-4">
+      <fieldset disabled={busy} aria-busy={busy} className="space-y-4">
         <div className="doc-card flex items-center gap-3 p-3">
           <FilePreview file={file ?? null} kind={draft.kind} />
           <div className="min-w-0 flex-1">
@@ -813,7 +813,7 @@ export function AssignSheet({
             {error}
           </p>
         )}
-      </div>
+      </fieldset>
 
       <TripPicker
         open={pickTrip}

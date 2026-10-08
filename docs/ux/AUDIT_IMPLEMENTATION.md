@@ -16,6 +16,14 @@ trip collaboration, budget, documents, offline tools and all three themes.
   closing those sheets during a pending write is blocked.
 - Shared-trip sign-in retains the shared URL. Following presents a direct link
   to the Following list, and Trips validates and honors that destination.
+- Companion keeps its day picker available during a live journey, including
+  All days; accessible date labels include the day number, and arrow/Home/End
+  keys switch days. An explicit All days choice asks which day to follow while
+  opening still selects today automatically and one-day trips keep their fallback.
+- The saved Itinerary ribbon switch renders the existing ribbon again; looking
+  at a stop on it keeps the current stop intact.
+- Document assignment fields lock while saving so edits made during the request
+  cannot silently disappear when the sheet closes.
 - Timeline Now clears filters that could hide its destination, moves keyboard
   focus to the stop and respects reduced motion.
 - Home widget handles, size pickers and module actions now have 48px targets.

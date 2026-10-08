@@ -108,3 +108,18 @@ export function shouldOfferDays<T extends { day_date: string | null }>(
 ): boolean {
   return groups.length > 1;
 }
+
+/** A manual whole-trip choice asks which day to follow; opening still finds today. */
+export function companionDayGroup<T extends { day_date: string | null }>(
+  groups: readonly TimelineDayGroup<T>[],
+  chosen: DayChoice,
+  explicitlyChosen: boolean,
+  todayKey: string,
+): TimelineDayGroup<T> | null {
+  if (chosen !== ALL_DAYS) return visibleGroups(groups, chosen)[0] ?? null;
+  if (explicitlyChosen && groups.length > 1) return null;
+  return (
+    groups.find((group) => group.key !== "" && group.key === todayKey) ??
+    (groups.length === 1 ? groups[0]! : null)
+  );
+}

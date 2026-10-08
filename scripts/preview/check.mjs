@@ -141,6 +141,7 @@ async function open(sample) {
   // A full navigation of the large preview bundle, with three themes running
   // in parallel, can take longer than the 5s interaction default; give it room
   // so a slow reload does not crash the worker.
+  if (["legs", "unpinned"].includes(sample)) await page.clock.setFixedTime(new Date("2026-10-07T10:30:00"));
   await page.goto(`https://preview.test/?sample=${sample}`, { waitUntil: "domcontentloaded", timeout: 30000 });
   await page.waitForTimeout(1200);
   return { page, errors };
@@ -158,10 +159,16 @@ async function goTab(page, name) {
     if (!(await sw.count())) throw new Error("the Companion switch is missing under the Map tab");
     await sw.first().click();
     await page.waitForTimeout(500);
+    const firstDay = page.getByRole("tab", { name: /Day 1/ });
+    if (await firstDay.count()) await firstDay.first().click();
     return;
   }
   await page.getByRole("tab", { name, exact: true }).click();
   await page.waitForTimeout(500);
+  if (name === "Timeline") {
+    const firstDay = page.getByRole("tab", { name: /Day 1/ });
+    if (await firstDay.count()) await firstDay.first().click();
+  }
 }
 
 const failures = [];
@@ -484,7 +491,7 @@ await flow("world: four views, filters, search, add sheet, bucket menu, stats op
   // Search finds a city and spins to it.
   await page.getByRole("button", { name: "Search your world" }).click();
   await page.getByRole("textbox", { name: "Search your world" }).fill("lis");
-  await page.getByRole("button", { name: /^Lisbon/ }).click();
+  await page.getByRole("button", { name: "Lisbon Portugal", exact: true }).click();
   await page.waitForTimeout(400);
   // Customize world: "Add modules" opens the modules; a switch shows or hides
   // one, the arrows reorder them, and Reset restores the mockup's three.
@@ -740,6 +747,7 @@ await flow("shell: text tokens cover hover, opacity, sequence and dark error con
       probes.append(search);
       document.querySelector("main").prepend(probes);
     });
+    await page.addStyleTag({ content: "[data-color-probes] p { transition: none !important; }" });
     await page.locator("[data-color-probes] p").nth(2).hover();
     // Wait for :hover to actually repaint the probe before reading colours —
     // under parallel load the hover can lag the getComputedStyle read, which
@@ -916,7 +924,7 @@ await flow("locate on map: opens Map Split on that stop", async (page) => {
 
 await flow("companion: pick a day from the prompt itself", async (page) => {
   await goTab(page, "Companion");
-  await page.getByRole("tab", { name: /^All.*Trip$/ }).first().click();
+  await page.getByRole("tab", { name: /All days|Whole trip/i }).first().click();
   await page.waitForTimeout(300);
   if ((await page.getByText("Pick a day to follow.").count()) === 0) throw new Error("no prompt on Whole trip");
   const days = page.getByRole("group", { name: "Day to follow" }).getByRole("button");
@@ -926,6 +934,18 @@ await flow("companion: pick a day from the prompt itself", async (page) => {
   if ((await page.getByText("Pick a day to follow.").count()) > 0) throw new Error("picking a day left the prompt up");
   if ((await page.getByRole("tab", { name: /Day 1/, selected: true }).count()) === 0)
     throw new Error("the day strip does not show the picked day");
+});
+
+await flow("companion: live day picker supports keyboard switching and All days", async (page) => {
+  await goTab(page, "Companion");
+  const day1 = page.getByRole("tab", { name: /Day 1/ }).first();
+  await day1.waitFor({ state: "visible" });
+  await day1.focus();
+  await page.keyboard.press("ArrowRight");
+  await page.getByRole("tab", { name: /Day 2/, selected: true }).first().waitFor();
+  await page.keyboard.press("Home");
+  await page.getByRole("tab", { name: "All days", selected: true }).first().waitFor();
+  await page.getByText("Pick a day to follow.").waitFor();
 });
 
 await flow("stop card: one editor opens, saves and closes", async (page) => {
@@ -1243,7 +1263,8 @@ if (flowSelected("companion: a time to leave by, no planned stay, no journey row
     if (await day1.count()) await day1.first().click();
     await page.waitForTimeout(800);
     if ((await page.getByText("Plan to stay").count()) !== 0) throw new Error("Plan to stay is still offered");
-    if ((await page.getByText(/Leave by \d|Be there by \d/).count()) === 0) throw new Error("no Leave by / Be there by chip");
+    await page.locator(".now-leave").waitFor({ state: "visible" });
+    if (!/\d{1,2}:\d{2}/.test(await page.locator(".now-leave").getAttribute("aria-label"))) throw new Error("departure guidance has no clock time");
     if ((await page.getByText(/^\d.*planned.*stay/i).count()) !== 0) throw new Error("the stay line still talks about a plan");
     const tracker = page.getByRole("region", { name: "Live journey" });
     if ((await tracker.getByText("Head to Motoyasubashi Pier").count()) !== 0) throw new Error("a journey row is a tracker stop");
@@ -1286,7 +1307,8 @@ if (flowSelected("companion: Leave by even when the next stop has no pin yet")) 
     if (!asked) throw new Error("the unpinned stop was not sent to be looked up");
     // Looked up around the stop that is on the map, not in the trip's area.
     if (!asked.near || Math.abs(asked.near.lat - 34.3915) > 0.001) throw new Error("not looked up around the pinned stop");
-    if ((await page.getByText(/Leave by \d/).count()) === 0) throw new Error("no Leave by");
+    await page.locator(".now-leave").waitFor({ state: "visible" });
+    if (!/\d{1,2}:\d{2}/.test(await page.locator(".now-leave").getAttribute("aria-label"))) throw new Error("departure guidance has no clock time");
     if (errors.length) throw new Error(errors.join(" | "));
     console.log(`✓ ${name}`);
   } catch (e) {

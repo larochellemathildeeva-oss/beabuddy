@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 import { groupTimelineByDay } from "./timeline-groups.ts";
 import {
   ALL_DAYS,
+  companionDayGroup,
   dayChips,
   defaultDayChoice,
   shouldOfferDays,
@@ -139,5 +140,18 @@ describe("shouldOfferDays", () => {
   it("counts an undated pile as a second choice", () => {
     const groups = groupTimelineByDay([row("2026-09-12", "Museum"), row(null, "Somewhere")]);
     assert.equal(shouldOfferDays(groups), true);
+  });
+});
+
+describe("companionDayGroup", () => {
+  it("keeps automatic today on opening but honors a manual All days choice", () => {
+    assert.equal(companionDayGroup(threeDays, ALL_DAYS, false, "2026-09-13")?.key, "2026-09-13");
+    assert.equal(companionDayGroup(threeDays, ALL_DAYS, true, "2026-09-13"), null);
+    assert.equal(companionDayGroup(threeDays, "2026-09-12", true, "2026-09-13")?.key, "2026-09-12");
+  });
+  it("follows the only day when a one-day trip has no picker", () => {
+    const single = groupTimelineByDay([row("2026-09-12", "Museum")]);
+    assert.equal(companionDayGroup(single, ALL_DAYS, true, "2026-09-13")?.key, "2026-09-12");
+    assert.equal(companionDayGroup([], ALL_DAYS, false, "2026-09-13"), null);
   });
 });

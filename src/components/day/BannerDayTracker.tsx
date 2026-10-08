@@ -58,7 +58,7 @@ export function BannerDayTracker({
                 aria-label={`${day.mark === "All" ? "All days" : `Day ${day.mark}`}, ${day.title}`}
                 aria-pressed={value !== undefined ? chosen : undefined}
                 onClick={() => onPick(day.key)}
-                className="relative flex min-h-11 w-full items-center justify-center gap-2 px-2 py-1 text-[14px]"
+                className="relative flex min-h-12 w-full items-center justify-center gap-2 px-2 py-1 text-[14px]"
               >
                 <span
                   className={`relative grid size-7 shrink-0 place-items-center rounded-full border-2 text-[13px] font-semibold ${

@@ -103,6 +103,7 @@ import {
   ALL_DAYS,
   dayChips,
   defaultDayChoice,
+  companionDayGroup,
   shouldOfferDays,
   visibleGroups,
   type DayChoice,
@@ -144,6 +145,7 @@ import logo from "@/assets/bea-logo.png";
 import { DayMapView } from "@/components/day/DayMapView";
 import { JourneyTracker } from "@/components/day/JourneyTracker";
 import { StopPeek } from "@/components/day/StopPeek";
+import { DayRibbon } from "@/components/day/DayRibbon";
 import { NowPanel } from "@/components/day/NowPanel";
 import {
   clockMinutes,
@@ -1326,14 +1328,8 @@ export function TripDetail({
       (e: unknown) => toast.error(friendlyError(e, "That didn't save.")),
     );
   };
-  // Now follows one day: the one picked, or today when every day is showing.
-  const companionDay =
-    chosenDay === ALL_DAYS
-      ? (timelineGroups.find((group) => group.key !== "" && group.key === todayKey) ??
-        // A one-day trip has no day strip to pick from, so there is only
-        // one day to follow. Without this it asked for a choice it hid.
-        (timelineGroups.length === 1 ? timelineGroups[0]! : null))
-      : (shownGroups[0] ?? null);
+  // Opening finds today; explicitly choosing All days asks which day to follow.
+  const companionDay = companionDayGroup(timelineGroups, chosenDay, dayChoice !== null, todayKey);
   const nowStops = companionDay ? companionStops(companionDay.items) : [];
   // Only a stop on the day being followed; another day's pick closes itself.
   const peekStop = nowStops.find((stop) => stop.id === peekId) ?? null;
@@ -1702,7 +1698,6 @@ export function TripDetail({
         {/* Several cities: pick one and the days, the map and Now all follow
             it. One slim line with the day strip beside it; on the map, alone. */}
         {stopItems.length > 0 &&
-          !liveCompanion &&
           (perspective === "companion" ||
             perspective === "map" ||
             (perspective === "timeline" && timelineByDay)) &&
@@ -1814,6 +1809,14 @@ export function TripDetail({
                 <p className="now-day-line">
                   {[companionOrdinal, companionDateLine].filter(Boolean).join(" · ")}
                 </p>
+                {view.prefs.ribbon && (
+                  <DayRibbon
+                    stops={nowStops}
+                    dayLabel={companionOrdinal}
+                    selectedId={peekStop?.id ?? null}
+                    onSelect={setPeekId}
+                  />
+                )}
                 <NowPanel
                   key={companionDay.key}
                   dayStops={nowStops}
