@@ -18,6 +18,15 @@ pastels) is not liked.
   by palette only, not by type, shape or layout.
 - Calm is the white edition: it is the reference the Figma draws.
 
+- D3. The 3D globe is retired. An **atlas** (flat map, shaded countries and
+  provinces) becomes a **Home widget** with the travel stats (countries,
+  cities, % of world). This reverses #305's decision to keep the globe.
+- D4. The **World tab becomes Friends**: a private, **invite-only** circle
+  (see section 11). Built after the redesign, from its own spec.
+- D5. The **Companion card regression is fixed first**, as its own functional
+  PR: the Map/Companion view must show the old Current-stop card with all its
+  info, plus the Next stop (section 12).
+
 **Constraints**
 - No feature is removed. The Figma is not a functional spec (its own audit:
   144 of 228 entries drawn, 405 of 503 buttons unlinked). Where the Figma and
@@ -118,7 +127,7 @@ by eye.
 | --- | --- | --- |
 | 0 Foundations | Self-hosted DM Sans; icon wrapper; token layer; Calm/Colorful/Dark palettes; Button variants; focus ring; contrast script; default theme | No visible screen redesign yet beyond font and buttons |
 | 1 Shell | Masthead, BottomNav, PageHeader, MenuRow, Input, Choice, Switch, Slider, Sheet | Touches every screen lightly |
-| 2 Landing pages | Home (incl. widget grid and sizes), Trips, World, Recs, You | Figma `116:5349/6136/5913/6554/6780` |
+| 2 Landing pages | Home (incl. widget grid and sizes, **atlas widget and stats**), Trips, Recs, You; World restyled as an interim "Places" page (Bucket list, Been there, Next time) until Friends ships | Figma `116:5349/6136/5913/6554/6780`; the globe and its assets are removed here |
 | 3 System states | Loading, offline, empty, error, not found, confirms (destructive variant), unsaved changes, sizes | Figma `116:5069`, `118:2695`, `127:874` |
 | 4 Trip views | Overview, Companion, Timeline, Map, Directions | Highest functional risk; keeps all behaviour |
 | 5 Planning, sharing, documents, bookings, budget, packing, auth, details | Figma sections `116`, `118`, `120` | Protected-document UI is **not drawn** in the Figma; restyle existing, do not redesign |
@@ -159,10 +168,42 @@ behaviour until checked on devices.
 
 ## 9. Out of scope
 
-New features; backend or migrations; Protected-document redesign; replacing the
-globe; conversion-uplift claims (none measured); participant research.
+Building Friends (own spec, section 11); backend or migrations in the
+redesign PRs; Protected-document redesign; conversion-uplift claims (none
+measured); participant research.
 
 ## 10. Open questions
 
 1. Confirm A1 (Calm default), A2 (accent behaviour per theme), A3 (maps).
 2. Sign-off on the Phase 2 screenshots before Phase 3 starts?
+3. Where do Bucket list / Been there / Next time live long term? Interim:
+   the restyled World "Places" page; final home decided in the Friends spec.
+
+## 11. Friends (replaces the World tab) — direction only
+
+**Decided:** private and **invite-only first**. Not a public network.
+
+Direction for its own spec (not built in the redesign):
+- Follow by invite link or username that the other person shares; no open
+  user search or discovery in v1.
+- A member sees only what someone **explicitly shared**: trips, photos, recs.
+  Builds on what exists (share links, Following, follow-along, opt-in photos
+  via `trip_share_links` / `trip_follows`).
+- v1: chronological, read-only. No likes or public comments. v2: comments and
+  reactions. v3: discovery, if ever.
+- Required before launch: report and block, removal of a follower, account and
+  content deletion, privacy-page and consent copy (Canada Law 25; age gate),
+  rate limits, storage cost review, RLS tests. Apple requires report/block for
+  user content.
+- Product guard: `docs/WHAT_BEA_BELIEVES.md` and the privacy copy ("designed
+  to / private by default / may") are updated deliberately, not by accident.
+- Nav: five tabs stay (Home, Friends, Trips, Recs, You). This also resolves the
+  first-time-user finding that World and Recs looked interchangeable.
+
+## 12. Companion card regression (functional, before the redesign)
+
+The Map/Companion view lost the Current-stop card with its full detail and the
+Next-stop card. "Current stop" and "Next stop" still exist in `NowPanel.tsx`
+and `DayMapView.tsx`. First step: read git history to list exactly what the
+old card showed. Then restore it in the Companion view, keep the Next stop,
+and add a regression test. Separate PR; no visual restyle in it.
