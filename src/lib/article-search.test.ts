@@ -1,0 +1,48 @@
+import { strict as assert } from "node:assert";
+import { test } from "node:test";
+import { articleCacheKey, articleSearchPrompt, readArticles } from "./article-search.ts";
+import { AI_COST } from "./ai-quota.ts";
+
+test("one cache entry per city and country, whatever the spelling", () => {
+  assert.equal(
+    articleCacheKey("Los Ángeles", "USA"),
+    articleCacheKey("los angeles", "United States"),
+  );
+  assert.notEqual(articleCacheKey("Paris", "France"), articleCacheKey("Paris", "US"));
+  assert.equal(articleCacheKey(null, "Japan"), articleCacheKey(null, "日本"));
+});
+
+test("the articles are read from the answer: public https links, at most three, no repeats", () => {
+  const reply = [
+    "The 25 best restaurants in LA | https://www.timeout.com/los-angeles/restaurants/best",
+    "Old guide | http://example.com/la",
+    "Eater's map | https://la.eater.com/maps/best-restaurants",
+    "Same again | https://la.eater.com/maps/best-restaurants",
+    "Things to do in LA | https://www.cntraveler.com/la",
+    "One more | https://www.lonelyplanet.com/usa/los-angeles",
+  ].join("\n");
+  assert.deepEqual(readArticles(reply), [
+    {
+      title: "The 25 best restaurants in LA",
+      url: "https://www.timeout.com/los-angeles/restaurants/best",
+    },
+    { title: "Eater's map", url: "https://la.eater.com/maps/best-restaurants" },
+    { title: "Things to do in LA", url: "https://www.cntraveler.com/la" },
+  ]);
+  assert.deepEqual(readArticles("no links here"), []);
+  assert.deepEqual(
+    readArticles("Local | https://localhost/x\nPrivate | https://192.168.1.2/a"),
+    [],
+  );
+});
+
+test("the search names only the city and country", () => {
+  const prompt = articleSearchPrompt("Los Angeles", "United States");
+  assert.match(prompt, /Los Angeles, United States/);
+  assert.match(prompt, /Title \| https:\/\//);
+  assert.equal(articleSearchPrompt(null, "Japan").includes("Japan"), true);
+});
+
+test("finding articles costs 2 units", () => {
+  assert.equal(AI_COST.articleSearch, 2);
+});

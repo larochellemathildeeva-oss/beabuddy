@@ -67,6 +67,7 @@ import { isCityLevelPlace } from "@/lib/reco-place";
 import { isLocation, listOf, recsForLocation } from "@/lib/place-lists";
 import { LocationSheet, type SheetLocation } from "@/components/world/LocationSheet";
 import { ConfirmSheet } from "@/components/ConfirmSheet";
+import { FindRecs } from "@/components/world/FindRecs";
 import { beaLine } from "@/lib/bea-voice";
 import { emptyLine } from "@/lib/bea-personality";
 import { bannerArtUrl, bannerSceneFor } from "@/lib/banner-art";
@@ -843,6 +844,14 @@ function WorldPage() {
             onClose={() => setOpenLocation(null)}
             signedIn={vault.signedIn}
             onAddMany={vault.addMany}
+            finder={(openArticle) => (
+              <FindRecs
+                name={openLocation.name}
+                city={openLocation.city}
+                country={openLocation.country}
+                onPick={openArticle}
+              />
+            )}
             actions={
               openLocation.row && listOf(openLocation.row) === "bucket" ? (
                 <button

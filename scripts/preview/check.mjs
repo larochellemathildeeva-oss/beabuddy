@@ -63,6 +63,7 @@ await build({
     "@/lib/geocode-plan.functions": join(src, "fake-geocode-plan.ts"),
     "@/lib/place-details.functions": join(src, "fake-place-details.ts"),
     "@/lib/weather.functions": join(src, "fake-weather.ts"),
+    "@/lib/article-search.functions": join(src, "fake-article-search.ts"),
     "@/lib/city-locate": join(src, "fake-city-locate.ts"),
     "node:net": join(src, "fake-node.ts"),
     "node:dns/promises": join(src, "fake-node.ts"),
@@ -751,6 +752,35 @@ await flow("world: four views, filters, search, add sheet, bucket menu, stats op
   if ((await text()).includes("Choose stats")) throw new Error("Travel statistics did not collapse");
   await page.getByRole("button", { name: "Travel statistics" }).click();
   if ((await page.getByRole("button", { name: /^Bucket list/ }).count()) !== 1) throw new Error("the Bucket list tile is gone");
+}, "world");
+
+await flow("world: Find recs lists articles with their sources and opens one in the reader", async (page) => {
+  await page.getByRole("tab", { name: "Bucket list", exact: true }).click();
+  await page.waitForTimeout(400);
+  await page.locator('[data-guide="bucket-list"]').getByRole("button", { name: /^Los Angeles/ }).first().click();
+  await page.waitForTimeout(400);
+  const sheet = page.getByRole("dialog", { name: /Los Angeles/ });
+  await sheet.getByRole("button", { name: "Find recs for Los Angeles" }).click();
+  await page.waitForTimeout(500);
+  for (const title of ["The 25 best restaurants in Los Angeles", "Things to do in LA this autumn"])
+    if ((await sheet.getByRole("button", { name: new RegExp(title) }).count()) === 0) throw new Error(`no article "${title}"`);
+  if ((await sheet.getByRole("link", { name: /example\.com/ }).count()) === 0) throw new Error("the search's sources are not shown");
+  await sheet.getByRole("button", { name: /The 25 best restaurants/ }).click();
+  await page.waitForTimeout(400);
+  if ((await sheet.getByPlaceholder(/https:\/\//).inputValue()) !== "https://example.com/la-restaurants") throw new Error("the reader did not open the article");
+}, "world");
+
+await flow("world: Find recs says when it cannot search, and Paste a link still works", async (page) => {
+  await page.evaluate(() => { window.__articleRefuse = "Béa has reached today's AI limit for your account."; });
+  await page.getByRole("tab", { name: "Bucket list", exact: true }).click();
+  await page.waitForTimeout(400);
+  await page.locator('[data-guide="bucket-list"]').getByRole("button", { name: /^Los Angeles/ }).first().click();
+  await page.waitForTimeout(400);
+  const sheet = page.getByRole("dialog", { name: /Los Angeles/ });
+  await sheet.getByRole("button", { name: "Find recs for Los Angeles" }).click();
+  await page.waitForTimeout(500);
+  if (!/today's AI limit/.test(await sheet.getByRole("alert").innerText())) throw new Error("the refusal is not said");
+  if ((await sheet.getByRole("button", { name: "Paste an article link" }).count()) === 0) throw new Error("Paste a link went away");
 }, "world");
 
 await flow("world: the Bucket list holds cities and countries only, each with its recs", async (page) => {
