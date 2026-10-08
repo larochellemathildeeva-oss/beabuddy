@@ -67,8 +67,8 @@ Erase/Delete account protections; sheets trap focus and restore it (shell Sheet)
 
 Status: `[ ]` open, `[x]` done (PR). Findings numbers refer to table A.
 
-- [ ] 1 One-tap deletes need confirm + undo (Phase 3)
-- [ ] 2 Error and retry states for expenses, memories, story, calendar (Phase 3)
+- [x] 1 One-tap deletes ask first (group 1; undo toast still Phase 3)
+- [x] 2 Error and retry states for expenses, photos, memories, story, calendar (group 1)
 - [ ] 3 One vocabulary: Bucket list / Been there / Next time (Phase 2)
 - [ ] 4 Next time reachable from World; list tiles off the Stats tab (Phase 2)
 - [ ] 5 Help row hidden where no guide exists; header Help decided (Phase 2)
@@ -76,10 +76,10 @@ Status: `[ ]` open, `[x]` done (PR). Findings numbers refer to table A.
 - [ ] 7 Trip menu keeps the menu underneath (Phase 4)
 - [ ] 8 One name and place for offline / kept directions (Phase 4)
 - [ ] 9 Pins to check visible without the 3-tap switch (Phase 4)
-- [ ] 10 Back target for /preferences, /help, /calendar, /photos, /expenses, /memories, /story (quick win)
+- [x] 10 Back target for /preferences, /help, /calendar, /photos, /expenses, /memories, /story (quick win)
 - [ ] Quick wins: delete /next, /world/next, /trips/next copies; aria-labels; Home logo label "Home"
-- [ ] Screen audit: trip header actions clipped at 390px (bug, before Phase 4)
-- [ ] Screen audit: World 4 countries vs You 0 countries (bug)
+- [x] Screen audit: trip header actions clipped at 390px (group 1)
+- [x] Screen audit: World 4 countries vs You 0 countries (group 1)
 - [ ] Screen audit: sign-in and Welcome still uppercase 11px (Phase 2)
 - [ ] Screen audit: Recs search box has no name; chip row cut off (Phase 2)
 - [ ] Screen audit: World pin label hidden, zoom controls overlap (Phase 2)
