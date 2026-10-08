@@ -6,7 +6,7 @@ export function CustomizeWorld({ variant = "icon" }: { variant?: CustomizeVarian
   return (
     <CustomizeModules
       name="world"
-      what="under the globe on the Map view"
+      what="under the map on the Map view"
       guide="world-customize"
       modules={WORLD_SECTIONS}
       layout={modules}

@@ -6,18 +6,18 @@ export type WorldSectionKey =
 
 export type WorldLayout = Record<WorldSectionKey, boolean>;
 
-/** What can sit under the globe on the Map view: the mockup's World modules. */
+/** What can sit under the map on the Map view: the mockup's World modules. */
 export const WORLD_SECTIONS: ModuleInfo<WorldSectionKey>[] = [
   {
     key: "filters",
-    label: "Globe filters",
+    label: "Map filters",
     hint: "Cities, provinces and states, countries, continents.",
   },
-  { key: "card", label: "Place card", hint: "The city you tapped on the globe." },
+  { key: "card", label: "Place card", hint: "The city you picked on the globe or in search." },
   {
     key: "figures",
     label: "Your travel stats",
-    hint: "Countries, cities, places been and saved, at a glance.",
+    hint: "Countries and cities, at a glance.",
   },
   { key: "add", label: "Add places", hint: "Paste a list, add one by hand or import a file." },
   { key: "bucket", label: "Bucket list", hint: "The places you want to go." },
@@ -36,12 +36,16 @@ export const WORLD_SECTIONS: ModuleInfo<WorldSectionKey>[] = [
   {
     key: "lists",
     label: "Your travel lists",
-    hint: "Bucket list, Been there and Next time, as photo tiles.",
+    hint: "Bucket list and Been there, one row each.",
   },
 ];
 
-/** As the mockup's phones show World: the filters, the place card, the stats. */
-export const DEFAULT_WORLD_MODULES: WorldSectionKey[] = ["filters", "card", "figures"];
+/**
+ * As the minimalist design draws World: Countries and Cities, then your
+ * travel lists. The filters, search and place card are with the globe
+ * ("Globe controls and geography"); every module can be added back.
+ */
+export const DEFAULT_WORLD_MODULES: WorldSectionKey[] = ["figures", "lists"];
 
 /** Wide modules take a row; the others sit two to a row as cards. */
 export const WORLD_SMALL: ReadonlySet<WorldSectionKey> = new Set([
