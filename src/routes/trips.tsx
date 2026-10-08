@@ -13,26 +13,17 @@ import { friendlyError } from "@/lib/friendly-error";
 import type { PlannerTab } from "@/components/ItineraryImport";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { ChevronRight, Plus, X } from "@/components/icons";
+import { Plus, X } from "@/components/icons";
 import { Sheet } from "@/components/Sheet";
 import { AppShell } from "@/components/AppShell";
 import { DateRangeField } from "@/components/DateRangeField";
 import { PlaceSearchInput } from "@/components/PlaceSearchInput";
-import {
-  LayoutSwitch,
-  PastTiles,
-  TripFeature,
-  TripListRow,
-  TripsHero,
-  TripsSection,
-} from "@/components/TripsList";
-import { useTripsLayout } from "@/hooks/useTripsLayout";
+import { TripFeature, TripListRow, TripsHero, TripsSection } from "@/components/TripsList";
 import { FollowedTripList } from "@/components/FollowedTripList";
 import { listFollowedTrips } from "@/lib/trip-follow.functions";
 import type { FollowedTrip } from "@/lib/trip-follow";
 import { knownToFollow, rememberFollows } from "@/lib/follow-hint";
-import { useTripGlances } from "@/hooks/useTripGlances";
-import { peopleOnTrip, tripTabs } from "@/lib/home-trip";
+import { tripTabs } from "@/lib/home-trip";
 import { toLocalISODate } from "@/lib/trip-dates";
 import { TripListSkeleton } from "@/components/Skeletons";
 import { useTripPhotos } from "@/hooks/useTripPhotos";
@@ -128,7 +119,6 @@ function TripsPage() {
   useEffect(() => {
     setView(search.view ?? "upcoming");
   }, [search.view]);
-  const [layout, setLayout] = useTripsLayout();
   const {
     trips: followed,
     failed: followedFailed,
@@ -289,7 +279,6 @@ function TripsPage() {
     user?.email?.split("@")[0] ??
     "Traveller";
   const { photos } = useTripPhotos(t.uid);
-  const { glances } = useTripGlances(t.trips.map((trip) => trip.id));
   const today = toLocalISODate(new Date());
   const lists = tripTabs(t.trips, today);
   const beaSettings = useBeaSettings();
@@ -330,96 +319,36 @@ function TripsPage() {
     setCreating(true);
     setJoining(false);
   };
-  const featured = layout === "big" ? lists.upcoming[0] : undefined;
-  const rest = featured ? lists.upcoming.slice(1) : lists.upcoming;
-  const live = !!(featured?.start_date && featured.start_date <= today);
-  const row = (trip: TripRow) => (
-    <TripListRow
-      key={trip.id}
-      trip={trip}
-      photos={photos}
-      glance={glances[trip.id]}
-      peopleCount={peopleOnTrip(t.members, trip.id, t.uid)}
-    />
-  );
-  const switches = (withLayout: boolean) =>
-    withLayout ? <LayoutSwitch layout={layout} onLayout={setLayout} /> : undefined;
-  const pastSection = (all: boolean) =>
+  // As the design draws Upcoming: the next trip as a card, the rest as rows.
+  const featured = lists.upcoming[0];
+  const rest = lists.upcoming.slice(1);
+  const row = (trip: TripRow) => <TripListRow key={trip.id} trip={trip} />;
+  const pastSection =
     lists.past.length > 0 ? (
-      <TripsSection
-        title="Past trips"
-        aside={
-          all ? (
-            switches(false)
-          ) : (
-            <button
-              type="button"
-              onClick={() => setView("past")}
-              className="flex min-h-11 shrink-0 items-center gap-0.5 text-[15px] font-semibold text-foreground"
-            >
-              See all
-              <ChevronRight className="size-4 text-primary" aria-hidden />
-            </button>
-          )
-        }
-      >
-        {all ? (
-          <div className="space-y-3">{lists.past.map(row)}</div>
-        ) : (
-          <PastTiles trips={lists.past.slice(0, 3)} photos={photos} />
-        )}
-      </TripsSection>
+      <TripsSection title="Past trips">{lists.past.map(row)}</TripsSection>
     ) : null;
-  const draftsSection = (withSwitch: boolean) =>
+  const draftsSection =
     lists.drafts.length > 0 ? (
-      <TripsSection title="Dates to set" aside={withSwitch ? switches(false) : undefined}>
-        <div className="space-y-3">{lists.drafts.map(row)}</div>
-      </TripsSection>
+      <TripsSection title="Dates to set">{lists.drafts.map(row)}</TripsSection>
     ) : null;
   const ahead = (
     <>
-      {lists.upcoming.length > 0 ? (
-        featured ? (
-          <TripsSection title={live ? "Happening now" : "Next up"} aside={switches(true)}>
-            <TripFeature
-              trip={featured}
-              photos={photos}
-              glance={glances[featured.id]}
-              peopleCount={peopleOnTrip(t.members, featured.id, t.uid)}
-            />
-          </TripsSection>
-        ) : (
-          <TripsSection title="Upcoming trips" aside={switches(true)}>
-            <div className="space-y-3">{rest.map(row)}</div>
-          </TripsSection>
-        )
+      {featured ? (
+        <TripFeature trip={featured} photos={photos} />
       ) : !t.loading && t.trips.length > 0 ? (
-        <TripsSection title="Upcoming trips" aside={switches(true)}>
-          <NothingAhead
-            title="No trip on the calendar."
-            body="Nothing ahead yet. Béa keeps the next one here once it has dates."
-            onPlan={openNew}
-          />
-        </TripsSection>
+        <NothingAhead
+          title="No trip on the calendar."
+          body="Nothing ahead yet. Béa keeps the next one here once it has dates."
+          onPlan={openNew}
+        />
       ) : null}
-      {featured && rest.length > 0 ? (
-        <TripsSection
-          title="Later"
-          aside={
-            <span className="text-[14px] text-muted-foreground">
-              {rest.length} {rest.length === 1 ? "trip" : "trips"}
-            </span>
-          }
-        >
-          <div className="space-y-3">{rest.map(row)}</div>
-        </TripsSection>
-      ) : null}
+      {rest.length > 0 ? <TripsSection title="Later">{rest.map(row)}</TripsSection> : null}
     </>
   );
 
   return (
     <AppShell>
-      <div className="space-y-6">
+      <div className="space-y-3">
         <TripsHero section={t.signedIn ? view : undefined} />
         {t.signedIn ? (
           <>
@@ -463,20 +392,19 @@ function TripsPage() {
               </p>
             )}
 
-            <div data-guide="trip-list" className="space-y-7">
+            <div data-guide="trip-list" className="space-y-3">
               {t.loading && t.trips.length === 0 && <TripListSkeleton />}
 
               {view === "upcoming" && (
                 <>
                   {ahead}
-                  {draftsSection(false)}
-                  {pastSection(false)}
+                  {draftsSection}
                 </>
               )}
 
               {view === "past" &&
                 (lists.past.length > 0 ? (
-                  pastSection(true)
+                  pastSection
                 ) : !t.loading ? (
                   <p className="py-6 text-center text-[16px] text-muted-foreground">
                     No past trips yet. They land here once they end.
@@ -486,8 +414,8 @@ function TripsPage() {
               {view === "all" && t.trips.length > 0 && (
                 <>
                   {ahead}
-                  {draftsSection(false)}
-                  {pastSection(false)}
+                  {draftsSection}
+                  {pastSection}
                 </>
               )}
 
