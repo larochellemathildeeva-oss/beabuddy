@@ -15,7 +15,7 @@ export function AuthField({
   const errorId = `${id}-error`;
   return (
     <div>
-      <label htmlFor={id} className="mb-1 block text-[13px] font-semibold text-foreground">
+      <label htmlFor={id} className="mb-1 block text-[14px] font-medium text-foreground">
         {label}
       </label>
       <input
@@ -26,7 +26,7 @@ export function AuthField({
           [input["aria-describedby"], error ? errorId : undefined].filter(Boolean).join(" ") ||
           undefined
         }
-        className={`h-[var(--h-input)] w-full rounded-[var(--r-input)] border border-[var(--field-border)] bg-card px-4 text-[15px] outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring ${className}`}
+        className={`h-[var(--h-input)] w-full rounded-[var(--r-input)] border border-[var(--field-border)] bg-card px-4 text-[16px] outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring ${className}`}
       />
       {error ? (
         <p id={errorId} role="alert" className="mt-1 text-[14px] text-destructive">

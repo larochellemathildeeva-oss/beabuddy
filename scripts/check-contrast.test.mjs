@@ -1,7 +1,13 @@
 import { strict as assert } from "node:assert";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
-import { checkContrast, contrastRatio, contrastReport, resolveTokens } from "./check-contrast.mjs";
+import {
+  checkContrast,
+  contrastRatio,
+  contrastReport,
+  resolveTokens,
+  topLevelRules,
+} from "./check-contrast.mjs";
 
 const css = readFileSync(new URL("../src/styles.css", import.meta.url), "utf8");
 
@@ -106,4 +112,31 @@ test("contrastReport: pairs that cannot be read are listed as skipped, not hidde
 
 test("contrastReport: the real stylesheet skips no pair in any theme or accent", () => {
   assert.deepEqual(contrastReport(css).skipped, []);
+});
+
+test("type scale: the minimalist sizes are set and labels are sentence case", () => {
+  const size = (name) =>
+    css.match(new RegExp(`${name}:\\s*calc\\((\\d+)px \\* var\\(--text-scale, 1\\)\\)`))?.[1];
+  assert.equal(size("--text-display"), "28");
+  assert.equal(size("--text-title"), "20");
+  assert.equal(size("--text-heading"), "20");
+  assert.equal(size("--text-body"), "16");
+  assert.equal(size("--text-small"), "14");
+  assert.equal(size("--text-caption"), "12");
+  const shouty = topLevelRules(css).filter(
+    ({ selector, body }) =>
+      /\.(label-caps|mono-caps)\b/.test(selector) && /text-transform:\s*uppercase/.test(body),
+  );
+  assert.deepEqual(
+    shouty.map((r) => r.selector),
+    [],
+  );
+});
+
+test("sheet actions: .menu-done buttons take the button corner and a 16px sans label", () => {
+  const rules = topLevelRules(css).filter((r) => r.selector.trim() === ".menu-done");
+  const body = rules.map((r) => r.body).join("\n");
+  assert.match(body, /border-radius:\s*var\(--r-button\)/);
+  assert.match(body, /font-size:\s*16px/);
+  assert.match(body, /font-weight:\s*600/);
 });

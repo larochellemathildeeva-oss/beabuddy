@@ -21,5 +21,17 @@
   },
   "enabledPlugins": {
     "impeccable@impeccable": true
+  },
+  "permissions": {
+    "deny": [
+      "Read(./.env)",
+      "Read(./.env.local)",
+      "Read(./.env.production)",
+      "Read(./**/*.pem)",
+      "Read(./**/credentials*)",
+      "Edit(./.env)",
+      "Edit(./.env.local)",
+      "Edit(./.env.production)"
+    ]
   }
 }

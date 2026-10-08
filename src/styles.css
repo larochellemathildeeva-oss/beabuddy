@@ -12,14 +12,14 @@
  * a screen at a time.
  */
 @theme {
-  --text-micro: calc(13px * var(--text-scale, 1));
-  --text-caption: calc(13px * var(--text-scale, 1));
+  --text-micro: calc(12px * var(--text-scale, 1));
+  --text-caption: calc(12px * var(--text-scale, 1));
   --text-small: calc(14px * var(--text-scale, 1));
-  --text-body: calc(17px * var(--text-scale, 1));
+  --text-body: calc(16px * var(--text-scale, 1));
   --text-lead: calc(18px * var(--text-scale, 1));
   --text-heading: calc(20px * var(--text-scale, 1));
-  --text-title: calc(22px * var(--text-scale, 1));
-  --text-display: calc(64px * var(--text-scale, 1));
+  --text-title: calc(20px * var(--text-scale, 1));
+  --text-display: calc(28px * var(--text-scale, 1));
   /* Tailwind's own sizes, scaled by the reading text size too (accessibility.ts). */
   --text-xs: calc(13px * var(--text-scale, 1));
   --text-sm: calc(0.875rem * var(--text-scale, 1));
@@ -329,25 +329,6 @@
     text-rendering: optimizeLegibility;
   }
 
-  /**
-   * Every primary action gets a soft top-light and a colour-matched glow.
-   * Applied here rather than in forty components: `background-image` layers
-   * over the `bg-primary` colour utility instead of fighting it.
-   */
-  button.bg-primary,
-  a.bg-primary,
-  [role="button"].bg-primary {
-    background-image: linear-gradient(
-      145deg,
-      color-mix(in oklch, white 14%, transparent),
-      transparent 58%
-    );
-    box-shadow: var(--shadow-primary);
-  }
-
-  button.bg-primary:disabled {
-    box-shadow: none;
-  }
 
   /* Tappables feel like tappables. */
   button,
@@ -433,7 +414,7 @@
   h3 {
     font-family: var(--font-display);
     font-weight: 700;
-    letter-spacing: -0.03em;
+    letter-spacing: 0;
     text-wrap: balance;
   }
 }
@@ -3612,9 +3593,15 @@ html:not(.dark)
 [data-theme="colorful"]:not(.dark)[data-contrast="more"] {
   --border: color-mix(in oklch, var(--foreground) 42%, var(--background));
 }
-/* A pill with words in it is a flat label; a round icon button or a dot stays round. */
+/* A pill with words in it takes the button corner; a round icon button or a dot stays round. */
 :is(button, a, span, [role="tab"]).rounded-full[class*="px-"] {
-  border-radius: 0;
+  border-radius: var(--r-button);
+}
+/* Every filled primary action that is not a round icon button: the 8px corner. */
+button.bg-primary:not(.rounded-full),
+a.bg-primary:not(.rounded-full),
+[role="button"].bg-primary:not(.rounded-full) {
+  border-radius: var(--r-button);
 }
 /* Primary actions are ink on white and white on black; Colorful keeps its accent. */
 button.bg-primary,
@@ -3638,14 +3625,22 @@ a.bg-primary,
   color: #000;
 }
 /* The eyebrow: small, letterspaced, quiet. */
-.label-caps {
-  letter-spacing: 0.15em;
+/* Small quiet labels: sentence case, the sans, no tracking. */
+.label-caps,
+.mono-caps {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--muted-foreground);
 }
 /* The headline face for every large title. */
 h1:not([class*="font-"]),
 h2:not([class*="font-"]) {
   font-family: var(--font-display);
-  font-weight: 400;
+  font-weight: 700;
 }
 
 /* A box in the editorial system: a 1px edge, square, 16px inside. */
@@ -3670,9 +3665,6 @@ h2:not([class*="font-"]) {
 /* The rule under a page's title: ink-grey everywhere, the accent in Colorful. */
 [data-theme="colorful"]:not(.dark) .page-title-rule:not([data-compressed]) {
   border-color: var(--acc);
-}
-.page-title-rule h1 {
-  letter-spacing: -0.01em;
 }
 
 /* Widgets size to what is in them: no cap, no empty room in the box. */
@@ -3765,7 +3757,6 @@ h2:not([class*="font-"]) {
 }
 
 /* The Original Editorial type: bold Didone headlines, mono caps for labels. */
-.label-caps,
 .trips-tabs button,
 .trip-views button {
   font-family: var(--font-mono);
@@ -3777,8 +3768,8 @@ h2:not([class*="font-"]) {
 }
 .page-title-rule:not([data-compressed]) h1 {
   font-weight: 700;
-  letter-spacing: -2px;
-  line-height: 0.96;
+  letter-spacing: 0;
+  line-height: 1.15;
 }
 .home-subtitle {
   font-family: var(--font-display);
@@ -3790,63 +3781,17 @@ h2:not([class*="font-"]) {
 .page-title-rule[data-compressed] .home-subtitle {
   display: none;
 }
-.editorial-box .label-caps,
-.home-widget .label-caps {
-  color: var(--foreground);
-}
 
-/* Words set like the design's labels: DM Mono, small caps, loose. */
-.mono-caps,
+/* Filled actions are plain words in the sans, sentence case. */
 button.bg-primary,
 a.bg-primary {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 400;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-}
-.mono-caps {
-  color: var(--foreground);
+  font-family: var(--font-sans);
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
 }
 :root[data-bold="on"] :is(.label-caps, .mono-caps, button.bg-primary, a.bg-primary, .trips-tabs button, .trip-views button) {
   font-weight: 500;
-}
-
-/* The main bar is words: a hairline above, the chosen word underlined. */
-nav[aria-label="Main"] {
-  background: var(--background);
-  border-top: 1px solid var(--border);
-  padding-inline: 0;
-}
-nav[aria-label="Main"] > div {
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
-  backdrop-filter: none;
-  padding-block: 4px;
-}
-nav[aria-label="Main"] > div > span[aria-hidden] {
-  display: none;
-}
-nav[aria-label="Main"] a {
-  border-radius: 0;
-  min-height: 44px;
-  justify-content: center;
-}
-nav[aria-label="Main"] a svg {
-  display: none;
-}
-nav[aria-label="Main"] a span {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 400;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-}
-nav[aria-label="Main"] a[aria-current="page"] span {
-  text-decoration: underline;
-  text-underline-offset: 4px;
 }
 
 /* Home's modules: square, one heading size, like the joined grid in the design. */
@@ -4149,10 +4094,10 @@ main [class*="rounded-\\[var(--r-"] {
   margin-inline-start: 0;
 }
 .sub-page-title {
-  font-size: 64px;
-  line-height: 0.97;
+  font-size: 28px;
+  line-height: 1.15;
   font-weight: 700;
-  letter-spacing: -2px;
+  letter-spacing: 0;
   padding-bottom: 14px;
   border-bottom: 0.5px solid var(--foreground);
 }
@@ -4167,25 +4112,26 @@ main [class*="rounded-\\[var(--r-"] {
 .menu-row {
   display: block;
   width: 100%;
-  padding: 14px 0 13px;
+  padding: 12px 0;
   text-align: start;
-  border-bottom: 0.5px solid var(--border);
+  border-bottom: 1px solid var(--border);
   background: transparent;
-  min-height: 60px;
+  min-height: 64px;
 }
 .menu-row-title {
   display: block;
-  font-family: var(--font-display);
-  font-size: 22px;
-  line-height: 26px;
-  letter-spacing: -0.2px;
+  font-family: var(--font-sans);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 22px;
+  letter-spacing: 0;
 }
 .menu-row-note {
   display: block;
   margin-top: 2px;
-  font-family: var(--font-display);
-  font-size: 16px;
-  line-height: 22px;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 20px;
   color: var(--muted-foreground);
 }
 .menu-footer {
@@ -4199,6 +4145,12 @@ main [class*="rounded-\\[var(--r-"] {
   margin-top: 18px;
   align-items: center;
   justify-content: center;
+  border-radius: var(--r-button);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 /* Pins: readable on each theme's own paper and tints. */
@@ -4571,6 +4523,7 @@ main [class*="rounded-2xl"] {
 }
 .menu-done.border {
   color: var(--foreground);
+  border-color: var(--field-border);
 }
 .menu-done.bg-destructive { color: var(--destructive-foreground); }
 .sub-page [class*="rounded"]:not(.rounded-full):not(.rounded-none) {

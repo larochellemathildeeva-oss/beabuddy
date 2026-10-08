@@ -877,6 +877,104 @@ await flow("shell: a null account accent resets visually without storing or uplo
   if (result.accent !== "pink" || result.stored !== null || result.uploaded) throw new Error(`account accent reset: ${JSON.stringify(result)}`);
 }, "shell");
 
+await flow("shell: header actions are named icon buttons at least 48px", async (page) => {
+  for (const [role, name] of [["link", "Search your places"], ["button", "Menu"]]) {
+    const el = page.getByRole(role, { name, exact: true });
+    const box = await el.boundingBox();
+    if (!box || box.width < 48 || box.height < 48) throw new Error(`${name} is ${box?.width}x${box?.height}`);
+    if (!(await el.locator("svg").count())) throw new Error(`${name} has no icon`);
+  }
+}, "shell");
+
+await flow("shell: the main bar shows an icon and a label per tab, 48px tall, one current", async (page) => {
+  const links = page.locator('nav[aria-label="Main"] a');
+  if ((await links.count()) !== 5) throw new Error(`expected 5 tabs, found ${await links.count()}`);
+  for (let i = 0; i < 5; i++) {
+    const link = links.nth(i);
+    const box = await link.boundingBox();
+    if (!box || box.height < 48) throw new Error(`tab ${i} is ${box?.height}px tall`);
+    if (!(await link.locator("svg").first().isVisible())) throw new Error(`tab ${i} shows no icon`);
+    if (!(await link.innerText()).trim()) throw new Error(`tab ${i} has no label`);
+  }
+  if ((await page.locator('nav[aria-label="Main"] a[aria-current="page"]').count()) !== 1) throw new Error("not exactly one current tab");
+  if ((await page.locator('nav[aria-label="Main"] > div > span[aria-hidden]').count()) !== 0) throw new Error("the travelling indicator is still there");
+  const blur = await page.locator('nav[aria-label="Main"]').evaluate((el) => getComputedStyle(el).backdropFilter);
+  if (blur !== "none") throw new Error(`the bar still blurs: ${blur}`);
+  await page.setViewportSize({ width: 320, height: 800 });
+  await page.evaluate(() => document.documentElement.style.setProperty("--text-scale", "1.45"));
+  await page.waitForTimeout(250);
+  const clipped = await links.evaluateAll((els) => els.filter((a) => a.querySelector("span").scrollWidth > a.clientWidth + 1).map((a) => a.textContent));
+  if (clipped.length) throw new Error(`labels wider than their tab at 320px and 1.45x: ${clipped.join(", ")}`);
+}, "shell");
+
+await flow("shell: buttons are 8px, flat and sentence case; round icon buttons stay round", async (page) => {
+  const read = (k) => page.locator(`[data-k="${k}"]`).evaluate((el) => {
+    const css = getComputedStyle(el);
+    return { radius: css.borderTopLeftRadius, shadow: css.boxShadow, image: css.backgroundImage, upper: css.textTransform, tracking: css.letterSpacing, height: el.getBoundingClientRect().height };
+  });
+  for (const k of ["default", "secondary", "destructive", "raw", "pill"]) {
+    const b = await read(k);
+    if (b.radius !== "8px") throw new Error(`${k} radius is ${b.radius}`);
+    if (b.shadow !== "none") throw new Error(`${k} has a shadow: ${b.shadow}`);
+    if (b.image !== "none") throw new Error(`${k} has a background image`);
+    if (b.upper !== "none") throw new Error(`${k} is ${b.upper}`);
+    if (b.tracking !== "normal" && b.tracking !== "0px") throw new Error(`${k} tracking is ${b.tracking}`);
+  }
+  for (const k of ["default", "secondary", "destructive"]) if ((await read(k)).height < 48) throw new Error(`${k} is under 48px`);
+  const round = await read("round");
+  if (parseFloat(round.radius) < 16) throw new Error(`the round icon button lost its shape: ${round.radius}`);
+}, "buttons");
+
+await flow("shell: text fields are 52px with a 3:1 edge and a 16px value", async (page) => {
+  const input = page.locator('input[type="email"]').first();
+  const m = await input.evaluate((el) => {
+    const css = getComputedStyle(el);
+    const label = el.id ? document.querySelector(`label[for="${el.id}"]`) : null;
+    return { height: el.getBoundingClientRect().height, border: css.borderTopColor, radius: css.borderTopLeftRadius, size: css.fontSize, label: label ? getComputedStyle(label).fontSize : null };
+  });
+  if (m.height < 52) throw new Error(`field height ${m.height}`);
+  if (m.border !== "rgb(138, 132, 126)") throw new Error(`field edge is ${m.border}, not --field-border`);
+  if (m.radius !== "8px") throw new Error(`field radius ${m.radius}`);
+  if (m.size !== "16px") throw new Error(`field text is ${m.size}`);
+  if (m.label !== "14px") throw new Error(`field label is ${m.label}`);
+}, "page-forgot");
+
+await flow("shell: the sign-in fields are 8px, flat boxes with a 3:1 edge", async (page) => {
+  const box = await page.locator('input[type="email"]').first().evaluate((el) => {
+    const css = getComputedStyle(el.parentElement);
+    return { radius: css.borderTopLeftRadius, shadow: css.boxShadow, border: css.borderTopColor, height: el.parentElement.getBoundingClientRect().height };
+  });
+  if (box.radius !== "8px") throw new Error(`sign-in field radius ${box.radius}`);
+  if (box.shadow !== "none") throw new Error(`sign-in field has a shadow`);
+  if (box.border !== "rgb(138, 132, 126)") throw new Error(`sign-in field edge ${box.border}`);
+  if (box.height < 52) throw new Error(`sign-in field height ${box.height}`);
+}, "auth");
+
+await flow("shell: switches have a 48px target and a visible edge when off", async (page) => {
+  const box = await page.locator('[data-k="switch"]').boundingBox();
+  if (!box || box.width < 48 || box.height < 48) throw new Error(`switch is ${box?.width}x${box?.height}`);
+}, "buttons");
+
+await flow("shell: the Menu lists rows with a 16px title, a 14px muted note and a hairline", async (page) => {
+  await page.getByRole("button", { name: "Menu", exact: true }).click();
+  const row = page.locator(".menu-row").first();
+  await row.waitFor();
+  const m = await row.evaluate((el) => {
+    const title = getComputedStyle(el.querySelector(".menu-row-title"));
+    const note = getComputedStyle(el.querySelector(".menu-row-note"));
+    return { titleSize: title.fontSize, noteSize: note.fontSize, titleColor: title.color, noteColor: note.color, height: el.getBoundingClientRect().height, rule: getComputedStyle(el).borderBottomWidth };
+  });
+  if (m.titleSize !== "16px") throw new Error(`row title is ${m.titleSize}`);
+  if (m.noteSize !== "14px") throw new Error(`row note is ${m.noteSize}`);
+  if (m.noteColor === m.titleColor) throw new Error("the note is not muted");
+  if (m.height < 56) throw new Error(`row is ${m.height}px tall`);
+  if (m.rule !== "1px") throw new Error(`row rule is ${m.rule}`);
+  const titleSize = await page.locator(".sub-page-title").first().evaluate((el) => getComputedStyle(el).fontSize);
+  if (titleSize !== "28px") throw new Error(`page title is ${titleSize}`);
+  await page.keyboard.press("Escape");
+  if (await page.locator(".menu-row").count()) throw new Error("Escape did not close the Menu");
+}, "shell");
+
 await flow("shell: compressed long titles stay on one line in both header layouts", async (page) => {
   const title = "Places worth remembering on a long journey through several cities.";
   for (const beside of [false, true]) {
@@ -1095,6 +1193,25 @@ await flow("trip actions: To do, Add stop to the itinerary, Offline and Customiz
   await page.waitForTimeout(300);
   if ((await page.getByRole("switch").count()) === 0) throw new Error("Customize switches missing in Settings");
 });
+
+await flow("trip header: every action is on screen at 390px, with the back button", async (page) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.waitForTimeout(400);
+  const names = [/^Go back/, /^Plan with Béa$/, /^Add stop$/, /^To do$/, /^Trip menu$/, /^Menu$/];
+  for (const name of names) {
+    const button = page.locator("header").getByRole(/Go back/.test(String(name)) ? "link" : "button", { name }).first();
+    const box = await button.boundingBox();
+    if (!box) throw new Error(`${name} is not in the header`);
+    if (box.x < 0 || box.x + box.width > 390) throw new Error(`${name} is cut off (x ${Math.round(box.x)}, width ${Math.round(box.width)})`);
+  }
+  const slot = await page.locator("#app-header-slot").evaluate((el) => ({ scroll: el.scrollWidth, width: el.clientWidth }));
+  if (slot.scroll > slot.width + 1) throw new Error(`header actions scroll sideways (${slot.scroll} > ${slot.width})`);
+  // Room for the "pins to check" button (44px and a 6px gap) when that setting is on.
+  const used = await page.locator("#app-header-slot > div").evaluate((row) =>
+    [...row.children].reduce((sum, group) => sum + group.getBoundingClientRect().width, 0) + 6,
+  );
+  if (used + 50 > slot.width) throw new Error(`no room for pins to check (${Math.round(used)} + 50 > ${slot.width})`);
+}, "default&path=/trips/demo");
 
 await flow("locate on map: opens Map Split on that stop", async (page) => {
   await goTab(page, "Timeline");

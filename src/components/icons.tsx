@@ -73,6 +73,7 @@ import {
   ListChecks as PhListChecks,
   ListNumbers as PhListNumbers,
   ListPlus as PhListPlus,
+  List as PhList,
   MagnifyingGlass as PhMagnifyingGlass,
   MapPin as PhMapPin,
   MapPinPlus as PhMapPinPlus,
@@ -320,6 +321,7 @@ export const FilePdf = icon(PhFilePdf, "FilePdf");
 export const Unlink = icon(PhLinkBreak, "Unlink");
 export const Binoculars = icon(PhBinoculars, "Binoculars");
 export const List = icon(PhListBullets, "List");
+export const Menu = icon(PhList, "Menu");
 export const Navigation = icon(PhNavigationArrow, "Navigation");
 export const ArrowUp = icon(PhArrowUp, "ArrowUp");
 export const CornerUpLeft = icon(PhArrowBendUpLeft, "CornerUpLeft");

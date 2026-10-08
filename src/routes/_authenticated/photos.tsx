@@ -2,6 +2,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { friendlyError } from "@/lib/friendly-error";
 import { useEffect, useRef, useState } from "react";
 import { AppShell } from "@/components/AppShell";
+import { ConfirmSheet } from "@/components/ConfirmSheet";
+import { LoadError } from "@/components/LoadError";
 import { BeaRunning } from "@/components/BeaRunning";
 import { supabase } from "@/integrations/supabase/client";
 import { readExif } from "@/lib/exif";
@@ -58,6 +60,10 @@ function PhotosPage() {
   const [pending, setPending] = useState<File[]>([]);
   const [mode, setMode] = useState<ImportMode>("both");
   const [showLibrary, setShowLibrary] = useState(false);
+  // A failed read is said, not shown as "no photos yet".
+  const [loadError, setLoadError] = useState(false);
+  // Deleting removes the photo for good, so it asks first.
+  const [deleting, setDeleting] = useState<PhotoRow | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const confirmCard = useRef<HTMLDivElement>(null);
 
@@ -103,11 +109,13 @@ function PhotosPage() {
     if (!uid) return;
     // Only this traveller's own: a shared trip's stops can carry other
     // travellers' photos, which are theirs to keep or delete.
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("photo_memories")
       .select("id, storage_path, city, country, caption, taken_at")
       .eq("user_id", uid)
       .order("created_at", { ascending: false });
+    setLoadError(!!error);
+    if (error) return;
     const list = (data ?? []) as PhotoRow[];
     setRows(list);
     const next: Record<string, string> = {};
@@ -200,10 +208,16 @@ function PhotosPage() {
   };
 
   const remove = async (row: PhotoRow) => {
+    setStatus(null);
+    // The row first: if that fails, the photo stays whole.
+    const { error } = await supabase.from("photo_memories").delete().eq("id", row.id);
+    if (error) {
+      setStatus(friendlyError(error, "Couldn't delete that photo. Try again."));
+      return;
+    }
     if (!isLocationOnly(row)) {
       await supabase.storage.from("photo-memories").remove([row.storage_path]);
     }
-    await supabase.from("photo_memories").delete().eq("id", row.id);
     await load();
   };
 
@@ -403,8 +417,10 @@ function PhotosPage() {
                       {list.map((r) => (
                         <button
                           key={r.id}
-                          onClick={() => remove(r)}
-                          title="Tap to remove"
+                          type="button"
+                          onClick={() => setDeleting(r)}
+                          aria-label={`Delete ${r.caption ?? `photo from ${label}`}`}
+                          title="Tap to delete"
                           className="flex aspect-square items-center justify-center overflow-hidden rounded-xl border border-border bg-muted p-1 text-center text-[13px] text-muted-foreground"
                         >
                           {urls[r.id] ? (
@@ -427,7 +443,22 @@ function PhotosPage() {
           </section>
         )}
 
-        {rows.length === 0 && (
+        <ConfirmSheet
+          open={deleting !== null}
+          onClose={() => setDeleting(null)}
+          title="Delete this photo?"
+          body="It is removed from your photo memories and from any trip it was added to, for good."
+          confirmLabel="Delete photo"
+          onConfirm={() => {
+            const row = deleting;
+            setDeleting(null);
+            if (row) void remove(row);
+          }}
+        />
+
+        {loadError && <LoadError what="your photos" onRetry={() => void load()} />}
+
+        {!loadError && rows.length === 0 && (
           <p className="text-[16px] text-muted-foreground">
             No photos yet. Once you import a few, each city becomes its own memory page.
           </p>

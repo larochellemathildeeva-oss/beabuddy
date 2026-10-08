@@ -13,6 +13,15 @@ test("other sub-screens climb to their tab", () => {
   assert.equal(backFallback("/profile/documents"), "/profile");
 });
 
+test("pages opened from You climb back to You, or to the page above them", () => {
+  for (const p of ["/preferences", "/photos", "/expenses"])
+    assert.equal(backFallback(p), "/profile", p);
+  assert.equal(backFallback("/memories"), "/photos");
+  assert.equal(backFallback("/story"), "/memories");
+  assert.equal(backFallback("/calendar"), "/trips");
+  assert.equal(backFallback("/preferences-old"), "/");
+});
+
 test("tabs and unknown screens fall back to Home", () => {
   assert.equal(backFallback("/trips"), "/");
   assert.equal(backFallback("/help"), "/");

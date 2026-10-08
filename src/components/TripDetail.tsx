@@ -5,7 +5,6 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type React
 import {
   Bookmark,
   Check,
-  Coins,
   LocateFixed,
   Download,
   MapPin,
@@ -32,6 +31,7 @@ import { TripOverview } from "@/components/TripOverview";
 import { timelineGlyph } from "@/lib/timeline-kind";
 import { TimelineEntryForm } from "@/components/TimelineEntryForm";
 import { Sheet } from "@/components/Sheet";
+import { ConfirmSheet } from "@/components/ConfirmSheet";
 import { TripMap } from "@/components/TripMap";
 import { TripPrep, type PrepTab } from "@/components/TripPrep";
 import { savedAgoLabel, savedIsStale, savedMatchesStops } from "@/lib/offline-directions";
@@ -790,6 +790,8 @@ export function TripDetail({
     hasCoords(from) && hasCoords(to) ? legModeFor(travel, haversine(from, to)) : undefined;
   const templates = usePacking(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  // Saved directions and maps take signal and time to save again, so ask first.
+  const [confirmForget, setConfirmForget] = useState(false);
   const [sheetSection, setSheetSection] = useState<TripMenuSection | null>(null);
   const [packTemplateId, setPackTemplateId] = useState("");
   const [packMsg, setPackMsg] = useState("");
@@ -1610,15 +1612,6 @@ export function TripDetail({
                 className="trip-hero-btn"
               >
                 <ListChecks className="size-5" aria-hidden />
-              </button>
-              <button
-                type="button"
-                onClick={() => setCurrencyOpen(true)}
-                title="Convert prices into your money"
-                aria-label="Currency"
-                className="trip-hero-btn"
-              >
-                <Coins className="size-5" aria-hidden />
               </button>
               <button
                 type="button"
@@ -2570,7 +2563,7 @@ export function TripDetail({
               <button
                 type="button"
                 onClick={() => setTimelineMenuOpen(false)}
-                className="menu-done bg-primary mono-caps"
+                className="menu-done bg-primary"
               >
                 Done
               </button>
@@ -3109,16 +3102,26 @@ export function TripDetail({
                   </p>
                 )}
                 <button
-                  onClick={() => {
+                  type="button"
+                  onClick={() => setConfirmForget(true)}
+                  className="min-h-11 text-[14px] text-muted-foreground underline"
+                >
+                  Delete saved directions
+                </button>
+                <ConfirmSheet
+                  open={confirmForget}
+                  onClose={() => setConfirmForget(false)}
+                  title="Delete saved directions?"
+                  body="The directions, maps and plan kept on this phone and in your account for this trip are deleted. Saving them again needs a signal."
+                  confirmLabel="Delete directions"
+                  onConfirm={() => {
+                    setConfirmForget(false);
                     dir.clear();
                     forgetOfflineTrip(localStorage, trip.id);
                     dayMaps.clear();
                     offlineMap.clear();
                   }}
-                  className="text-[12.5px] text-muted-foreground underline"
-                >
-                  Delete saved directions
-                </button>
+                />
               </div>
             )}
           </div>

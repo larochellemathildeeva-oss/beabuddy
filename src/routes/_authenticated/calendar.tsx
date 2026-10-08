@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { supabase } from "@/integrations/supabase/client";
 import { useTrips, type ItineraryRow } from "@/hooks/useTrips";
+import { LoadError } from "@/components/LoadError";
 
 export const Route = createFileRoute("/_authenticated/calendar")({
   staticData: { plane: "detail" },
@@ -69,6 +70,9 @@ function daysBetween(start: string, end: string) {
 function CalendarPage() {
   const { trips, loading } = useTrips();
   const [items, setItems] = useState<ItineraryRow[]>([]);
+  // A failed read of the days is said, not shown as nothing coming up.
+  const [itemsError, setItemsError] = useState(false);
+  const [attempt, setAttempt] = useState(0);
   const [cursor, setCursor] = useState(() => {
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), 1);
@@ -81,7 +85,7 @@ function CalendarPage() {
         setItems([]);
         return;
       }
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("itinerary_items")
         .select(
           "id, trip_id, day_date, time_label, kind, title, detail, position, updated_by, updated_at",
@@ -92,11 +96,13 @@ function CalendarPage() {
         )
         .order("day_date", { ascending: true })
         .order("position", { ascending: true });
+      setItemsError(!!error);
+      if (error) return;
       // Saved walks and drives are travel between stops, not entries of their own.
       setItems(((data ?? []) as ItineraryRow[]).filter((row) => !isSavedDirectionItem(row)));
     };
     void run();
-  }, [trips]);
+  }, [trips, attempt]);
 
   const tripByDay = useMemo(() => {
     const map = new Map<string, string[]>();
@@ -236,8 +242,17 @@ function CalendarPage() {
 
         <section className="card-soft p-4">
           <p className="label-caps">Coming up</p>
-          {loading && <p className="mt-2 text-[16px] text-muted-foreground">Loading…</p>}
-          {!loading && upcoming.length === 0 && (
+          {loading && (
+            <p role="status" className="mt-2 text-[16px] text-muted-foreground">
+              Loading…
+            </p>
+          )}
+          {!loading && itemsError && (
+            <div className="mt-2">
+              <LoadError what="your trip days" onRetry={() => setAttempt((n) => n + 1)} />
+            </div>
+          )}
+          {!loading && !itemsError && upcoming.length === 0 && (
             <p className="mt-2 text-[16px] text-muted-foreground">No future plans saved yet.</p>
           )}
           <ul className="mt-2 space-y-2">

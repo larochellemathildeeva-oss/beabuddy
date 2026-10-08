@@ -330,7 +330,7 @@ export function TripMenuSheet({
           <Group name="The trip" rows={trip} />
           <Group name="On this phone" rows={phone} />
           {footer ? <div className="menu-footer">{footer}</div> : null}
-          <button type="button" onClick={onClose} className="menu-done bg-primary mono-caps">
+          <button type="button" onClick={onClose} className="menu-done bg-primary">
             Done
           </button>
         </div>

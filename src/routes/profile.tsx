@@ -27,6 +27,7 @@ import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { rememberedProfileName, rememberProfileName, shownName } from "@/lib/profile-name";
 import { Sheet } from "@/components/Sheet";
+import { ConfirmSheet } from "@/components/ConfirmSheet";
 import { resumeOrReplayTour } from "@/components/Tour";
 import { PackingLists } from "@/components/PackingLists";
 import { CustomizeHome } from "@/components/CustomizeHome";
@@ -45,6 +46,7 @@ import {
 import { listSavedDirectionTripIds } from "@/hooks/useOfflineDirections";
 
 import { useTrips } from "@/hooks/useTrips";
+import { useCountriesVisited } from "@/hooks/useCountriesVisited";
 import { useTripPhotos } from "@/hooks/useTripPhotos";
 import { toLocalISODate } from "@/lib/trip-dates";
 import { supabase } from "@/integrations/supabase/client";
@@ -118,6 +120,7 @@ function ProfilePage() {
   const [placeCount, setPlaceCount] = useState<number | null>(null);
   const [saved, setSaved] = useState(false);
   const [seeding, setSeeding] = useState(false);
+  const [confirmSample, setConfirmSample] = useState(false);
   const [seedMsg, setSeedMsg] = useState("");
   const [sampleCtaDismissed, setSampleCtaDismissed] = useState(false);
   const [panel, setPanel] = useState<Panel | null>(null);
@@ -193,9 +196,8 @@ function ProfilePage() {
   const todayKey = toLocalISODate(new Date());
   // Trips that have started: an upcoming destination is not "been there" yet.
   const startedTrips = t.trips.filter((trip) => (trip.start_date ?? "") <= todayKey);
-  const countryCount = new Set(
-    startedTrips.map((trip) => (trip.country ?? "").trim().toLowerCase()).filter(Boolean),
-  ).size;
+  // The same figure as World: places been there and trips started.
+  const countryCount = useCountriesVisited(t.trips);
   const highlights = [...startedTrips]
     .sort((x, y) => (y.start_date ?? "").localeCompare(x.start_date ?? ""))
     .slice(0, 3);
@@ -595,23 +597,32 @@ function ProfilePage() {
                 <button
                   type="button"
                   disabled={seeding}
-                  onClick={async () => {
-                    setSeeding(true);
-                    setSeedMsg("");
-                    const result = await clearDemoSeed();
-                    setSeeding(false);
-                    // Remove (or empty) opts out of sample prompts — hide this card.
-                    if (result.ok || result.reason === "empty") {
-                      setSampleCtaDismissed(true);
-                      return;
-                    }
-                    setSeedMsg(result.message);
-                  }}
+                  onClick={() => setConfirmSample(true)}
                   className="flex-1 rounded-full border border-border px-4 py-2 text-[14.5px] font-semibold disabled:opacity-60"
                 >
                   Remove sample
                 </button>
               </div>
+              <ConfirmSheet
+                open={confirmSample}
+                onClose={() => setConfirmSample(false)}
+                title="Remove the sample?"
+                body="The sample trips and places are deleted. Places you added yourself stay."
+                confirmLabel="Remove sample"
+                onConfirm={async () => {
+                  setConfirmSample(false);
+                  setSeeding(true);
+                  setSeedMsg("");
+                  const result = await clearDemoSeed();
+                  setSeeding(false);
+                  // Remove (or empty) opts out of sample prompts — hide this card.
+                  if (result.ok || result.reason === "empty") {
+                    setSampleCtaDismissed(true);
+                    return;
+                  }
+                  setSeedMsg(result.message);
+                }}
+              />
               {seedMsg && <p className="mt-2 text-[13px] text-muted-foreground">{seedMsg}</p>}
             </div>
           )}

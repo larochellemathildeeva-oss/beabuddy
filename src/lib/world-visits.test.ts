@@ -3,6 +3,7 @@ import { test } from "node:test";
 import type { Pin } from "@/data/atlas";
 import {
   cityPins,
+  countriesVisited,
   isVisitedPin,
   visitedCities,
   visitedProvinces,
@@ -357,4 +358,19 @@ test("a country's cities either side of the date line are named between them", a
   const cities = visitedCities(pins);
   const [mark] = countryMarks(pins, visitsByCountry(pins, cities, []));
   assert.ok(mark && Math.abs(Math.abs(mark.lon) - 180) < 1e-9, `lon ${mark?.lon}`);
+});
+
+test("countries visited: places been and trips started, each country once", () => {
+  const trips = [
+    { country: "Japon", start_date: "2026-10-01" }, // same as a place's Japan
+    { country: "Portugal", start_date: "2026-11-17" }, // not started yet
+    { country: "Canada", start_date: "2025-05-01" },
+    { country: "", start_date: "2025-01-01" },
+  ];
+  assert.equal(countriesVisited(["JP", "FR"], trips, "2026-10-08"), 3);
+  assert.equal(countriesVisited([], [], "2026-10-08"), 0);
+  assert.equal(
+    countriesVisited(["FR"], [{ country: "France", start_date: null }], "2026-10-08"),
+    1,
+  );
 });
