@@ -63,27 +63,34 @@ five-dimension review):
 
 | Gap in the Figma | Decision |
 | --- | --- |
-| Card/input borders `#EFEFEF` ≈ 1.15:1 | Two border tokens: `--line` (decorative, light) and `--line-strong` (functional, ≥3:1) |
-| Every action is the same near-black button | Primary / Secondary / **Destructive** / Text-link variants; one primary per screen |
-| No icons (text glyphs only) | Phosphor (already a dependency), regular weight, 20/24px, always paired with a label in nav |
+| Card/input borders `#EFEFEF` ≈ 1.15:1 (Figma only) | The app already separates `--border` (dividers) from `--field-border` (3:1, WCAG 1.4.11); keep that split and use `--field-border` for every control the Figma draws with a hairline |
+| Every action is the same near-black button | `Button` already has default/secondary/destructive/outline/ghost/link variants; the work is *using* them: one primary per screen, destructive confirms use `destructive` |
+| No icons (text glyphs only) in the Figma | The app already has Phosphor behind `src/components/icons.tsx` (old Lucide names); keep it, draw the Figma's glyphs with it, always paired with a label in nav |
 | Bottom nav is text with a 1px underline | Icon + label, filled active indicator, bold active label |
-| No visible focus/pressed states | 2px focus ring token, pressed state token |
+| No visible focus/pressed states in the Figma | A global 2px `*:focus-visible` ring exists (`--color-ring`); verify it per theme in the contrast script, add a pressed token only if a screen needs one |
 | Controls drawn as descriptions (map, timeline, packing, widget resize) | Real controls; see §6 |
 | Two masthead variants (text `SEARCH/MENU` vs glyphs) | One masthead: logo, wordmark, Search icon, Menu icon (48px targets) |
 | Big empty stat/weather cards on Home | Compact 1×1 variants; no card taller than its content needs |
 | Decorative hero photo on Recs, repeated Kyoto image | Photos only where they carry meaning (trip card, stop thumbnails) |
 
-## 3. Finding that changes the plan: fonts do not load
+## 3. Fonts (corrected)
 
-`src/styles.css:82-87` declares Manrope, Bodoni Moda and DM Mono, and the
-loading `<link>` exists only in a comment. `__root.tsx` links no font
-stylesheet, there is no `@font-face`, no `@fontsource` package and no font
-files in `public/`. So the deployed app very probably renders the
-**fallbacks** (system sans, and Georgia for display). This may be a large part
-of why the current look feels off. Phase 0 verifies this in a real browser and
-**self-hosts DM Sans** (variable, WOFF2, `font-display: swap`, preloaded) —
-self-hosted so no third-party font request is made (privacy page, offline
-service worker, CSP).
+An earlier draft said the fonts do not load. **That was wrong.**
+`BeaProvider.tsx:26-30` renders the Google Fonts link for Manrope, Bodoni Moda,
+Instrument Serif and DM Mono, and the reading-font options load theirs on
+demand (`accessibility.ts` `FONT_HREF`). The real findings:
+
+- The Figma's family, **DM Sans, is not loaded anywhere** in the app today.
+- All fonts come from Google's servers (third-party request on every first
+  load, not in the offline service-worker cache by design, and a privacy-page
+  disclosure).
+- There is a user-facing **headline font** setting (`bodoni` / `instrument`)
+  synced with the account. The minimalist system has one family, so this
+  setting is retired: old saved values map to the sans without error.
+
+Phase 0 therefore **self-hosts DM Sans** (same-origin, cached by the service
+worker) and points `--font-sans` and `--font-display` at it. The reading-font
+choices (Atkinson, Lexend, system) stay.
 
 ## 4. Architecture
 
@@ -125,7 +132,7 @@ by eye.
 
 | Phase | Scope | Notes |
 | --- | --- | --- |
-| 0 Foundations | Self-hosted DM Sans; icon wrapper; token layer; Calm/Colorful/Dark palettes; Button variants; focus ring; contrast script; default theme | No visible screen redesign yet beyond font and buttons |
+| 0 Foundations | Contrast script in CI; self-hosted DM Sans and font tokens; headline setting retired; 8px shape tokens; Calm/Dark primary tokens (accent only in Colorful); Calm default theme | Plan: `docs/superpowers/plans/2026-10-08-minimalist-phase-0.md` |
 | 1 Shell | Masthead, BottomNav, PageHeader, MenuRow, Input, Choice, Switch, Slider, Sheet | Touches every screen lightly |
 | 2 Landing pages | Home (incl. widget grid and sizes, **atlas widget and stats**), Trips, Recs, You; World restyled as an interim "Places" page (Bucket list, Been there, Next time) until Friends ships | Figma `116:5349/6136/5913/6554/6780`; the globe and its assets are removed here |
 | 3 System states | Loading, offline, empty, error, not found, confirms (destructive variant), unsaved changes, sizes | Figma `116:5069`, `118:2695`, `127:874` |
