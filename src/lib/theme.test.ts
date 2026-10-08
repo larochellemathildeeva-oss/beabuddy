@@ -80,7 +80,7 @@ test("someone who had the old dark switch on stays dark", () => {
 test("nothing saved means Calm", () => {
   fakeDom(null);
   assert.equal(readTheme(), DEFAULT_THEME);
-  assert.equal(DEFAULT_THEME, "colorful");
+  assert.equal(DEFAULT_THEME, "calm");
 });
 
 test("applyTheme sets the attribute, the dark class and remembers the choice", () => {
@@ -106,11 +106,11 @@ test("boot script reads both keys and sets theme before paint", () => {
 
 test("boot script picks the right theme for each saved state", () => {
   const cases: [Record<string, string>, string, boolean][] = [
-    [{}, "colorful", false],
+    [{}, "calm", false],
     [{ [THEME_KEY]: "colorful" }, "colorful", false],
     [{ [THEME_KEY]: "dark" }, "dark", true],
     [{ [DARK_KEY]: "yes" }, "dark", true],
-    [{ [THEME_KEY]: "nonsense" }, "colorful", false],
+    [{ [THEME_KEY]: "nonsense" }, "calm", false],
   ];
   for (const [stored, theme, dark] of cases) {
     const { attrs, classes } = fakeDom(null, stored);
