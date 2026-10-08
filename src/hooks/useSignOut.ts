@@ -18,12 +18,18 @@ export function useSignOut() {
   return async () => {
     if (signingOut.current) return;
     signingOut.current = true;
+    // After eight seconds sign-out goes on without it, and the clean-up
+    // stops: nothing is removed from the phone once it has been left behind.
+    const stop = new AbortController();
     let timer: ReturnType<typeof setTimeout> | undefined;
     const left = user
       ? await Promise.race([
-          clearKeptOfflineOnSignOut(user.id),
+          clearKeptOfflineOnSignOut(user.id, stop.signal),
           new Promise<null>((resolve) => {
-            timer = setTimeout(() => resolve(null), 8_000);
+            timer = setTimeout(() => {
+              stop.abort();
+              resolve(null);
+            }, 8_000);
           }),
         ])
           .catch(() => null)
