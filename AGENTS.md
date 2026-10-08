@@ -610,7 +610,8 @@ painting the illustrations in `public/places/`, `public/banners/` and
 `.superdesign/handoff/`. The app itself never generates images.
 
 - **Never generate images with Gemini** (or any paid image model) unless
-  the owner asks for that picture in that session. Reuse
+  the owner asks for that picture in that session. This includes the superdesign skill's image and video
+  generation. Reuse
   `public/places/` and `public/banners/`.
 - Text calls to Gemini from a session (the audits, quick tests) go through
   the scripts' spend caps (`spend-guard.mjs`) and use the app's own model

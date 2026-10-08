@@ -70,3 +70,10 @@ No `.claude/rules/` and no project agents or commands, so there is nothing to gr
 4. Fix or remove the superdesign skill's missing `references/`; add a line to AGENTS.md that it must not generate images or video unless the owner asks.
 5. Split `AGENTS.md` into a short core file plus path-scoped rules (~6–7K tokens saved).
 6. Refresh `DESIGN.md` / `.impeccable` for DM Sans (Phase 6 cleanup already lists this).
+
+## Applied (fixes 1, 2, 4a)
+
+- `.mcp.json`: Supabase MCP is read-only (`read_only=true`). Migrations stay hand-applied.
+- `.claude/settings.json`: `permissions.deny` for `.env`, `.env.local`, `.env.production`, `*.pem`, `credentials*` (`.env.example` stays readable).
+- `AGENTS.md`: the no-image-generation rule now names the superdesign skill.
+- Still open: committed `impeccable` binary and Codex hook, superdesign's missing `references/`, splitting `AGENTS.md`, stale `DESIGN.md`.
