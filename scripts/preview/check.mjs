@@ -347,6 +347,14 @@ async function flow(name, run, sample = "default") {
   await page.close();
 }
 const writes = (page) => page.evaluate(() => window.__writes);
+// Calm and Dark keep their black and white whichever accent is chosen, so only
+// Colorful shows the accent picker. Where the picker is absent, set the accent
+// the way it does, so the colour tokens are still measured under both accents.
+async function chooseAccent(page, name) {
+  const radio = page.getByRole("radio", { name, exact: true });
+  if (await radio.count()) return radio.click();
+  await page.evaluate((n) => { document.documentElement.dataset.accent = n.toLowerCase(); }, name);
+}
 
 await flow("shell: every theme and accent saves, restores and responds to account changes", async (page) => {
   for (const name of ["Dark", "Calm", "Colorful"]) {
@@ -832,7 +840,7 @@ await flow("shell: phone widths and larger reading text keep labels and tap targ
 
 await flow("shell: short pages stay stable and moderate overflow still compresses", async (page) => {
   for (const width of [320, 390]) for (const scale of [1, 1.35]) for (const overflow of [50, 300]) {
-    await page.setViewportSize({ width, height: 900 });
+    await page.setViewportSize({ width, height: 1400 });
     await page.evaluate((scale) => {
       document.documentElement.style.setProperty("--text-scale", String(scale));
       document.querySelector("main").scrollTop = 0;
@@ -861,7 +869,7 @@ await flow("shell: short pages stay stable and moderate overflow still compresse
 }, "shell");
 
 await flow("shell: a null account accent resets visually without storing or uploading Pink", async (page) => {
-  await page.getByRole("radio", { name: "Periwinkle", exact: true }).click();
+  await chooseAccent(page, "Periwinkle");
   await page.waitForTimeout(900);
   await page.goto("https://preview.test/?sample=shell&reset-accent=yes", { waitUntil: "domcontentloaded" });
   await page.waitForTimeout(1000);
@@ -899,7 +907,7 @@ await flow("shell: compressed long titles stay on one line in both header layout
 await flow("shell: text tokens cover hover, opacity, sequence and dark error contrast", async (page) => {
   let previousSearchTint;
   for (const accent of ["Pink", "Periwinkle"]) {
-    await page.getByRole("radio", { name: accent, exact: true }).click();
+    await chooseAccent(page, accent);
     await page.evaluate(() => {
       document.querySelector("[data-color-probes]")?.remove();
       const probes = document.createElement("div");

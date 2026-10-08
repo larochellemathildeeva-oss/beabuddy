@@ -1109,12 +1109,15 @@
 /* Four families, each a warm earth tone so the map stays one palette. */
 .journal-pin--food {
   background: #c8902f;
+  color: #000000;
 }
 .journal-pin--transit {
   background: #5d7d93;
+  color: #000000;
 }
 .journal-pin--stay {
   background: #987799;
+  color: #000000;
 }
 .journal-pin--on {
   width: 36px;
@@ -4198,7 +4201,9 @@ main [class*="rounded-\\[var(--r-"] {
 
 /* Pins: readable on each theme's own paper and tints. */
 :root.dark[data-accent="pink"] .journal-pin--nested,
-:root.dark[data-accent="pink"] .journal-pin--nested.journal-pin--done {
+:root.dark[data-accent="pink"] .journal-pin--nested.journal-pin--done,
+:root.dark[data-accent="periwinkle"] .journal-pin--nested,
+:root.dark[data-accent="periwinkle"] .journal-pin--nested.journal-pin--done {
   color: #111111;
 }
 :root[data-theme="colorful"]:not(.dark)[data-accent="pink"] .journal-pin--transit {
