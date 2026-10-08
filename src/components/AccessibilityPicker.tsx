@@ -12,7 +12,7 @@ const SIZES: { id: TextSize; label: string }[] = [
 ];
 
 const FONTS: { id: ReadingFont; label: string; hint: string; family: string }[] = [
-  { id: "bea", label: "Béa", hint: "Manrope, serif titles", family: '"Manrope", sans-serif' },
+  { id: "bea", label: "Béa", hint: "DM Sans", family: '"DM Sans Variable", sans-serif' },
   {
     id: "easy",
     label: "Easy to read",

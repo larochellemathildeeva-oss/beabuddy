@@ -272,7 +272,7 @@
   --accent-foreground: #ffffff;
   --destructive: #c22a52;
   --destructive-ink: #f08aa3;
-  --destructive-foreground: oklch(0.99 0.008 86);
+  --destructive-foreground: #fefbf6;
   --border: #2e2e2e;
   --input: #2e2e2e;
   --field-border: #8a847e;

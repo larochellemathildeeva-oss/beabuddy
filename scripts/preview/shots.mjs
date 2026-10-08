@@ -18,7 +18,7 @@ const out = join(here, "out");
 const [sample, prefix, ...clicks] = process.argv.slice(2);
 const dest = process.env.SHOTS_DIR ?? out;
 mkdirSync(dest, { recursive: true });
-const types = { js: "text/javascript", css: "text/css", html: "text/html", png: "image/png", webp: "image/webp", jpg: "image/jpeg", svg: "image/svg+xml", json: "application/json" };
+const types = { js: "text/javascript", css: "text/css", html: "text/html", png: "image/png", webp: "image/webp", jpg: "image/jpeg", svg: "image/svg+xml", woff2: "font/woff2", json: "application/json" };
 const FONT_HOSTS = new Set(["fonts.googleapis.com", "fonts.gstatic.com"]);
 const tile = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/+/9fwAJ+wP9KobjigAAAABJRU5ErkJggg==", "base64");
 const executablePath = process.env.CHROMIUM_PATH || (existsSync("/opt/pw-browsers/chromium") ? "/opt/pw-browsers/chromium" : undefined);
@@ -41,7 +41,8 @@ for (const theme of ["calm", "colorful", "dark"]) {
         body: readFileSync(join(out, file), "utf8").replace('<html lang="en">', `<html lang="en" data-theme="${theme}" data-accent="pink" class="${theme === "dark" ? "dark" : ""}">`),
         contentType: "text/html",
       });
-    const path = existsSync(join(out, file)) ? join(out, file) : join(here, "..", "..", "public", file);
+    const builtAsset = join(here, "..", "..", ".output", "public", file);
+    const path = existsSync(join(out, file)) ? join(out, file) : file.startsWith("/assets/") && existsSync(builtAsset) ? builtAsset : join(here, "..", "..", "public", file);
     return existsSync(path) ? route.fulfill({ body: readFileSync(path), contentType: types[file.split(".").pop()] ?? "application/octet-stream" }) : route.fulfill({ status: 404 });
   });
   await page.goto(`https://preview.test/?sample=${sample}${process.env.SHOTS_QUERY ?? ""}`, { waitUntil: "domcontentloaded", timeout: 30000 });

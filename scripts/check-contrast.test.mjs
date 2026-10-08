@@ -1,7 +1,7 @@
 import { strict as assert } from "node:assert";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
-import { checkContrast, contrastRatio, resolveTokens } from "./check-contrast.mjs";
+import { checkContrast, contrastRatio, contrastReport, resolveTokens } from "./check-contrast.mjs";
 
 const css = readFileSync(new URL("../src/styles.css", import.meta.url), "utf8");
 
@@ -93,4 +93,17 @@ test("primary buttons: Calm and Dark buttons carry readable text on their fill",
   const dark = resolveTokens(css, "dark", "periwinkle");
   assert.equal(dark["--primary"], "#ffffff");
   assert.equal(dark["--primary-foreground"], "#000000");
+});
+
+test("contrastReport: pairs that cannot be read are listed as skipped, not hidden", () => {
+  const fixture = `:root, [data-theme="calm"] { --card: color-mix(in oklch, #fff 90%, #000); --muted-foreground: #000000; }`;
+  const { skipped } = contrastReport(fixture);
+  assert.ok(
+    skipped.some((s) => s.theme === "calm" && s.pair === "--muted-foreground on --card"),
+    "expected the unreadable pair to be reported",
+  );
+});
+
+test("contrastReport: the real stylesheet skips no pair in any theme or accent", () => {
+  assert.deepEqual(contrastReport(css).skipped, []);
 });

@@ -137,30 +137,47 @@ export function resolveTokens(css, theme, accent) {
   return tokens;
 }
 
-/** Failing pairs only, for every theme and accent. */
-export function checkContrast(css) {
+/**
+ * Every theme and accent checked: the pairs that fail, and the pairs that could
+ * not be read (a token missing, or not a plain hex colour) so a gate that has
+ * gone quiet is visible instead of green.
+ */
+export function contrastReport(css) {
   const failures = [];
+  const skipped = [];
   for (const theme of THEMES) {
     for (const accent of ACCENTS) {
       const tokens = resolveTokens(css, theme, accent);
       for (const [fg, bg, min] of PAIRS) {
+        const pair = `${fg} on ${bg}`;
         const a = tokens[fg];
         const b = tokens[bg];
-        if (!a || !b || !HEX.test(a) || !HEX.test(b)) continue;
+        if (!a || !b || !HEX.test(a) || !HEX.test(b)) {
+          skipped.push({ theme, accent, pair });
+          continue;
+        }
         const ratio = contrastRatio(a, b);
-        if (ratio < min) failures.push({ theme, accent, pair: `${fg} on ${bg}`, ratio, min });
+        if (ratio < min) failures.push({ theme, accent, pair, ratio, min });
       }
     }
   }
-  return failures;
+  return { failures, skipped };
+}
+
+/** Failing pairs only, for every theme and accent. */
+export function checkContrast(css) {
+  return contrastReport(css).failures;
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const css = readFileSync(fileURLToPath(new URL("../src/styles.css", import.meta.url)), "utf8");
-  const failures = checkContrast(css);
+  const { failures, skipped } = contrastReport(css);
   for (const f of failures) {
     console.error(`${f.theme}/${f.accent}: ${f.pair} is ${f.ratio.toFixed(2)}:1, needs ${f.min}:1`);
   }
-  if (failures.length) process.exit(1);
-  console.log("contrast: every theme and accent passes");
+  for (const k of skipped) {
+    console.error(`${k.theme}/${k.accent}: ${k.pair} could not be read (not a plain hex colour)`);
+  }
+  if (failures.length || skipped.length) process.exit(1);
+  console.log("contrast: every theme and accent passes, no pair skipped");
 }

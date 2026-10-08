@@ -73,16 +73,9 @@ await build({
   },
 });
 writeFileSync(join(out, "app.css"), readFileSync(join(assets, css)));
-const fontLinks = process.env.PREVIEW_FONT_DIR
-  ? `<style>${[["Manrope", "200 800", "manrope.woff2"], ["Instrument Serif", "400", "serif.woff2"], ["Bodoni Moda", "400 900", "bodoni.woff2"]].map((font) => {
-    if (!existsSync(join(process.env.PREVIEW_FONT_DIR, font[2]))) throw new Error(`PREVIEW_FONT_DIR is missing ${font[2]} (the ${font[0]} font)`);
-    return font;
-  }).map(([family, weight, file]) => `@font-face{font-family:"${family}";font-weight:${weight};src:url(data:font/woff2;base64,${readFileSync(join(process.env.PREVIEW_FONT_DIR, file)).toString("base64")}) format("woff2");}`).join("")}</style>`
-  : '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Bodoni+Moda:wght@500;600;700&family=Manrope:wght@400;500;600;700&family=DM+Mono:wght@400&display=swap">';
 writeFileSync(
   join(out, "index.html"),
   `<!doctype html><html lang="en"><head><meta charset="utf-8"><script src="boot.js"></script>
-${fontLinks}
 <link rel="stylesheet" href="app.css"><link rel="stylesheet" href="page.css"></head>
 <body class="bg-background text-foreground font-sans antialiased"><div id="root"></div><script src="page.js"></script></body></html>`,
 );
@@ -107,7 +100,7 @@ const tile = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/+/9fwAJ+wP9KobjigAAAABJRU5ErkJggg==",
   "base64",
 );
-const types = { js: "text/javascript", css: "text/css", html: "text/html", png: "image/png", webp: "image/webp", jpg: "image/jpeg", svg: "image/svg+xml", json: "application/json" };
+const types = { js: "text/javascript", css: "text/css", html: "text/html", png: "image/png", webp: "image/webp", jpg: "image/jpeg", svg: "image/svg+xml", json: "application/json", woff2: "font/woff2" };
 
 async function open(sample) {
   const page = await browser.newPage({ viewport: { width: 414, height: 900 } });
@@ -130,6 +123,8 @@ async function open(sample) {
     if (url.host !== "preview.test") return route.abort();
     const file = url.pathname === "/" ? "/index.html" : url.pathname;
     try {
+      // The built stylesheet points at /assets/dm-sans-*.woff2: serve the real font file.
+      if (file.startsWith("/assets/") && existsSync(join(assets, file.slice(8)))) return route.fulfill({ body: readFileSync(join(assets, file.slice(8))), contentType: types[file.split(".").pop()] ?? "application/octet-stream" });
       if (file === "/index.html") return route.fulfill({
         body: readFileSync(join(out, file), "utf8").replace('<html lang="en">', `<html lang="en" data-theme="${previewTheme}" data-accent="pink" class="${previewTheme === "dark" ? "dark" : ""}">`),
         contentType: "text/html",
