@@ -46,7 +46,7 @@ export function contrastRatio(fg, bg) {
 }
 
 /** Top-level `selector { declarations }` rules, comments removed, in file order. */
-function topLevelRules(css) {
+export function topLevelRules(css) {
   const text = css.replace(/\/\*[\s\S]*?\*\//g, "");
   const rules = [];
   let depth = 0;

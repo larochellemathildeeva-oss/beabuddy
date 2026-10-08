@@ -12,14 +12,14 @@
  * a screen at a time.
  */
 @theme {
-  --text-micro: calc(13px * var(--text-scale, 1));
-  --text-caption: calc(13px * var(--text-scale, 1));
+  --text-micro: calc(12px * var(--text-scale, 1));
+  --text-caption: calc(12px * var(--text-scale, 1));
   --text-small: calc(14px * var(--text-scale, 1));
-  --text-body: calc(17px * var(--text-scale, 1));
+  --text-body: calc(16px * var(--text-scale, 1));
   --text-lead: calc(18px * var(--text-scale, 1));
   --text-heading: calc(20px * var(--text-scale, 1));
-  --text-title: calc(22px * var(--text-scale, 1));
-  --text-display: calc(64px * var(--text-scale, 1));
+  --text-title: calc(20px * var(--text-scale, 1));
+  --text-display: calc(28px * var(--text-scale, 1));
   /* Tailwind's own sizes, scaled by the reading text size too (accessibility.ts). */
   --text-xs: calc(13px * var(--text-scale, 1));
   --text-sm: calc(0.875rem * var(--text-scale, 1));
@@ -433,7 +433,7 @@
   h3 {
     font-family: var(--font-display);
     font-weight: 700;
-    letter-spacing: -0.03em;
+    letter-spacing: 0;
     text-wrap: balance;
   }
 }
@@ -3638,14 +3638,22 @@ a.bg-primary,
   color: #000;
 }
 /* The eyebrow: small, letterspaced, quiet. */
-.label-caps {
-  letter-spacing: 0.15em;
+/* Small quiet labels: sentence case, the sans, no tracking. */
+.label-caps,
+.mono-caps {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--muted-foreground);
 }
 /* The headline face for every large title. */
 h1:not([class*="font-"]),
 h2:not([class*="font-"]) {
   font-family: var(--font-display);
-  font-weight: 400;
+  font-weight: 700;
 }
 
 /* A box in the editorial system: a 1px edge, square, 16px inside. */
@@ -3670,9 +3678,6 @@ h2:not([class*="font-"]) {
 /* The rule under a page's title: ink-grey everywhere, the accent in Colorful. */
 [data-theme="colorful"]:not(.dark) .page-title-rule:not([data-compressed]) {
   border-color: var(--acc);
-}
-.page-title-rule h1 {
-  letter-spacing: -0.01em;
 }
 
 /* Widgets size to what is in them: no cap, no empty room in the box. */
@@ -3765,7 +3770,6 @@ h2:not([class*="font-"]) {
 }
 
 /* The Original Editorial type: bold Didone headlines, mono caps for labels. */
-.label-caps,
 .trips-tabs button,
 .trip-views button {
   font-family: var(--font-mono);
@@ -3777,8 +3781,8 @@ h2:not([class*="font-"]) {
 }
 .page-title-rule:not([data-compressed]) h1 {
   font-weight: 700;
-  letter-spacing: -2px;
-  line-height: 0.96;
+  letter-spacing: 0;
+  line-height: 1.15;
 }
 .home-subtitle {
   font-family: var(--font-display);
@@ -3790,13 +3794,8 @@ h2:not([class*="font-"]) {
 .page-title-rule[data-compressed] .home-subtitle {
   display: none;
 }
-.editorial-box .label-caps,
-.home-widget .label-caps {
-  color: var(--foreground);
-}
 
 /* Words set like the design's labels: DM Mono, small caps, loose. */
-.mono-caps,
 button.bg-primary,
 a.bg-primary {
   font-family: var(--font-mono);
@@ -3804,9 +3803,6 @@ a.bg-primary {
   font-weight: 400;
   letter-spacing: 1px;
   text-transform: uppercase;
-}
-.mono-caps {
-  color: var(--foreground);
 }
 :root[data-bold="on"] :is(.label-caps, .mono-caps, button.bg-primary, a.bg-primary, .trips-tabs button, .trip-views button) {
   font-weight: 500;
