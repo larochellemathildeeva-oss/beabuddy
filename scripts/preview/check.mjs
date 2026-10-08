@@ -1206,7 +1206,7 @@ await flow("trip shell: four views, device positions and sticky bars keep the ma
 
 await flow("trip shell: Bookings stays inside Overview with filters and booking saves", async (page) => {
   await goTab(page, "Overview");
-  await page.getByRole("button", { name: /^Booked ·/ }).click();
+  await page.locator(".trip-overview").getByRole("button", { name: /^Bookings/ }).click();
   const bookings = page.getByRole("region", { name: "Bookings", exact: true });
   await bookings.waitFor();
   for (const name of ["Flights", "Stays", "Transport", "Activities", "All"]) await bookings.getByRole("button", { name, exact: true }).click();
