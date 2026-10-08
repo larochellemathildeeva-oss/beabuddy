@@ -78,6 +78,11 @@ Status: `[ ]` open, `[x]` done (PR). Findings numbers refer to table A.
 - [ ] 9 Pins to check visible without the 3-tap switch (Phase 4)
 - [ ] 10 Back target for /preferences, /help, /calendar, /photos, /expenses, /memories, /story (quick win)
 - [ ] Quick wins: delete /next, /world/next, /trips/next copies; aria-labels; Home logo label "Home"
+- [ ] Screen audit: trip header actions clipped at 390px (bug, before Phase 4)
+- [ ] Screen audit: World 4 countries vs You 0 countries (bug)
+- [ ] Screen audit: sign-in and Welcome still uppercase 11px (Phase 2)
+- [ ] Screen audit: Recs search box has no name; chip row cut off (Phase 2)
+- [ ] Screen audit: World pin label hidden, zoom controls overlap (Phase 2)
 - [ ] Sections B-F: not yet scheduled (assign to phases after owner review)
 
 Owner decisions pending: quick-wins PR before Phase 2? Menu long-term contents?
