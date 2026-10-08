@@ -18,11 +18,16 @@ export function useSignOut() {
   return async () => {
     if (signingOut.current) return;
     signingOut.current = true;
+    let timer: ReturnType<typeof setTimeout> | undefined;
     const left = user
       ? await Promise.race([
           clearKeptOfflineOnSignOut(user.id),
-          new Promise<null>((resolve) => setTimeout(() => resolve(null), 8_000)),
-        ]).catch(() => null)
+          new Promise<null>((resolve) => {
+            timer = setTimeout(() => resolve(null), 8_000);
+          }),
+        ])
+          .catch(() => null)
+          .finally(() => clearTimeout(timer))
       : null;
     await supabase.auth.signOut();
     if (left?.kept) {

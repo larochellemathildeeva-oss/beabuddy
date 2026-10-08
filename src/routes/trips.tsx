@@ -62,6 +62,9 @@ type TripsSearch = {
 
 const PLAN_AFTER_CREATE: readonly PlannerTab[] = ["build", "import"];
 
+/** How many past trips All shows before "See all". */
+const PAST_ON_ALL = 5;
+
 /** A secondary way in under the trips: a hairline box, words in the middle. */
 const moreWay =
   "flex min-h-[52px] w-full items-center justify-center rounded-[var(--r-button)] border border-border bg-card px-4 text-[14px] font-medium";
@@ -323,9 +326,22 @@ function TripsPage() {
   const featured = lists.upcoming[0];
   const rest = lists.upcoming.slice(1);
   const row = (trip: TripRow) => <TripListRow key={trip.id} trip={trip} />;
-  const pastSection =
+  // All shows the latest few past trips; Past shows every one. Each row reads
+  // its own stops, so a long history is not opened all at once on All.
+  const pastSection = (all: boolean) =>
     lists.past.length > 0 ? (
-      <TripsSection title="Past trips">{lists.past.map(row)}</TripsSection>
+      <TripsSection title="Past trips">
+        {(all ? lists.past : lists.past.slice(0, PAST_ON_ALL)).map(row)}
+        {!all && lists.past.length > PAST_ON_ALL ? (
+          <button
+            type="button"
+            onClick={() => setView("past")}
+            className="flex min-h-12 w-full items-center text-[14px] font-medium"
+          >
+            See all {lists.past.length} past trips
+          </button>
+        ) : null}
+      </TripsSection>
     ) : null;
   const draftsSection =
     lists.drafts.length > 0 ? (
@@ -352,7 +368,11 @@ function TripsPage() {
         <TripsHero section={t.signedIn ? view : undefined} />
         {t.signedIn ? (
           <>
-            <div role="tablist" aria-label="Which trips" className="trips-tabs relative z-[1]">
+            <div
+              role="tablist"
+              aria-label="Which trips"
+              className="trips-tabs trips-tabs--minimal relative z-[1]"
+            >
               {(
                 [
                   ["upcoming", "Upcoming"],
@@ -404,7 +424,7 @@ function TripsPage() {
 
               {view === "past" &&
                 (lists.past.length > 0 ? (
-                  pastSection
+                  pastSection(true)
                 ) : !t.loading ? (
                   <p className="py-6 text-center text-[16px] text-muted-foreground">
                     No past trips yet. They land here once they end.
@@ -415,7 +435,7 @@ function TripsPage() {
                 <>
                   {ahead}
                   {draftsSection}
-                  {pastSection}
+                  {pastSection(false)}
                 </>
               )}
 

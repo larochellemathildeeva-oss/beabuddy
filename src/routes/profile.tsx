@@ -258,11 +258,23 @@ function ProfilePage() {
             href="/profile/documents"
             guide="trip-documents"
           />
+          {!user ? (
+            <YouRow
+              title="Privacy & legal"
+              note="How your data is kept"
+              onClick={() => setPanel("legal")}
+            />
+          ) : null}
         </div>
 
         {user && (
           <div className="space-y-3">
-            <button type="button" onClick={() => setPanel("settings")} className={SECONDARY}>
+            <button
+              type="button"
+              data-guide="profile-settings"
+              onClick={() => setPanel("settings")}
+              className={SECONDARY}
+            >
               Profile settings
             </button>
           </div>
