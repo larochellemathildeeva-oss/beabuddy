@@ -886,6 +886,27 @@ await flow("shell: header actions are named icon buttons at least 48px", async (
   }
 }, "shell");
 
+await flow("shell: the main bar shows an icon and a label per tab, 48px tall, one current", async (page) => {
+  const links = page.locator('nav[aria-label="Main"] a');
+  if ((await links.count()) !== 5) throw new Error(`expected 5 tabs, found ${await links.count()}`);
+  for (let i = 0; i < 5; i++) {
+    const link = links.nth(i);
+    const box = await link.boundingBox();
+    if (!box || box.height < 48) throw new Error(`tab ${i} is ${box?.height}px tall`);
+    if (!(await link.locator("svg").first().isVisible())) throw new Error(`tab ${i} shows no icon`);
+    if (!(await link.innerText()).trim()) throw new Error(`tab ${i} has no label`);
+  }
+  if ((await page.locator('nav[aria-label="Main"] a[aria-current="page"]').count()) !== 1) throw new Error("not exactly one current tab");
+  if ((await page.locator('nav[aria-label="Main"] > div > span[aria-hidden]').count()) !== 0) throw new Error("the travelling indicator is still there");
+  const blur = await page.locator('nav[aria-label="Main"]').evaluate((el) => getComputedStyle(el).backdropFilter);
+  if (blur !== "none") throw new Error(`the bar still blurs: ${blur}`);
+  await page.setViewportSize({ width: 320, height: 800 });
+  await page.evaluate(() => document.documentElement.style.setProperty("--text-scale", "1.45"));
+  await page.waitForTimeout(250);
+  const clipped = await links.evaluateAll((els) => els.filter((a) => a.querySelector("span").scrollWidth > a.clientWidth + 1).map((a) => a.textContent));
+  if (clipped.length) throw new Error(`labels wider than their tab at 320px and 1.45x: ${clipped.join(", ")}`);
+}, "shell");
+
 await flow("shell: compressed long titles stay on one line in both header layouts", async (page) => {
   const title = "Places worth remembering on a long journey through several cities.";
   for (const beside of [false, true]) {

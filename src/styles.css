@@ -3808,43 +3808,6 @@ a.bg-primary {
   font-weight: 500;
 }
 
-/* The main bar is words: a hairline above, the chosen word underlined. */
-nav[aria-label="Main"] {
-  background: var(--background);
-  border-top: 1px solid var(--border);
-  padding-inline: 0;
-}
-nav[aria-label="Main"] > div {
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
-  backdrop-filter: none;
-  padding-block: 4px;
-}
-nav[aria-label="Main"] > div > span[aria-hidden] {
-  display: none;
-}
-nav[aria-label="Main"] a {
-  border-radius: 0;
-  min-height: 44px;
-  justify-content: center;
-}
-nav[aria-label="Main"] a svg {
-  display: none;
-}
-nav[aria-label="Main"] a span {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 400;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-}
-nav[aria-label="Main"] a[aria-current="page"] span {
-  text-decoration: underline;
-  text-underline-offset: 4px;
-}
-
 /* Home's modules: square, one heading size, like the joined grid in the design. */
 .home-widget [class*="rounded"]:not(.rounded-full),
 .home-widget .rounded-full:not([class*="size-1"]):not([class*="size-2"]) {

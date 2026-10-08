@@ -9,7 +9,7 @@ import {
   takeReturnPath,
 } from "../lib/auth-redirect";
 import { useOnline } from "../hooks/useOnline";
-import { activeTabIndex, indicatorOffset } from "../lib/tab-bar";
+import { activeTabIndex } from "../lib/tab-bar";
 import { COMPRESS_AT, measureHeaderHeights, nextCompressed } from "../lib/page-header";
 import { planeFromMatches, planeIsUndeclared, travelDirection } from "../lib/route-plane";
 import { BrandMark, PageHeader } from "./PageHeader";
@@ -414,29 +414,11 @@ export function AppShell({
         {showTabs && (
           <nav
             aria-label="Main"
-            className="z-20 shrink-0 bg-background/80 px-3 pt-1.5 backdrop-blur-xl pb-[max(0.5rem,env(safe-area-inset-bottom))]"
+            className="z-20 shrink-0 border-t border-border bg-background pb-[max(0.25rem,env(safe-area-inset-bottom))]"
           >
-            {/* A floating bar, as the "three moods" design draws it. The grid is
-                its own box so the indicator can be `inset-y-0` against exactly
-                the row of links. */}
-            <div className="relative grid grid-cols-5 rounded-[24px] border border-white/70 bg-card/88 px-1 py-1.5 shadow-[0_1px_10px_rgb(80_60_40/0.07)] backdrop-blur-xl dark:border-border">
-              {/* One soft bubble that travels, rather than a class jumping between
-                  tabs. The tabs are equal columns, so the whole geometry is
-                  index × 100% of the indicator's own width — nothing to measure
-                  and nothing to go stale on resize.
-
-                  It is decorative: `aria-current` on the link is what a screen
-                  reader announces, so this is hidden from the tree entirely. */}
-              <span
-                aria-hidden
-                className={`pointer-events-none absolute inset-y-1 left-1 flex w-[calc((100%-0.5rem)/5)] justify-center transition-[transform,opacity] duration-(--t-move) ease-(--ease-standard) ${
-                  tabIndex === -1 ? "opacity-0" : "opacity-100"
-                }`}
-                style={{ transform: indicatorOffset(tabIndex) }}
-              >
-                <span className="h-full w-full rounded-[20px] bg-primary-soft" />
-              </span>
-
+            {/* Icon over label, five equal columns. The current tab is filled
+                and bold, so it does not rely on colour alone. */}
+            <div className="grid grid-cols-5">
               {tabs.map(({ to, label, icon: Icon }, i) => {
                 const active = i === tabIndex;
                 return (
@@ -444,14 +426,14 @@ export function AppShell({
                     key={to}
                     to={to}
                     aria-current={active ? "page" : undefined}
-                    className={`relative flex flex-col items-center gap-1 rounded-full py-1.5 transition-colors duration-(--t-tap) ease-(--ease-standard) ${
+                    className={`flex min-h-14 flex-col items-center justify-center gap-1 transition-colors duration-(--t-tap) ease-(--ease-standard) ${
                       active ? "text-foreground" : "text-muted-foreground"
                     }`}
                   >
-                    {/* Filled as well as darker, so the active tab survives a
-                      glance without relying on colour alone. */}
                     <Icon className="size-6" weight={active ? "fill" : "regular"} />
-                    <span className={`text-[13px] ${active ? "font-semibold" : "font-medium"}`}>
+                    <span
+                      className={`text-small leading-none ${active ? "font-bold" : "font-medium"}`}
+                    >
                       {label}
                     </span>
                   </Link>
