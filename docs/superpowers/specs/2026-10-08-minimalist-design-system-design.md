@@ -225,6 +225,7 @@ in order to simplify the views**, so there is one view, not two.
 - **When nothing is current** (before the trip, between stops, after it) the
   same view shows the day's map and stops, with the next stop's card first; it
   never falls back to a second, separate map view.
+- The live dot (the traveller's position on the map) stays, in this one view.
 - The separate live-map behaviour in `DayMapView` is absorbed, not kept twice.
 - The Figma Companion and Map frames (`116:988`, `116:1060`) show a stripped
   card and a line drawing; they must be redrawn as this one view.
