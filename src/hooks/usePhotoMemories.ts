@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { lastLoaded, rememberLoaded, screenGeneration } from "@/lib/screen-cache";
 import type { Pin } from "@/data/atlas";
 
 export type PhotoRow = {
@@ -71,8 +72,10 @@ export function derivePhotoPins(rows: PhotoRow[]): Pin[] {
 }
 
 export function usePhotoMemories() {
-  const [rows, setRows] = useState<PhotoRow[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Open on the photos last loaded, then refresh (screen-cache.ts).
+  const [last] = useState(() => lastLoaded<PhotoRow[]>("photo-memories"));
+  const [rows, setRows] = useState<PhotoRow[]>(last ?? []);
+  const [loading, setLoading] = useState(!last);
   const [loadError, setLoadError] = useState(false);
 
   const reload = async () => {
@@ -80,6 +83,7 @@ export function usePhotoMemories() {
     // the globe and the city pages, which are built from these rows.
     // Only the traveller's own: photos other travellers added to a shared
     // trip's stops are readable too, and are not where this traveller has been.
+    const since = screenGeneration();
     const uid = (await supabase.auth.getSession()).data.session?.user.id;
     if (!uid) {
       setLoading(false);
@@ -90,7 +94,11 @@ export function usePhotoMemories() {
       .select("id, storage_path, city, country, caption, taken_at, lat, lon")
       .eq("user_id", uid)
       .order("taken_at", { ascending: false });
-    if (!error) setRows((data ?? []) as PhotoRow[]);
+    if (!error) {
+      const fresh = (data ?? []) as PhotoRow[];
+      setRows(fresh);
+      rememberLoaded("photo-memories", fresh, since);
+    }
     setLoadError(!!error);
     setLoading(false);
   };
