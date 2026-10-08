@@ -69,8 +69,8 @@ Status: `[ ]` open, `[x]` done (PR). Findings numbers refer to table A.
 
 - [x] 1 One-tap deletes ask first (group 1; undo toast still Phase 3)
 - [x] 2 Error and retry states for expenses, photos, memories, story, calendar (group 1)
-- [ ] 3 One vocabulary: Bucket list / Been there / Next time (Phase 2)
-- [ ] 4 Next time reachable from World; list tiles off the Stats tab (Phase 2)
+- [x] 3 One vocabulary: Recommendation / Bucket list / Been there (places and lists)
+- [x] 4 Next time merged into Bucket list; World locations show their recs (places and lists)
 - [ ] 5 Help row hidden where no guide exists; header Help decided (Phase 2)
 - [ ] 6 Menu as a hub: Sign out, Appearance, Feedback (Phase 2)
 - [ ] 7 Trip menu keeps the menu underneath (Phase 4)
@@ -81,7 +81,7 @@ Status: `[ ]` open, `[x]` done (PR). Findings numbers refer to table A.
 - [x] Screen audit: trip header actions clipped at 390px (group 1)
 - [x] Screen audit: World 4 countries vs You 0 countries (group 1)
 - [ ] Screen audit: sign-in and Welcome still uppercase 11px (Phase 2)
-- [ ] Screen audit: Recs search box has no name; chip row cut off (Phase 2)
+- [x] Screen audit: Recs search box has no name; chip row cut off (places and lists)
 - [ ] Screen audit: World pin label hidden, zoom controls overlap (Phase 2)
 - [ ] Sections B-F: not yet scheduled (assign to phases after owner review)
 
