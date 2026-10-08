@@ -1,3 +1,4 @@
+import { SaveAttempt } from "@/lib/save-attempt";
 import { Sheet } from "@/components/Sheet";
 import { friendlyError } from "@/lib/friendly-error";
 import { AiPromptButton } from "@/components/AiPromptSheet";
@@ -731,6 +732,7 @@ function ImportPanel({
   };
 
   const read = async () => {
+    if (saveAttempt.current) return;
     setBusy(true);
     setError(null);
     setSaved(false);
@@ -995,176 +997,202 @@ function ImportPanel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [placeKey]);
 
+  const saveAttempt = useRef<SaveAttempt | null>(null);
+  const saveInFlight = useRef(false);
+  const [reviewLocked, setReviewLocked] = useState(false);
+
   const addChosen = async () => {
-    if (!items) return;
+    if (!items || saveInFlight.current) return;
+    saveInFlight.current = true;
+    setReviewLocked(true);
+    const attempt = (saveAttempt.current ??= new SaveAttempt());
     setBusy(true);
     setError(null);
     try {
-      const rows = savedRows ?? items;
-      // In plan order: ticking a row back on used to append it, so it was
-      // saved at the end of the day; and a stop's parent must be found by
-      // position in this same list.
-      const order = [...picked].sort((a, b) => a - b);
-      const chosen = order.flatMap((i) => {
-        const it = rows[i];
-        if (!it) return [];
-        // "Inside: …" the import wrote into the note becomes its own list.
-        const { detail: note, inside } = splitInsideNote(it.detail);
-        // Inside another stop that is being saved too: linked to it.
-        const parent = order.indexOf(parentIndex(rows, i));
-        // The address the source gave, pulled out by the parse; the detail
-        // line's first clause only when it gave none.
-        // Already found, at review time, and already shown to the person
-        // saving it — and only if it was trusted or kept. No second round of
-        // lookups on the way out.
-        const found = savedPin(i);
-        // With no address of its own, where it was found: a pinned stop
-        // that says "No place yet" hides a wrong pin as well as a right one.
-        // A note is never the address: "Kiyomizu-zaka — historic shopping
-        // street" was saved with "historic shopping street" as where it is.
-        const hint = placeHintFromDetail(it.detail);
-        const address =
-          it.address?.trim() ||
-          (hint && looksLikeStreetAddress(hint) ? hint : null) ||
-          labelAddress(found?.label);
-        const stay = stayMinutesFrom(it);
-        // What the review said about this pin, kept on the stop for "Pins to
-        // check". A pin the traveller removed themselves is their call.
-        const pinCheck =
-          pinChoices[i] === "drop" ? null : pinCheckNote(placements[i], Boolean(found));
-        return [
-          {
-            ...(found ? { lat: found.lat, lon: found.lon } : {}),
-            ...(pinCheck ? { pin_check: pinCheck } : {}),
-            ...(it.day_date ? { day_date: it.day_date } : {}),
-            ...(it.time_label ? { time_label: it.time_label } : {}),
-            kind: it.kind,
-            title: it.title,
-            ...(address ? { address } : {}),
-            ...(stay ? { planned_stay_minutes: stay } : {}),
-            ...(it.booked === true ? { booked: true } : {}),
-            ...(inside.length ? { inside } : {}),
-            ...(parent >= 0 ? { parent_index: parent } : {}),
-            ...(note || (includeCosts && it.estimated_cost != null)
-              ? {
-                  detail: [
-                    note,
-                    includeCosts && it.estimated_cost != null
-                      ? `Est. ${it.estimated_cost} ${it.currency ?? plan?.currency ?? currency}`
-                      : "",
-                  ]
-                    .filter(Boolean)
-                    .join(" · "),
-                }
-              : {}),
-          },
-        ];
-      });
-      /**
-       * The stops already carry their points.
-       *
-       * This used to be where the geocoding happened — after the person had
-       * committed, so a wrong pin was something you discovered on the trip
-       * page afterwards. It now runs at review time instead, which is both
-       * earlier and cheaper: the save is a save again.
-       */
-      const located = chosen;
-      const unplaced = picked.filter((i) => !savedPin(i)).length;
-      if (unplaced > 0 && Object.keys(placements).length > 0) {
-        toast.message(`${unplaced} of these are not on the map`, {
-          description: "They are saved either way — open the trip to give them a place.",
+      await attempt.run(async () => {
+        const rows = savedRows ?? items;
+        // In plan order: ticking a row back on used to append it, so it was
+        // saved at the end of the day; and a stop's parent must be found by
+        // position in this same list.
+        const order = [...picked].sort((a, b) => a - b);
+        const chosen = order.flatMap((i) => {
+          const it = rows[i];
+          if (!it) return [];
+          // "Inside: …" the import wrote into the note becomes its own list.
+          const { detail: note, inside } = splitInsideNote(it.detail);
+          // Inside another stop that is being saved too: linked to it.
+          const parent = order.indexOf(parentIndex(rows, i));
+          // The address the source gave, pulled out by the parse; the detail
+          // line's first clause only when it gave none.
+          // Already found, at review time, and already shown to the person
+          // saving it — and only if it was trusted or kept. No second round of
+          // lookups on the way out.
+          const found = savedPin(i);
+          // With no address of its own, where it was found: a pinned stop
+          // that says "No place yet" hides a wrong pin as well as a right one.
+          // A note is never the address: "Kiyomizu-zaka — historic shopping
+          // street" was saved with "historic shopping street" as where it is.
+          const hint = placeHintFromDetail(it.detail);
+          const address =
+            it.address?.trim() ||
+            (hint && looksLikeStreetAddress(hint) ? hint : null) ||
+            labelAddress(found?.label);
+          const stay = stayMinutesFrom(it);
+          // What the review said about this pin, kept on the stop for "Pins to
+          // check". A pin the traveller removed themselves is their call.
+          const pinCheck =
+            pinChoices[i] === "drop" ? null : pinCheckNote(placements[i], Boolean(found));
+          return [
+            {
+              ...(found ? { lat: found.lat, lon: found.lon } : {}),
+              ...(pinCheck ? { pin_check: pinCheck } : {}),
+              ...(it.day_date ? { day_date: it.day_date } : {}),
+              ...(it.time_label ? { time_label: it.time_label } : {}),
+              kind: it.kind,
+              title: it.title,
+              ...(address ? { address } : {}),
+              ...(stay ? { planned_stay_minutes: stay } : {}),
+              ...(it.booked === true ? { booked: true } : {}),
+              ...(inside.length ? { inside } : {}),
+              ...(parent >= 0 ? { parent_index: parent } : {}),
+              ...(note || (includeCosts && it.estimated_cost != null)
+                ? {
+                    detail: [
+                      note,
+                      includeCosts && it.estimated_cost != null
+                        ? `Est. ${it.estimated_cost} ${it.currency ?? plan?.currency ?? currency}`
+                        : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" · "),
+                  }
+                : {}),
+            },
+          ];
         });
-      }
-
-      setSaveStatus(`Saving ${located.length} timeline stops…`);
-      const insertedIds = await onAddItems(located);
-      if (includeCosts && onAddCosts && plan?.costs.length) {
-        setSaveStatus("Saving the budget…");
-        await onAddCosts(plan.costs);
-      }
-      if (onApplyDates && movedTrip && dateChoice === "move-trip") {
-        setSaveStatus("Moving the trip…");
-        await onApplyDates({ start_date: movedTrip.start, end_date: movedTrip.end });
-      } else if (onApplyDates && !startDate && plan?.start_date && plan.end_date) {
-        // A trip with no dates takes the plan's. A dated trip is only ever
-        // moved by the choice above: a one-day import used to overwrite a
-        // whole trip's dates here without asking.
-        setSaveStatus("Updating the trip dates…");
-        await onApplyDates({ start_date: plan.start_date, end_date: plan.end_date });
-      } else if (onApplyDates && dayOneDate && !startDate) {
-        // The user just told Béa when day one is, so the trip should know it
-        // too — otherwise the timeline has dates the trip itself does not.
-        const last = lastDayDate(rows) ?? dayOneDate;
-        setSaveStatus("Updating the trip dates…");
-        await onApplyDates({ start_date: dayOneDate, end_date: last });
-      }
-      // A plan through several towns puts them on the trip's route, so the
-      // days, the map and the directions look in the right one.
-      // A day whose stops name no town is looked up from one of its pins.
-      if (onAddCities) setSaveStatus("Adding the towns to the trip…");
-      // Every town the plan reaches, in order: the first is the trip's
-      // starting city even when the route already has it.
-      const planTownList = onAddCities
-        ? await planTowns(
-            order.flatMap((i) => {
-              const row = rows[i];
-              if (!row) return [];
-              const pin = savedPin(i);
-              // "Hiroshima" from the plan's own words is "Hiroshima, Japan".
-              const placed = withCountry(row, planCountry);
-              return [pin ? { ...placed, lat: pin.lat, lon: pin.lon } : placed];
-            }),
-            [],
-            (at) => lookup({ data: at }),
-          ).catch(() => [] as PlanCity[])
-        : [];
-      const newCities = newTowns(planTownList, cities);
-      if (onAddCities && planTownList.length > 0) {
-        try {
-          await onAddCities(newCities, { towns: planTownList, country: planCountry });
-          if (newCities.length > 0) {
-            toast.success(
-              `Added ${newCities.map((c) => c.city).join(", ")} to the trip's destinations`,
-            );
-          }
-        } catch {
-          toast.error("The stops are saved, but the towns could not be added to Destinations.");
+        /**
+         * The stops already carry their points.
+         *
+         * This used to be where the geocoding happened — after the person had
+         * committed, so a wrong pin was something you discovered on the trip
+         * page afterwards. It now runs at review time instead, which is both
+         * earlier and cheaper: the save is a save again.
+         */
+        const located = chosen;
+        const unplaced = picked.filter((i) => !savedPin(i)).length;
+        if (unplaced > 0 && Object.keys(placements).length > 0) {
+          toast.message(`${unplaced} of these are not on the map`, {
+            description: "They are saved either way — open the trip to give them a place.",
+          });
         }
-      }
-      // Routed once the new stops are on the trip, by the trip page, the
-      // same way the directions sheet does it.
-      if (
-        withDirections &&
-        onAddDirections &&
-        Array.isArray(insertedIds) &&
-        insertedIds.length > 1
-      ) {
-        onAddDirections(insertedIds);
-      }
-      setItems(null);
-      setText("");
-      setSaved(true);
-      setSaveStatus("");
-      const done = beaLine("plan.complete");
-      // A fourteen-stop save used to take fourteen taps to unpick.
-      if (Array.isArray(insertedIds) && insertedIds.length > 0 && onRemoveItems) {
-        addedWithUndo({
-          message: `${done.title} ${addedLine("stop", insertedIds.length)}`,
-          label: "stop",
-          count: insertedIds.length,
-          undo: () => onRemoveItems(insertedIds),
-        });
-      } else {
-        toast.success(done.title, { description: beaCheer("route") ?? done.body });
-      }
+
+        setSaveStatus(`Saving ${located.length} timeline stops…`);
+        const insertedIds = await attempt.step("stops", () => onAddItems(located));
+        if (includeCosts && onAddCosts && plan?.costs.length) {
+          setSaveStatus("Saving the budget…");
+          await attempt.step("costs", () => onAddCosts(plan.costs));
+        }
+        if (onApplyDates && movedTrip && dateChoice === "move-trip") {
+          setSaveStatus("Moving the trip…");
+          await attempt.step("dates", () =>
+            onApplyDates({ start_date: movedTrip.start, end_date: movedTrip.end }),
+          );
+        } else if (onApplyDates && !startDate && plan?.start_date && plan.end_date) {
+          // A trip with no dates takes the plan's. A dated trip is only ever
+          // moved by the choice above: a one-day import used to overwrite a
+          // whole trip's dates here without asking.
+          setSaveStatus("Updating the trip dates…");
+          const dates = { start_date: plan.start_date, end_date: plan.end_date };
+          await attempt.step("dates", () => onApplyDates(dates));
+        } else if (onApplyDates && dayOneDate && !startDate) {
+          // The user just told Béa when day one is, so the trip should know it
+          // too — otherwise the timeline has dates the trip itself does not.
+          const last = lastDayDate(rows) ?? dayOneDate;
+          setSaveStatus("Updating the trip dates…");
+          await attempt.step("dates", () =>
+            onApplyDates({ start_date: dayOneDate, end_date: last }),
+          );
+        }
+        // A plan through several towns puts them on the trip's route, so the
+        // days, the map and the directions look in the right one.
+        // A day whose stops name no town is looked up from one of its pins.
+        if (onAddCities) setSaveStatus("Adding the towns to the trip…");
+        // Every town the plan reaches, in order: the first is the trip's
+        // starting city even when the route already has it.
+        const planTownList = onAddCities
+          ? await planTowns(
+              order.flatMap((i) => {
+                const row = rows[i];
+                if (!row) return [];
+                const pin = savedPin(i);
+                // "Hiroshima" from the plan's own words is "Hiroshima, Japan".
+                const placed = withCountry(row, planCountry);
+                return [pin ? { ...placed, lat: pin.lat, lon: pin.lon } : placed];
+              }),
+              [],
+              (at) => lookup({ data: at }),
+            ).catch(() => [] as PlanCity[])
+          : [];
+        const newCities = newTowns(planTownList, cities);
+        if (onAddCities && planTownList.length > 0) {
+          try {
+            await attempt.step("cities", () =>
+              onAddCities(newCities, { towns: planTownList, country: planCountry }),
+            );
+            if (newCities.length > 0) {
+              toast.success(
+                `Added ${newCities.map((c) => c.city).join(", ")} to the trip's destinations`,
+              );
+            }
+          } catch {
+            toast.error("The stops are saved, but the towns could not be added to Destinations.");
+          }
+        }
+        // Routed once the new stops are on the trip, by the trip page, the
+        // same way the directions sheet does it.
+        if (
+          withDirections &&
+          onAddDirections &&
+          Array.isArray(insertedIds) &&
+          insertedIds.length > 1
+        ) {
+          await attempt.step("directions", async () => {
+            await onAddDirections(insertedIds);
+          });
+        }
+        setItems(null);
+        setText("");
+        setSaved(true);
+        setSaveStatus("");
+        const done = beaLine("plan.complete");
+        // A fourteen-stop save used to take fourteen taps to unpick.
+        if (Array.isArray(insertedIds) && insertedIds.length > 0 && onRemoveItems) {
+          addedWithUndo({
+            message: `${done.title} ${addedLine("stop", insertedIds.length)}`,
+            label: "stop",
+            count: insertedIds.length,
+            undo: () => onRemoveItems(insertedIds),
+          });
+        } else {
+          toast.success(done.title, { description: beaCheer("route") ?? done.body });
+        }
+      });
+      saveAttempt.current = null;
+      setReviewLocked(false);
     } catch (e) {
-      setError(friendlyError(e, "Could not save those. Try again."));
+      if (!attempt.hasConfirmedWrites) {
+        saveAttempt.current = null;
+        setReviewLocked(false);
+      }
+      setError(friendlyError(e, "Could not finish saving. Retry to finish the same plan."));
     } finally {
+      saveInFlight.current = false;
       setBusy(false);
     }
   };
 
   const applyRevision = (out: Awaited<ReturnType<typeof revise>>) => {
+    if (saveAttempt.current) return;
     setSummary(out.summary);
     setItems(out.items);
     setPlan(out);
@@ -1499,13 +1527,31 @@ function ImportPanel({
         </p>
       )}
       {saved && (
-        <p className="text-[13px] text-primary">
+        <p role="status" className="text-[14px] text-primary">
           {beaLine("plan.complete").title} {tripStillEditableNote()}
         </p>
       )}
 
+      {reviewLocked && (
+        <div role="status" className="space-y-2 text-[14px]">
+          <p>
+            Finish saving this plan before changing it. Confirmed stops will not be added again.
+          </p>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void addChosen()}
+            className="min-h-12 rounded-xl bg-primary px-4 text-primary-foreground"
+          >
+            {busy ? saveStatus || "Saving…" : "Retry saving this plan"}
+          </button>
+        </div>
+      )}
       {items && (
-        <div className="rise space-y-2 rounded-xl border border-border bg-elevated p-3">
+        <fieldset
+          disabled={busy || reviewLocked}
+          className="rise space-y-2 rounded-xl border border-border bg-elevated p-3"
+        >
           {summary && <p className="text-[13px] text-muted-foreground">{summary}</p>}
           {plan?.grounding && <SearchGroundingNote grounding={plan.grounding} />}
           {includeCosts && plan?.estimated_total != null && (
@@ -1778,7 +1824,7 @@ function ImportPanel({
               {busy && <BeaRunning moment="plan.working" action="run" />}
             </div>
           )}
-        </div>
+        </fieldset>
       )}
     </div>
   );

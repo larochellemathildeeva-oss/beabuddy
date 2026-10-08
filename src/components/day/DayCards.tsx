@@ -55,15 +55,35 @@ export function DayCards({
       <div ref={dots} className="no-scrollbar flex w-full items-stretch gap-1 overflow-x-auto">
         {choices.map((key, index) => {
           const { top, bottom, small } = parts(key);
-          const today = chips.find((c) => c.key === key)?.isToday;
+          const chip = chips.find((c) => c.key === key);
+          const today = chip?.isToday;
           return (
             <button
               key={key || "undated"}
               type="button"
               role="tab"
+              tabIndex={index === at ? 0 : -1}
               aria-selected={index === at}
-              aria-label={`${nameOf(key)}${today ? ", today" : ""}`}
+              aria-label={`${chip?.ordinal ? `${chip?.ordinal}, ` : ""}${nameOf(key)}${today ? ", today" : ""}`}
               title={nameOf(key)}
+              onKeyDown={(event) => {
+                const next =
+                  event.key === "ArrowRight"
+                    ? Math.min(index + 1, choices.length - 1)
+                    : event.key === "ArrowLeft"
+                      ? Math.max(index - 1, 0)
+                      : event.key === "Home"
+                        ? 0
+                        : event.key === "End"
+                          ? choices.length - 1
+                          : undefined;
+                if (next === undefined) return;
+                event.preventDefault();
+                const choice = choices[next];
+                if (choice === undefined) return;
+                onChange(choice);
+                dots.current?.querySelectorAll<HTMLButtonElement>('[role="tab"]')[next]?.focus();
+              }}
               onClick={() => onChange(key)}
               className="day-pill"
             >

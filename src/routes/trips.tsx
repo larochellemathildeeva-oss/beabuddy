@@ -1,3 +1,5 @@
+import { tripsView, type TripsView } from "@/lib/trips-view";
+import { SaveAttempt } from "@/lib/save-attempt";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { friendlyError } from "@/lib/friendly-error";
 import type { PlannerTab } from "@/components/ItineraryImport";
@@ -51,6 +53,7 @@ import {
 } from "@/lib/trip-cities";
 
 type TripsSearch = {
+  view?: TripsView | undefined;
   /** Open the new-trip form (from Plan with Béa). */
   new?: boolean;
   /** Where the new trip's planner opens once it exists. */
@@ -63,6 +66,7 @@ const PLAN_AFTER_CREATE: readonly PlannerTab[] = ["build", "import"];
 export const Route = createFileRoute("/trips")({
   staticData: { plane: "tab" },
   validateSearch: (search: Record<string, unknown>): TripsSearch => ({
+    ...(tripsView(search["view"]) ? { view: tripsView(search["view"]) } : {}),
     ...(search["new"] === true || search["new"] === "true" ? { new: true } : {}),
     ...(PLAN_AFTER_CREATE.includes(search["plan"] as PlannerTab)
       ? { plan: search["plan"] as PlannerTab }
@@ -108,7 +112,10 @@ function TripsPage() {
    * The master's tabs. Undated trips sit at the end of Upcoming; Following
    * (trips others shared) shows once the traveller follows one.
    */
-  const [view, setView] = useState<"upcoming" | "past" | "following" | "all">("upcoming");
+  const [view, setView] = useState<TripsView>(search.view ?? "upcoming");
+  useEffect(() => {
+    if (search.view) setView(search.view);
+  }, [search.view]);
   const [layout, setLayout] = useTripsLayout();
   const {
     trips: followed,
@@ -154,8 +161,12 @@ function TripsPage() {
   // One trip per tap: on a slow connection, taps while the first save is on
   // its way each made another copy of the trip.
   const saving = useRef(false);
+  const createAttempt = useRef<SaveAttempt | null>(null);
   const [saveBusy, setSaveBusy] = useState(false);
+  const [createLocked, setCreateLocked] = useState(false);
   const [code, setCode] = useState("");
+  const joiningNow = useRef(false);
+  const [joinBusy, setJoinBusy] = useState(false);
   const [error, setError] = useState("");
 
   const myName =
@@ -475,6 +486,7 @@ function TripsPage() {
         // shows the sign-in card, not a form that cannot save.
         open={creating && t.signedIn}
         onClose={() => {
+          if (saving.current) return;
           setError("");
           setCreating(false);
         }}
@@ -482,245 +494,253 @@ function TripsPage() {
         hint="Where, when, and who. All of it can change later."
       >
         <div className="space-y-2">
-          <input
-            value={form.title}
-            onChange={(e) => setForm({ ...form, title: e.target.value })}
-            placeholder={suggestedName || "Trip name"}
-            aria-label="Trip name"
-            className="w-full rounded-xl border border-[var(--field-border)] bg-card px-3 py-2.5 text-[15px]"
-          />
-          {!form.title.trim() && suggestedName && (
-            <p className="px-1 text-[12px] text-muted-foreground">
-              No name needed — Béa will file this as “{suggestedName}”. Type over it whenever you
-              like.
-            </p>
-          )}
-          <div
-            role="radiogroup"
-            aria-label="Where is this trip going?"
-            className="flex gap-1 rounded-xl bg-elevated p-1"
-          >
-            {(
-              [
-                [false, "One place"],
-                [true, "Several cities"],
-              ] as const
-            ).map(([value, label]) => (
-              <button
-                key={label}
-                type="button"
-                role="radio"
-                aria-checked={multiCity === value}
-                onClick={() => setMultiCity(value)}
-                className={`flex-1 rounded-lg px-3 py-1.5 text-[13.5px] font-semibold ${
-                  multiCity === value
-                    ? "bg-card text-foreground shadow-2xs"
-                    : "text-muted-foreground"
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-          {!multiCity && (
-            <PlaceSearchInput
-              value={form.city}
-              onChange={(v) => setForm({ ...form, city: v })}
-              onPick={(p) => {
-                const loc = locationFromParsedPlace(p);
-                setForm({
-                  ...form,
-                  city: loc.city,
-                  country: loc.country || form.country,
-                });
-              }}
-              placeholder="Where to — search it"
-              areas
+          <fieldset disabled={saveBusy || createLocked} className="space-y-2">
+            <input
+              value={form.title}
+              onChange={(e) => setForm({ ...form, title: e.target.value })}
+              placeholder={suggestedName || "Trip name"}
+              aria-label="Trip name"
+              className="w-full rounded-xl border border-[var(--field-border)] bg-card px-3 py-2.5 text-[15px]"
             />
-          )}
-          <DateRangeField
-            start={form.start_date}
-            end={form.end_date}
-            onChange={(start_date, end_date) => setForm({ ...form, start_date, end_date })}
-            datesStatus={form.dates_status}
-            onDatesStatusChange={(dates_status) => setForm({ ...form, dates_status })}
-            placeholder={
-              multiCity && cityDates.start ? "Trip dates — from the cities below" : "Dates"
-            }
-          />
-          {!multiCity && form.city.trim() && (
-            <div className="space-y-2">
-              {dayTrips.map((trip, index) => (
-                <DayTripRow
-                  key={index}
-                  trip={trip}
-                  base={form.city}
-                  min={form.start_date}
-                  max={form.end_date}
-                  outside={cityOutsideTrip(
-                    { ...trip, end: trip.start },
-                    form.start_date,
-                    form.end_date,
-                  )}
-                  onChange={(patch) => setDayTrip(index, patch)}
-                  onRemove={() => setDayTrips((list) => list.filter((_, i) => i !== index))}
-                />
-              ))}
-              <button
-                type="button"
-                onClick={() => setDayTrips((list) => [...list, EMPTY_DAY_TRIP])}
-                className="flex w-full items-center justify-center gap-1 rounded-xl border border-dashed border-border px-3 py-2 text-[13.5px] font-semibold text-primary"
-              >
-                <Plus className="size-4" aria-hidden />
-                Add a day trip from {shortCity(form.city)}
-              </button>
-            </div>
-          )}
-          {multiCity && (
-            <div className="space-y-2">
+            {!form.title.trim() && suggestedName && (
               <p className="px-1 text-[12px] text-muted-foreground">
-                Each city in order, with the days you're there. Add layovers too, and day trips from
-                a city you're sleeping in.
+                No name needed — Béa will file this as “{suggestedName}”. Type over it whenever you
+                like.
               </p>
-              {cities.map((city, index) =>
-                city.dayTrip ? (
-                  <div key={index} className="ml-7">
-                    <DayTripRow
-                      trip={city}
-                      base={baseOf(cities, index)?.city ?? ""}
-                      min={baseOf(cities, index)?.start ?? ""}
-                      max={baseOf(cities, index)?.end ?? ""}
-                      outside={dayTripOutsideBase(cities, index)}
-                      onChange={(patch) => setCity(index, patch)}
-                      onRemove={() => setCities((list) => list.filter((_, i) => i !== index))}
-                    />
-                  </div>
-                ) : (
-                  <div
+            )}
+            <div
+              role="radiogroup"
+              aria-label="Where is this trip going?"
+              className="flex gap-1 rounded-xl bg-elevated p-1"
+            >
+              {(
+                [
+                  [false, "One place"],
+                  [true, "Several cities"],
+                ] as const
+              ).map(([value, label]) => (
+                <button
+                  key={label}
+                  type="button"
+                  role="radio"
+                  aria-checked={multiCity === value}
+                  onClick={() => setMultiCity(value)}
+                  className={`flex-1 rounded-lg px-3 py-1.5 text-[13.5px] font-semibold ${
+                    multiCity === value
+                      ? "bg-card text-foreground shadow-2xs"
+                      : "text-muted-foreground"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            {!multiCity && (
+              <PlaceSearchInput
+                value={form.city}
+                onChange={(v) => setForm({ ...form, city: v })}
+                onPick={(p) => {
+                  const loc = locationFromParsedPlace(p);
+                  setForm({
+                    ...form,
+                    city: loc.city,
+                    country: loc.country || form.country,
+                  });
+                }}
+                placeholder="Where to — search it"
+                areas
+              />
+            )}
+            <DateRangeField
+              start={form.start_date}
+              end={form.end_date}
+              onChange={(start_date, end_date) => setForm({ ...form, start_date, end_date })}
+              datesStatus={form.dates_status}
+              onDatesStatusChange={(dates_status) => setForm({ ...form, dates_status })}
+              placeholder={
+                multiCity && cityDates.start ? "Trip dates — from the cities below" : "Dates"
+              }
+            />
+            {!multiCity && form.city.trim() && (
+              <div className="space-y-2">
+                {dayTrips.map((trip, index) => (
+                  <DayTripRow
                     key={index}
-                    className="space-y-1.5 rounded-xl border border-border bg-elevated p-2"
-                  >
-                    <div className="flex items-center gap-1.5">
-                      <span className="grid size-6 shrink-0 place-items-center rounded-full bg-primary text-[12px] font-bold text-primary-foreground">
-                        {cities.slice(0, index + 1).filter((c) => !c.dayTrip).length}
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <PlaceSearchInput
-                          value={city.city}
-                          onChange={(v) =>
-                            setCity(index, { city: v, lat: undefined, lon: undefined })
-                          }
-                          onPick={(p) => {
-                            const loc = locationFromParsedPlace(p);
-                            setCity(index, {
-                              city: loc.city,
-                              country: loc.country,
-                              lat: p.lat,
-                              lon: p.lon,
-                            });
-                          }}
-                          placeholder={`City ${index + 1} — search it`}
-                          areas
-                        />
+                    trip={trip}
+                    base={form.city}
+                    min={form.start_date}
+                    max={form.end_date}
+                    outside={cityOutsideTrip(
+                      { ...trip, end: trip.start },
+                      form.start_date,
+                      form.end_date,
+                    )}
+                    onChange={(patch) => setDayTrip(index, patch)}
+                    onRemove={() => setDayTrips((list) => list.filter((_, i) => i !== index))}
+                  />
+                ))}
+                <button
+                  type="button"
+                  onClick={() => setDayTrips((list) => [...list, EMPTY_DAY_TRIP])}
+                  className="flex w-full items-center justify-center gap-1 rounded-xl border border-dashed border-border px-3 py-2 text-[13.5px] font-semibold text-primary"
+                >
+                  <Plus className="size-4" aria-hidden />
+                  Add a day trip from {shortCity(form.city)}
+                </button>
+              </div>
+            )}
+            {multiCity && (
+              <div className="space-y-2">
+                <p className="px-1 text-[12px] text-muted-foreground">
+                  Each city in order, with the days you're there. Add layovers too, and day trips
+                  from a city you're sleeping in.
+                </p>
+                {cities.map((city, index) =>
+                  city.dayTrip ? (
+                    <div key={index} className="ml-7">
+                      <DayTripRow
+                        trip={city}
+                        base={baseOf(cities, index)?.city ?? ""}
+                        min={baseOf(cities, index)?.start ?? ""}
+                        max={baseOf(cities, index)?.end ?? ""}
+                        outside={dayTripOutsideBase(cities, index)}
+                        onChange={(patch) => setCity(index, patch)}
+                        onRemove={() => setCities((list) => list.filter((_, i) => i !== index))}
+                      />
+                    </div>
+                  ) : (
+                    <div
+                      key={index}
+                      className="space-y-1.5 rounded-xl border border-border bg-elevated p-2"
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <span className="grid size-6 shrink-0 place-items-center rounded-full bg-primary text-[12px] font-bold text-primary-foreground">
+                          {cities.slice(0, index + 1).filter((c) => !c.dayTrip).length}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <PlaceSearchInput
+                            value={city.city}
+                            onChange={(v) =>
+                              setCity(index, { city: v, lat: undefined, lon: undefined })
+                            }
+                            onPick={(p) => {
+                              const loc = locationFromParsedPlace(p);
+                              setCity(index, {
+                                city: loc.city,
+                                country: loc.country,
+                                lat: p.lat,
+                                lon: p.lon,
+                              });
+                            }}
+                            placeholder={`City ${index + 1} — search it`}
+                            areas
+                          />
+                        </div>
+                        {cities.length > 1 && (
+                          <button
+                            type="button"
+                            aria-label={`Remove city ${index + 1}`}
+                            onClick={() =>
+                              // Its day trips go with it: they sleep there.
+                              setCities((list) => {
+                                const end = dayTripInsertAt(list, index);
+                                return list.filter((_, i) => i < index || i >= end);
+                              })
+                            }
+                            className="grid size-8 shrink-0 place-items-center rounded-full text-muted-foreground"
+                          >
+                            <X className="size-4" aria-hidden />
+                          </button>
+                        )}
                       </div>
-                      {cities.length > 1 && (
+                      <DateRangeField
+                        start={city.start}
+                        end={city.end}
+                        onChange={(start, end) => setCity(index, { start, end })}
+                        title={
+                          city.city.trim()
+                            ? `Dates in ${city.city.split(",")[0]}`
+                            : "Dates in this city"
+                        }
+                        placeholder="Dates in this city"
+                        month={cities[index - 1]?.end || form.start_date || undefined}
+                      />
+                      {cityOutsideTrip(city, form.start_date, form.end_date) && (
+                        <p role="alert" className="px-1 text-[14px] font-medium text-destructive">
+                          These dates fall outside the trip's.
+                        </p>
+                      )}
+                      {city.city.trim() && (
                         <button
                           type="button"
-                          aria-label={`Remove city ${index + 1}`}
                           onClick={() =>
-                            // Its day trips go with it: they sleep there.
                             setCities((list) => {
-                              const end = dayTripInsertAt(list, index);
-                              return list.filter((_, i) => i < index || i >= end);
+                              const at = dayTripInsertAt(list, index);
+                              return [...list.slice(0, at), EMPTY_DAY_TRIP, ...list.slice(at)];
                             })
                           }
-                          className="grid size-8 shrink-0 place-items-center rounded-full text-muted-foreground"
+                          className="flex items-center gap-1 px-1 text-[12.5px] font-semibold text-primary"
                         >
-                          <X className="size-4" aria-hidden />
+                          <Plus className="size-3.5" aria-hidden />
+                          Day trip from {shortCity(city.city)}
                         </button>
                       )}
                     </div>
-                    <DateRangeField
-                      start={city.start}
-                      end={city.end}
-                      onChange={(start, end) => setCity(index, { start, end })}
-                      title={
-                        city.city.trim()
-                          ? `Dates in ${city.city.split(",")[0]}`
-                          : "Dates in this city"
-                      }
-                      placeholder="Dates in this city"
-                      month={cities[index - 1]?.end || form.start_date || undefined}
-                    />
-                    {cityOutsideTrip(city, form.start_date, form.end_date) && (
-                      <p role="alert" className="px-1 text-[14px] font-medium text-destructive">
-                        These dates fall outside the trip's.
-                      </p>
-                    )}
-                    {city.city.trim() && (
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setCities((list) => {
-                            const at = dayTripInsertAt(list, index);
-                            return [...list.slice(0, at), EMPTY_DAY_TRIP, ...list.slice(at)];
-                          })
-                        }
-                        className="flex items-center gap-1 px-1 text-[12.5px] font-semibold text-primary"
-                      >
-                        <Plus className="size-3.5" aria-hidden />
-                        Day trip from {shortCity(city.city)}
-                      </button>
-                    )}
-                  </div>
-                ),
-              )}
-              <button
-                type="button"
-                onClick={() => setCities((list) => [...list, EMPTY_CITY])}
-                className="flex w-full items-center justify-center gap-1 rounded-xl border border-dashed border-border px-3 py-2 text-[13.5px] font-semibold text-primary"
-              >
-                <Plus className="size-4" aria-hidden />
-                Add another city
-              </button>
-            </div>
-          )}
-          {form.start_date && form.end_date && form.end_date < form.start_date && (
-            <p role="alert" className="px-1 text-[14px] font-medium text-destructive">
-              End date can't be earlier than the start date.
+                  ),
+                )}
+                <button
+                  type="button"
+                  onClick={() => setCities((list) => [...list, EMPTY_CITY])}
+                  className="flex w-full items-center justify-center gap-1 rounded-xl border border-dashed border-border px-3 py-2 text-[13.5px] font-semibold text-primary"
+                >
+                  <Plus className="size-4" aria-hidden />
+                  Add another city
+                </button>
+              </div>
+            )}
+            {form.start_date && form.end_date && form.end_date < form.start_date && (
+              <p role="alert" className="px-1 text-[14px] font-medium text-destructive">
+                End date can't be earlier than the start date.
+              </p>
+            )}
+            {packing.packs.length > 0 && (
+              <label className="block px-1 py-1 text-[13px] text-muted-foreground">
+                Attach a copy of a packing list
+                <select
+                  value={packTemplateId}
+                  onChange={(e) => setPackTemplateId(e.target.value)}
+                  className="mt-1 w-full rounded-xl border border-[var(--field-border)] bg-card px-3 py-2.5 text-[15px] text-foreground"
+                >
+                  <option value="">No packing list</option>
+                  {packing.packs.map((pack) => (
+                    <option key={pack.id} value={pack.id}>
+                      {pack.emoji} {pack.name}
+                    </option>
+                  ))}
+                </select>
+                <span className="mt-1 block text-[12px]">
+                  You get a copy — ticking things off only affects this trip.
+                </span>
+              </label>
+            )}
+            <label className="flex items-center gap-2 px-1 py-1 text-[14.5px]">
+              <input
+                type="checkbox"
+                checked={withBudget}
+                onChange={(e) => setWithBudget(e.target.checked)}
+                className="size-5"
+              />
+              Track a budget for this trip
+            </label>
+            <p className="px-1 text-[12px] text-muted-foreground">{tripStillEditableNote()}</p>
+          </fieldset>
+          {createLocked && (
+            <p role="status" className="text-[14px]">
+              Finish creating this trip before changing its details. Retry continues the same trip.
             </p>
           )}
-          {packing.packs.length > 0 && (
-            <label className="block px-1 py-1 text-[13px] text-muted-foreground">
-              Attach a copy of a packing list
-              <select
-                value={packTemplateId}
-                onChange={(e) => setPackTemplateId(e.target.value)}
-                className="mt-1 w-full rounded-xl border border-[var(--field-border)] bg-card px-3 py-2.5 text-[15px] text-foreground"
-              >
-                <option value="">No packing list</option>
-                {packing.packs.map((pack) => (
-                  <option key={pack.id} value={pack.id}>
-                    {pack.emoji} {pack.name}
-                  </option>
-                ))}
-              </select>
-              <span className="mt-1 block text-[12px]">
-                You get a copy — ticking things off only affects this trip.
-              </span>
-            </label>
-          )}
-          <label className="flex items-center gap-2 px-1 py-1 text-[14.5px]">
-            <input
-              type="checkbox"
-              checked={withBudget}
-              onChange={(e) => setWithBudget(e.target.checked)}
-              className="size-5"
-            />
-            Track a budget for this trip
-          </label>
-          <p className="px-1 text-[12px] text-muted-foreground">{tripStillEditableNote()}</p>
           <button
+            aria-busy={saveBusy}
             disabled={
               saveBusy ||
               (!form.title.trim() && !suggestedName) ||
@@ -730,59 +750,74 @@ function TripsPage() {
               if (saving.current) return;
               saving.current = true;
               setSaveBusy(true);
+              setCreateLocked(true);
               setError("");
+              const attempt = (createAttempt.current ??= new SaveAttempt());
               try {
-                const id = await t.createTrip({
-                  ...form,
-                  ...(multiCity
-                    ? {
-                        city: firstCity?.city ?? "",
-                        country: firstCity?.country ?? "",
-                        stops: citiesToStops(cities),
-                      }
-                    : {
-                        stops: onePlaceStops(
-                          {
-                            city: form.city,
-                            country: form.country,
-                            start: tripStart,
-                            end: tripEnd,
-                          },
-                          dayTrips,
-                        ),
-                      }),
-                  start_date: tripStart,
-                  end_date: tripEnd,
-                  title: form.title.trim() || suggestedName,
-                  budget_enabled: withBudget,
+                await attempt.run(async () => {
+                  const id = await attempt.step("trip", () =>
+                    t.createTrip({
+                      ...form,
+                      ...(multiCity
+                        ? {
+                            city: firstCity?.city ?? "",
+                            country: firstCity?.country ?? "",
+                            stops: citiesToStops(cities),
+                          }
+                        : {
+                            stops: onePlaceStops(
+                              {
+                                city: form.city,
+                                country: form.country,
+                                start: tripStart,
+                                end: tripEnd,
+                              },
+                              dayTrips,
+                            ),
+                          }),
+                      start_date: tripStart,
+                      end_date: tripEnd,
+                      title: form.title.trim() || suggestedName,
+                      budget_enabled: withBudget,
+                    }),
+                  );
+                  if (packTemplateId)
+                    await attempt.step("packing", () => packing.attachToTrip(packTemplateId, id));
+                  setPackTemplateId("");
+                  await navigate({
+                    to: "/trips/$tripId",
+                    params: { tripId: id },
+                    // Started from Plan with Béa: its planner opens on
+                    // the new trip, with anything already typed.
+                    search: search.plan
+                      ? { plan: search.plan, ...(search.ask ? { ask: search.ask } : {}) }
+                      : {},
+                    viewTransition: true,
+                  });
+                  setForm({
+                    title: "",
+                    city: "",
+                    country: "",
+                    start_date: "",
+                    end_date: "",
+                    dates_status: "tentative",
+                  });
+                  setMultiCity(false);
+                  setCities([EMPTY_CITY, EMPTY_CITY]);
+                  setDayTrips([]);
+                  setWithBudget(false);
+                  setCreating(false);
                 });
-                if (packTemplateId) await packing.attachToTrip(packTemplateId, id);
-                setPackTemplateId("");
-                await navigate({
-                  to: "/trips/$tripId",
-                  params: { tripId: id },
-                  // Started from Plan with Béa: its planner opens on
-                  // the new trip, with anything already typed.
-                  search: search.plan
-                    ? { plan: search.plan, ...(search.ask ? { ask: search.ask } : {}) }
-                    : {},
-                  viewTransition: true,
-                });
-                setForm({
-                  title: "",
-                  city: "",
-                  country: "",
-                  start_date: "",
-                  end_date: "",
-                  dates_status: "tentative",
-                });
-                setMultiCity(false);
-                setCities([EMPTY_CITY, EMPTY_CITY]);
-                setDayTrips([]);
-                setWithBudget(false);
-                setCreating(false);
+                createAttempt.current = null;
+                setCreateLocked(false);
               } catch (e) {
-                setError(friendlyError(e, "Couldn't create the trip"));
+                if (!attempt.hasConfirmedWrites) {
+                  createAttempt.current = null;
+                  setCreateLocked(false);
+                }
+                setError(
+                  friendlyError(e, "Could not finish creating the trip. Retry to continue."),
+                );
               } finally {
                 saving.current = false;
                 setSaveBusy(false);
@@ -790,7 +825,7 @@ function TripsPage() {
             }}
             className="w-full rounded-xl bg-primary px-4 py-2 text-[14.5px] font-semibold text-primary-foreground disabled:opacity-50"
           >
-            {saveBusy ? "Creating…" : "Create trip"}
+            {saveBusy ? "Creating…" : createLocked ? "Retry creating this trip" : "Create trip"}
           </button>
           {error && creating && (
             <p role="alert" className="text-[14px] text-destructive">
@@ -803,6 +838,7 @@ function TripsPage() {
       <Sheet
         open={joining}
         onClose={() => {
+          if (joiningNow.current) return;
           setError("");
           setJoining(false);
         }}
@@ -811,6 +847,7 @@ function TripsPage() {
       >
         <div className="space-y-2">
           <input
+            disabled={joinBusy}
             aria-label="Invite code"
             value={code}
             onChange={(e) => setCode(e.target.value.toUpperCase())}
@@ -818,9 +855,13 @@ function TripsPage() {
             className="w-full rounded-xl border border-[var(--field-border)] bg-card px-3 py-2.5 text-[15px] tracking-widest"
           />
           <button
-            disabled={code.length < 4}
+            aria-busy={joinBusy}
+            disabled={joinBusy || code.length < 4}
             onClick={async () => {
               setError("");
+              if (joiningNow.current) return;
+              joiningNow.current = true;
+              setJoinBusy(true);
               try {
                 const id = await t.joinTrip(code, myName);
                 await navigate({
@@ -832,11 +873,14 @@ function TripsPage() {
                 setJoining(false);
               } catch (e) {
                 setError(friendlyError(e, "That code didn't work"));
+              } finally {
+                joiningNow.current = false;
+                setJoinBusy(false);
               }
             }}
             className="w-full rounded-xl bg-primary px-4 py-2 text-[14.5px] font-semibold text-primary-foreground disabled:opacity-50"
           >
-            Join trip
+            {joinBusy ? "Joining…" : "Join trip"}
           </button>
           {error && joining && (
             <p role="alert" className="text-[14px] text-destructive">

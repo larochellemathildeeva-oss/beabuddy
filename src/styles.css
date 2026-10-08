@@ -3437,8 +3437,8 @@ html:not(.dark)
 }
 /* Existing module actions retain a phone-sized touch target in the grid. */
 .home-widget-content :is(button, a) {
-  min-width: 44px;
-  min-height: 44px;
+  min-width: 48px;
+  min-height: 48px;
 }
 .home-widget-content [data-guide="home-past"] > div:first-child a {
   display: inline-flex;
@@ -3484,8 +3484,8 @@ html:not(.dark)
 .home-widget-handle {
   display: grid;
   place-items: center;
-  min-width: 44px;
-  min-height: 44px;
+  min-width: 48px;
+  min-height: 48px;
   touch-action: none;
   cursor: grab;
 }
@@ -3501,7 +3501,7 @@ html:not(.dark)
 .home-widget-controls select {
   width: 100%;
   min-width: 0;
-  min-height: 44px;
+  min-height: 48px;
   background: var(--card);
   color: var(--foreground);
   border-radius: 8px;

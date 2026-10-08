@@ -334,6 +334,7 @@ function FollowButton({ token }: { token: string }) {
         Have Béa?{" "}
         <Link
           to="/auth"
+          search={{ redirect: `/shared/${encodeURIComponent(token)}` }}
           className="-my-3 inline-flex min-h-11 items-center font-semibold text-primary underline underline-offset-2"
         >
           Sign in
@@ -386,24 +387,35 @@ function FollowButton({ token }: { token: string }) {
     }
   };
   return (
-    <button
-      type="button"
-      disabled={busy}
-      onClick={() => void toggle()}
-      aria-pressed={following}
-      className={`flex min-h-11 w-full items-center justify-center gap-2 rounded-full px-4 text-[16px] font-semibold disabled:opacity-60 ${
-        following ? "border border-border bg-elevated text-foreground" : "btn-primary"
-      }`}
-    >
-      {following ? (
-        <>
-          <Check className="size-4" aria-hidden />
-          Following in Béa · tap to stop
-        </>
-      ) : (
-        "Follow in Béa"
+    <div className="space-y-2">
+      <button
+        type="button"
+        disabled={busy}
+        onClick={() => void toggle()}
+        aria-pressed={following}
+        className={`flex min-h-12 w-full items-center justify-center gap-2 rounded-full px-4 text-[16px] font-semibold disabled:opacity-60 ${
+          following ? "border border-border bg-elevated text-foreground" : "btn-primary"
+        }`}
+      >
+        {following ? (
+          <>
+            <Check className="size-4" aria-hidden />
+            Following in Béa · tap to stop
+          </>
+        ) : (
+          "Follow in Béa"
+        )}
+      </button>
+      {following && (
+        <Link
+          to="/trips"
+          search={{ view: "following" }}
+          className="flex min-h-12 items-center justify-center font-semibold text-primary underline underline-offset-4"
+        >
+          View followed trips
+        </Link>
       )}
-    </button>
+    </div>
   );
 }
 

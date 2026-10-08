@@ -103,6 +103,7 @@ import {
   ALL_DAYS,
   dayChips,
   defaultDayChoice,
+  companionDayGroup,
   shouldOfferDays,
   visibleGroups,
   type DayChoice,
@@ -144,6 +145,7 @@ import logo from "@/assets/bea-logo.png";
 import { DayMapView } from "@/components/day/DayMapView";
 import { JourneyTracker } from "@/components/day/JourneyTracker";
 import { StopPeek } from "@/components/day/StopPeek";
+import { DayRibbon } from "@/components/day/DayRibbon";
 import { NowPanel } from "@/components/day/NowPanel";
 import {
   clockMinutes,
@@ -1122,17 +1124,7 @@ export function TripDetail({
   const todayGroup = timelineGroups.find((group) => group.key === todayKey);
   const nowStop = todayGroup ? nowTarget(todayGroup.items, minutesNow) : null;
   const jumpToNow = () => {
-    if (!nowStop) return;
-    if (timelineByDay && chosenDay !== ALL_DAYS && chosenDay !== todayKey) setDayChoice(todayKey);
-    setCollapsedDays((prev) => ({ ...prev, [todayKey]: false }));
-    // After the day has rendered: two frames, one for the state, one for layout.
-    requestAnimationFrame(() =>
-      requestAnimationFrame(() =>
-        document
-          .getElementById(`stop-${nowStop.id}`)
-          ?.scrollIntoView({ behavior: "smooth", block: "center" }),
-      ),
-    );
+    if (nowStop) jumpToStop(nowStop.id);
   };
   /** Open a stop on the timeline from somewhere else (the trip checkup). */
   const jumpToStop = (stopId: string) => {
@@ -1147,11 +1139,16 @@ export function TripDetail({
     if (timelineByDay && chosenDay !== ALL_DAYS && chosenDay !== day) setDayChoice(day);
     setCollapsedDays((prev) => ({ ...prev, [day]: false }));
     requestAnimationFrame(() =>
-      requestAnimationFrame(() =>
-        document
-          .getElementById(`stop-${stopId}`)
-          ?.scrollIntoView({ behavior: "smooth", block: "center" }),
-      ),
+      requestAnimationFrame(() => {
+        const target = document.getElementById(`stop-${stopId}`);
+        if (!target) return;
+        target.tabIndex = -1;
+        target.focus({ preventScroll: true });
+        const reduced =
+          window.matchMedia("(prefers-reduced-motion: reduce)").matches ||
+          document.documentElement.dataset["motion"] === "reduce";
+        target.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "center" });
+      }),
     );
   };
   /** The day cards, for the sticky day bar to know when they scroll away. */
@@ -1331,14 +1328,8 @@ export function TripDetail({
       (e: unknown) => toast.error(friendlyError(e, "That didn't save.")),
     );
   };
-  // Now follows one day: the one picked, or today when every day is showing.
-  const companionDay =
-    chosenDay === ALL_DAYS
-      ? (timelineGroups.find((group) => group.key !== "" && group.key === todayKey) ??
-        // A one-day trip has no day strip to pick from, so there is only
-        // one day to follow. Without this it asked for a choice it hid.
-        (timelineGroups.length === 1 ? timelineGroups[0]! : null))
-      : (shownGroups[0] ?? null);
+  // Opening finds today; explicitly choosing All days asks which day to follow.
+  const companionDay = companionDayGroup(timelineGroups, chosenDay, dayChoice !== null, todayKey);
   const nowStops = companionDay ? companionStops(companionDay.items) : [];
   // Only a stop on the day being followed; another day's pick closes itself.
   const peekStop = nowStops.find((stop) => stop.id === peekId) ?? null;
@@ -1707,7 +1698,6 @@ export function TripDetail({
         {/* Several cities: pick one and the days, the map and Now all follow
             it. One slim line with the day strip beside it; on the map, alone. */}
         {stopItems.length > 0 &&
-          !liveCompanion &&
           (perspective === "companion" ||
             perspective === "map" ||
             (perspective === "timeline" && timelineByDay)) &&
@@ -1819,6 +1809,14 @@ export function TripDetail({
                 <p className="now-day-line">
                   {[companionOrdinal, companionDateLine].filter(Boolean).join(" · ")}
                 </p>
+                {view.prefs.ribbon && (
+                  <DayRibbon
+                    stops={nowStops}
+                    dayLabel={companionOrdinal}
+                    selectedId={peekStop?.id ?? null}
+                    onSelect={setPeekId}
+                  />
+                )}
                 <NowPanel
                   key={companionDay.key}
                   dayStops={nowStops}
@@ -2296,7 +2294,7 @@ export function TripDetail({
                   type="button"
                   onClick={jumpToNow}
                   aria-label={`Jump to ${nowStop.title}`}
-                  className="pointer-events-auto inline-flex min-h-11 items-center gap-1.5 rounded-full bg-primary px-4 text-[14px] font-semibold text-primary-foreground shadow-lg"
+                  className="pointer-events-auto inline-flex min-h-12 items-center gap-1.5 rounded-full bg-primary px-4 text-[14px] font-semibold text-primary-foreground shadow-lg"
                 >
                   <LocateFixed className="size-4" aria-hidden />
                   Now

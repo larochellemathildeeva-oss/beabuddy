@@ -394,6 +394,7 @@ export function AssignSheet({
   const [pickTrip, setPickTrip] = useState(false);
   const [pickEvent, setPickEvent] = useState(false);
   const [busy, setBusy] = useState(false);
+  const saving = useRef(false);
   const [error, setError] = useState("");
   const { events, loading, loadedFor } = useTripEvents(open ? draft.trip_id : null);
   const readAs = isNew && file ? readableAs(file) : null;
@@ -529,10 +530,12 @@ export function AssignSheet({
   const event = events.find((e) => e.id === draft.itinerary_item_id) ?? null;
 
   const done = async () => {
+    if (saving.current) return;
     if (!draft.title.trim()) {
       setError("Give it a name first.");
       return;
     }
+    saving.current = true;
     setBusy(true);
     setError("");
     try {
@@ -544,6 +547,7 @@ export function AssignSheet({
     } catch (e) {
       setError(friendlyError(e, "That did not save. Try again."));
     } finally {
+      saving.current = false;
       setBusy(false);
     }
   };
@@ -551,15 +555,18 @@ export function AssignSheet({
   return (
     <Sheet
       open={open}
-      onClose={onClose}
+      onClose={() => {
+        if (!saving.current) onClose();
+      }}
       title="Assign to trip"
       width="sm"
       showClose={false}
       icon={
         <button
           type="button"
+          disabled={busy}
           onClick={onClose}
-          className="h-8 rounded-full px-1 text-[15px] font-semibold text-foreground"
+          className="min-h-12 rounded-full px-1 text-[15px] font-semibold text-foreground"
         >
           Cancel
         </button>
@@ -569,13 +576,13 @@ export function AssignSheet({
           type="button"
           disabled={busy}
           onClick={() => void done()}
-          className="h-8 rounded-full bg-primary px-4 text-[14px] font-semibold text-primary-foreground disabled:opacity-60"
+          className="min-h-12 rounded-full bg-primary px-4 text-[14px] font-semibold text-primary-foreground disabled:opacity-60"
         >
           {busy ? "Saving…" : "Done"}
         </button>
       }
     >
-      <div className="space-y-4">
+      <fieldset disabled={busy} aria-busy={busy} className="space-y-4">
         <div className="doc-card flex items-center gap-3 p-3">
           <FilePreview file={file ?? null} kind={draft.kind} />
           <div className="min-w-0 flex-1">
@@ -806,7 +813,7 @@ export function AssignSheet({
             {error}
           </p>
         )}
-      </div>
+      </fieldset>
 
       <TripPicker
         open={pickTrip}
