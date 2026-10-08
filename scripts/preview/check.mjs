@@ -981,7 +981,8 @@ await flow("shell: header actions are named and at least 48px", async (page) => 
     const el = page.getByRole(role, { name, exact: true });
     const box = await el.boundingBox();
     if (!box || box.width < 48 || box.height < 48) throw new Error(`${name} is ${box?.width}x${box?.height}`);
-    if (!(await el.locator("svg").count())) throw new Error(`${name} has no icon`);
+    const words = (await el.innerText()).trim();
+    if (words !== (name === "Menu" ? "Menu" : "Search")) throw new Error(`${name} shows "${words}", not its word`);
   }
 }, "shell");
 

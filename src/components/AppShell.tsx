@@ -232,7 +232,7 @@ export function AppShell({
                 to="/recommendations"
                 search={{ find: true }}
                 aria-label="Search your places"
-                className="flex min-h-12 items-center px-2 text-[12px] text-foreground"
+                className="flex min-h-12 min-w-12 items-center justify-center px-2 text-[12px] text-foreground"
               >
                 Search
               </Link>
@@ -243,7 +243,7 @@ export function AppShell({
                   onClick={() => setMenuOpen(true)}
                   aria-haspopup="dialog"
                   aria-label="Menu"
-                  className="flex min-h-12 items-center px-2 text-[12px] text-foreground"
+                  className="flex min-h-12 min-w-12 items-center justify-center px-2 text-[12px] text-foreground"
                 >
                   Menu
                 </button>
@@ -292,7 +292,7 @@ export function AppShell({
                   search={{ find: true }}
                   aria-label="Search your places"
                   // A trip's own actions take this row; Search stays on every other page.
-                  className="flex min-h-12 items-center px-2 text-[12px] text-foreground group-has-[#app-header-slot:not(:empty)]/hdr:hidden"
+                  className="flex min-h-12 min-w-12 items-center justify-center px-2 text-[12px] text-foreground group-has-[#app-header-slot:not(:empty)]/hdr:hidden"
                 >
                   Search
                 </Link>
@@ -303,7 +303,7 @@ export function AppShell({
                   onClick={() => setMenuOpen(true)}
                   aria-haspopup="dialog"
                   aria-label="Menu"
-                  className="flex min-h-12 items-center px-2 text-[12px] text-foreground"
+                  className="flex min-h-12 min-w-12 items-center justify-center px-2 text-[12px] text-foreground"
                 >
                   Menu
                 </button>
