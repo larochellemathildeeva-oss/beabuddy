@@ -110,14 +110,14 @@
 
 :root,
 [data-theme="calm"] {
-  --radius: 1.02rem;
+  --radius: 0.5rem;
 
   /* The master design's sizes (bea-design-tokens.json), the same in every theme. */
-  --r-card: 16px;
-  --r-button: 16px;
-  --r-sheet: 28px;
-  --r-image: 16px;
-  --r-input: 13px;
+  --r-card: 8px;
+  --r-button: 8px;
+  --r-sheet: 16px;
+  --r-image: 8px;
+  --r-input: 8px;
   --h-button: 52px;
   --h-input: 52px;
   --h-row: 56px;
@@ -3587,12 +3587,6 @@ html:not(.dark)
 [data-theme="calm"],
 [data-theme="colorful"],
 .dark {
-  --radius: 0px;
-  --r-card: 0px;
-  --r-button: 0px;
-  --r-image: 0px;
-  --r-input: 0px;
-  --r-sheet: 0px;
   --shadow-xs: none;
   --shadow-sm: none;
   --shadow-md: none;

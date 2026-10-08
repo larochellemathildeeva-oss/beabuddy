@@ -51,3 +51,14 @@ test("checkContrast: pairs whose tokens are unresolved are skipped, not failed",
 test("checkContrast: the real stylesheet passes in every theme and accent", () => {
   assert.deepEqual(checkContrast(css), []);
 });
+
+test("shape tokens: 8px corners (16px sheets) in every theme, nothing later squares them", () => {
+  for (const theme of ["calm", "colorful", "dark"]) {
+    const t = resolveTokens(css, theme, "pink");
+    for (const name of ["--r-card", "--r-button", "--r-input", "--r-image"]) {
+      assert.equal(t[name], "8px", `${theme} ${name}`);
+    }
+    assert.equal(t["--r-sheet"], "16px", `${theme} --r-sheet`);
+    assert.equal(t["--radius"], "0.5rem", `${theme} --radius`);
+  }
+});
