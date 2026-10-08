@@ -23,3 +23,50 @@ Method: `tools/audit-prompt.md` v5.2 from FlorianBruniaux/claude-code-ultimate-g
 5. Optional: a PreToolUse hook that blocks edits to `supabase/migrations/` already applied, and a `/qa`-style command wrapping `npm run typecheck && lint && test && build`.
 
 Install the guide's audit skills for a deeper pass (they were not run): token-audit, eval-rules, eval-skills, audit-agents-skills, security-check.
+
+---
+
+# Full pass (guide skills: security-check, token-audit, eval-skills, eval-rules, audit-agents-skills)
+
+Run from a local clone of the guide's repo, against its threat database v2.31.0 (updated 2026-10-04). Read-only. Scope: project (`.claude/`, `.agents/`, `.codex/`, `.mcp.json`, `AGENTS.md`); the container's global `~/.claude` was not audited.
+
+## Security check
+
+| Severity | Count | Notes |
+|---|---|---|
+| Critical | 0 | No hardcoded keys, private keys, remote-exec or exfiltration patterns in any skill script; no prompt-injection phrases in AGENTS.md / DESIGN.md / PRODUCT.md |
+| High | 1 | Supabase MCP (`.mcp.json`) attached to the **live** project with `database` + `development` features, no `read_only`, no branch |
+| Medium | 3 | No `permissions.deny` (`.env*`, `*.pem`, `credentials*`); `.agents/skills/impeccable/scripts/bin/linux-x64/impeccable` is a committed ELF binary (third-party, invoked by Codex hooks); superdesign skill can generate paid images/video, which AGENTS.md says not to do without the owner asking |
+| Low | 2 | Plugin `impeccable` is pinned by commit SHA (good) but fetched from `main` ref; MCP URL is not version-pinned (HTTP service, so not applicable) |
+
+Passed: no `dangerouslySkipPermissions`, no wildcard `allow`, no `curl | sh`, no zero-width / RTL characters in skills, no cron or shell-rc writes, `.env` ignored (only `.env.example` tracked), no CVE-matched MCP.
+
+Hook note: `.codex/hooks.json` runs `.agents/skills/impeccable/scripts/impeccable` on every Edit/Write and on Stop, but only `scripts/bin/linux-x64/impeccable` exists, so the `[ ! -f … ] ||` guard makes it a no-op today. Decide whether the hook should run; if so, the binary should be pinned and its provenance recorded.
+
+## Token audit
+
+- Fixed context: `AGENTS.md` 39,321 bytes (~9.8K tokens) + system prompt (~7.5K) = **~17K tokens**, green (<20K). There is no `CLAUDE.md`, no `.claude/rules/`, no `MEMORY.md`.
+- Everything is "always on". The geo/map, AI-quota, vault and import-audit sections only matter in some files. Moving them to path-scoped rules would save roughly 6–7K tokens per session without losing content.
+- Skills load on demand: superdesign (154 lines) and impeccable (SKILL.md 11.9 KB) cost nothing until used.
+
+## Skills quality (eval-skills)
+
+| Skill | description | effort | allowed-tools | Problem |
+|---|---|---|---|---|
+| superdesign | yes (long, broad "even if they never say…") | no | no | Links `references/INIT.md`, `RESUME.md` and others that do **not exist** in the folder (only `SKILL.md`), so the skill points at missing files; the broad trigger can fire on any UI request |
+| impeccable | yes | no | no | Frontmatter has `metadata.version` only; also a very broad trigger ("design, redesign, … improve a frontend interface") |
+
+Both overlap with the superpowers and frontend-design skills in the user's environment; two design skills with broad triggers compete.
+
+## Rules (eval-rules) and agents (audit-agents-skills)
+
+No `.claude/rules/` and no project agents or commands, so there is nothing to grade. That is itself the gap: the repo's rules live in one file.
+
+## Prioritised fixes (none applied; say which to do)
+
+1. `.mcp.json`: add `&read_only=true` (or use a Supabase branch) so a session cannot change the live schema; keep migrations hand-applied as AGENTS.md says. *(1 line)*
+2. `.claude/settings.json`: add `permissions.deny` for `.env*`, `*.pem`, `credentials*`. *(5 lines)*
+3. Decide on the impeccable Codex hook and the committed binary (pin and document, or remove).
+4. Fix or remove the superdesign skill's missing `references/`; add a line to AGENTS.md that it must not generate images or video unless the owner asks.
+5. Split `AGENTS.md` into a short core file plus path-scoped rules (~6–7K tokens saved).
+6. Refresh `DESIGN.md` / `.impeccable` for DM Sans (Phase 6 cleanup already lists this).
