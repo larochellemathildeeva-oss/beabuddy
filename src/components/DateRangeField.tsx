@@ -47,6 +47,7 @@ export function DateRangeField({
   // Closed after one tap: a one-day range rather than a start with no end.
   const close = () => {
     if (pending) onChange(pending, pending);
+    else if (start && !end) onChange(start, start);
     setPending(null);
     setOpen(false);
   };
@@ -76,7 +77,7 @@ export function DateRangeField({
         onClick={openPicker}
         aria-haspopup="dialog"
         aria-expanded={open}
-        className={`${className} flex items-center gap-2`}
+        className={`${className} flex min-h-12 items-center gap-2`}
       >
         <CalendarDays className="size-4 shrink-0 text-muted-foreground" />
         <span className={label ? "text-foreground" : "text-muted-foreground"}>
@@ -94,35 +95,68 @@ export function DateRangeField({
         >
           <div
             onClick={(event) => event.stopPropagation()}
-            className="w-full max-w-sm rounded-t-3xl border border-border bg-card p-4 sm:rounded-2xl"
+            className="w-full max-w-md rounded-t-3xl border border-border bg-card p-4 sm:rounded-2xl"
           >
             <p id={titleId} className="px-1 font-display text-[19px] leading-snug">
               {title}
             </p>
-            <p className="mb-2 px-1 text-[13px] text-muted-foreground">
+            <p className="mb-2 hidden px-1 text-[13px] text-muted-foreground min-[416px]:block">
               {pending
                 ? "Now tap the last day — or Done for a single day."
                 : "Tap the first day, then the last."}
             </p>
-            <Calendar
-              mode="range"
-              selected={pending ? { from: parseLocalDate(pending), to: undefined } : selected}
-              defaultMonth={
-                selected.from ?? (month ? parseLocalDate(month) : undefined) ?? new Date()
-              }
-              numberOfMonths={1}
-              onSelect={(_range, day) => {
-                const tap = rangeTap(pending, toLocalISODate(day));
-                onChange(tap.start, tap.end);
-                if (tap.done) {
-                  setPending(null);
-                  setOpen(false);
-                } else {
-                  setPending(tap.start);
+            <div className="space-y-3 min-[416px]:hidden">
+              <p className="text-[13px] text-muted-foreground">
+                Choose the first and last day. For a single day, choose the first day and tap Done.
+              </p>
+              <label className="block text-[14px] font-semibold">
+                Start date
+                <input
+                  type="date"
+                  value={start}
+                  onChange={(event) => {
+                    const next = event.target.value;
+                    setPending(null);
+                    onChange(next, end && end >= next ? end : "");
+                  }}
+                  className="mt-1 block min-h-12 w-full min-w-0 rounded-xl border border-[var(--field-border)] bg-card px-3 text-[16px] font-normal"
+                />
+              </label>
+              <label className="block text-[14px] font-semibold">
+                End date
+                <input
+                  type="date"
+                  value={end}
+                  min={start || undefined}
+                  onChange={(event) => {
+                    setPending(null);
+                    onChange(start || event.target.value, event.target.value);
+                  }}
+                  className="mt-1 block min-h-12 w-full min-w-0 rounded-xl border border-[var(--field-border)] bg-card px-3 text-[16px] font-normal"
+                />
+              </label>
+            </div>
+            <div className="hidden min-[416px]:block">
+              <Calendar
+                mode="range"
+                selected={pending ? { from: parseLocalDate(pending), to: undefined } : selected}
+                defaultMonth={
+                  selected.from ?? (month ? parseLocalDate(month) : undefined) ?? new Date()
                 }
-              }}
-              className="mx-auto rounded-xl"
-            />
+                numberOfMonths={1}
+                onSelect={(_range, day) => {
+                  const tap = rangeTap(pending, toLocalISODate(day));
+                  onChange(tap.start, tap.end);
+                  if (tap.done) {
+                    setPending(null);
+                    setOpen(false);
+                  } else {
+                    setPending(tap.start);
+                  }
+                }}
+                className="mx-auto rounded-xl"
+              />
+            </div>
             <div className="mt-3 flex gap-2">
               <button
                 type="button"
@@ -131,14 +165,14 @@ export function DateRangeField({
                   setPending(null);
                   setOpen(false);
                 }}
-                className="flex-1 rounded-xl border border-border px-3 py-2 text-[14.5px] font-semibold"
+                className="min-h-12 flex-1 rounded-xl border border-border px-3 py-2 text-[14.5px] font-semibold"
               >
                 Clear
               </button>
               <button
                 type="button"
                 onClick={close}
-                className="flex-1 rounded-xl bg-primary px-3 py-2 text-[14.5px] font-semibold text-primary-foreground"
+                className="min-h-12 flex-1 rounded-xl bg-primary px-3 py-2 text-[14.5px] font-semibold text-primary-foreground"
               >
                 Done
               </button>
@@ -159,7 +193,7 @@ export function DateRangeField({
               key={value}
               type="button"
               onClick={() => onDatesStatusChange(value)}
-              className={`rounded-full border px-3 py-1.5 text-[13px] ${
+              className={`min-h-12 rounded-full border px-3 py-1.5 text-[13px] ${
                 datesStatus === value
                   ? "border-primary bg-primary text-primary-foreground"
                   : "border-border"

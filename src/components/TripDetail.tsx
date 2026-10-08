@@ -1,7 +1,7 @@
 import { useNavigate } from "@tanstack/react-router";
 import { friendlyError } from "@/lib/friendly-error";
 import { createPortal } from "react-dom";
-import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   Bookmark,
   Check,
@@ -1117,7 +1117,14 @@ export function TripDetail({
    * and "today" only becomes answerable once they arrive. Once a choice is
    * made it sticks, and stops being recomputed underneath them.
    */
-  const [dayChoice, setDayChoice] = useState<DayChoice | null>(null);
+  const [dayChoice, setDayChoiceValue] = useState<DayChoice | null>(null);
+  // Only an All days tap in Companion opts out of automatic today-following.
+  // Restored filters, Timeline choices and city changes are not that action.
+  const [allDaysPicked, setAllDaysPicked] = useState(false);
+  const setDayChoice = useCallback((day: DayChoice) => {
+    setAllDaysPicked(false);
+    setDayChoiceValue(day);
+  }, []);
   const chosenDay = dayChoice ?? defaultDayChoice(timelineGroups, todayKey);
   const shownGroups = visibleGroups(timelineGroups, chosenDay);
   /** Where "Now" goes on a trip day: the stop you're at, or the next one. */
@@ -1164,6 +1171,9 @@ export function TripDetail({
   const [perspective, setPerspective] = useState<TripPerspective>(() =>
     defaultPerspective(tripIsUnderway(trip, todayKey)),
   );
+  useEffect(() => {
+    if (perspective !== "companion") setAllDaysPicked(false);
+  }, [perspective]);
   const activePerspective = TRIP_PERSPECTIVES.find((p) => p.id === perspective)!;
 
   // The last tab and day for this trip, kept on this device so a refresh or
@@ -1202,7 +1212,7 @@ export function TripDetail({
       /* storage unavailable: start from the defaults */
     }
     restored.current = true;
-  }, [viewKey]);
+  }, [viewKey, setDayChoice]);
   useEffect(() => {
     if (!restored.current) return;
     try {
@@ -1329,7 +1339,7 @@ export function TripDetail({
     );
   };
   // Opening finds today; explicitly choosing All days asks which day to follow.
-  const companionDay = companionDayGroup(timelineGroups, chosenDay, dayChoice !== null, todayKey);
+  const companionDay = companionDayGroup(timelineGroups, chosenDay, allDaysPicked, todayKey);
   const nowStops = companionDay ? companionStops(companionDay.items) : [];
   // Only a stop on the day being followed; another day's pick closes itself.
   const peekStop = nowStops.find((stop) => stop.id === peekId) ?? null;
@@ -1728,7 +1738,14 @@ export function TripDetail({
                 )}
                 {offerDays ? (
                   <div className="min-w-0 flex-1">
-                    <DayCards chips={chips} value={chosenDay} onChange={setDayChoice} />
+                    <DayCards
+                      chips={chips}
+                      value={chosenDay}
+                      onChange={(day) => {
+                        setAllDaysPicked(perspective === "companion" && day === ALL_DAYS);
+                        setDayChoiceValue(day);
+                      }}
+                    />
                   </div>
                 ) : null}
               </div>

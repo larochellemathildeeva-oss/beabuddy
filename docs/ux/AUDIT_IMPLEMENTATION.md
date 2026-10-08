@@ -33,6 +33,36 @@ trip collaboration, budget, documents, offline tools and all three themes.
 - Signup explains the agreements required for its disabled submit button;
   pending submit and saved-import feedback expose accessible status.
 
+## Follow-up: review fixes and new-trip recovery
+
+- New-trip input survives refresh and route changes in this browser. The copy
+  is scoped to the signed-in account, versioned, validated and available for
+  seven days after the last edit. Expired/corrupt copies are removed when read.
+  Account erase clears its draft on this device. Storage failure is explained;
+  this local copy is not encrypted and does not sync across devices.
+- Before creating a trip, freeze the reviewed details, city IDs and selected
+  packing-list contents. Retry reconciles the same primary keys for the trip,
+  cities, packing copy and items, inserting only missing rows. A lost response
+  or failure copying packing items does not require a second list. Existing
+  rows are not overwritten; reads/writes keep normal Supabase RLS and owner
+  checks. The attempt can be restored after refresh while its local copy exists.
+- An explicit Recovery options action discards local recovery details and
+  unlocks a new draft. It explains that saved parts remain in Trips and a new
+  creation is a separate trip. Closing the sheet retains recovery.
+- Clearing a Trips view query restores Upcoming. City removal and day-trip
+  actions have 48px targets.
+- Companion's explicit All days choice is an in-session flag, separate from
+  restored filters, city changes and Timeline selections. Reopening follows
+  today automatically; a manual Companion All days tap still asks for a day.
+- Below 416px the date-range dialog uses native date fields with 48px targets;
+  wider screens keep the range calendar with 48px days/month navigation. The
+  range can still be cleared, confirmed or reduced to a single day.
+
+These changes address all six inline findings on PR #306. They do not make
+multi-table creation atomic. Other entry points, import review payloads,
+documents and cross-device drafts are not made durable by this batch. Losing
+or discarding the browser copy removes the stable attempt IDs.
+
 ## Existing implementations retained
 
 | Audit concern                          | Existing implementation                                 | Remaining verification                                                |
@@ -48,15 +78,17 @@ trip collaboration, budget, documents, offline tools and all three themes.
 
 ## Remaining work, in order
 
-1. **Durable save reconciliation (High).** Track logical save attempts across
-   reloads and reconcile ambiguous network failures. Checkpoints here remember
-   only writes whose promises resolve while the component is mounted; they are
+1. **Durable save reconciliation (High).** The new-trip sheet now reconciles
+   stable IDs across reloads while its browser copy exists. Extend equivalent
+   recovery to itinerary imports and other creation entry points. Their
+   checkpoints still remember only confirmed writes while mounted; they are
    not transactions or server-side idempotency. A callback may itself partially
    write before rejecting. Inspect that behavior before selecting a database
    transaction or idempotency key. Do not claim duplicate prevention across
    reloads until those failure scenarios have tests.
-2. **Draft continuity (High).** Inventory route changes, refresh, cancellation,
-   and authentication interruptions for planning and document drafts. Specify
+2. **Draft continuity (High).** New-trip fields now have account-scoped browser
+   recovery. Inventory route changes, refresh, cancellation, and authentication
+   interruptions for planning/import review and document drafts. Specify
    privacy-safe expiry and account isolation before storing sensitive content.
 3. **Navigation and hierarchy (High).** Compare each of the five landing tabs
    and trip subpages against the authoritative minimalist Figma edition. Keep

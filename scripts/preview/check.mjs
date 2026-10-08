@@ -331,7 +331,7 @@ for (const tab of tabs) {
 }
 
 // 3. Feature flows, end to end.
-const flowSelected = (name) => !process.env.PREVIEW_FLOW_FILTER || name.includes(process.env.PREVIEW_FLOW_FILTER);
+const flowSelected = (name) => !process.env.PREVIEW_FLOW_FILTER || process.env.PREVIEW_FLOW_FILTER.split("|").some(filter => name.includes(filter));
 async function flow(name, run, sample = "default") {
   if (!flowSelected(name)) return;
   const { page, errors } = await open(sample);
@@ -422,6 +422,117 @@ await flow("trips: tabs, layout and picture switches, New trip and Join sheets",
   await page.keyboard.press("Escape");
   if ((await page.getByRole("link", { name: "Calendar view" }).getAttribute("href")) !== "/calendar") throw new Error("Calendar lost its route");
   if ((await page.getByRole("link", { name: /Plan with Béa/ }).getAttribute("href")) !== "/trips/plan") throw new Error("Plan with Béa lost its route");
+}, "trips");
+
+await flow("trips: draft refresh, discard and interrupted creation recovery", async (page) => {
+  await page.getByRole("button", {name: "New trip", exact: true}).click();
+  await page.getByLabel("Trip name", {exact: true}).fill("Kyoto spring draft");
+  await page.getByRole("checkbox", {name: "Track a budget for this trip"}).check();
+  await page.waitForFunction(() => JSON.parse(localStorage.getItem("bea.trip-draft.me") ?? "null")?.draft.form.title === "Kyoto spring draft");
+  await page.reload({waitUntil: "domcontentloaded", timeout: 30000});
+  await page.getByRole("button", {name: "New trip", exact: true}).click();
+  if (await page.getByLabel("Trip name", {exact: true}).inputValue() !== "Kyoto spring draft") throw new Error("Refresh lost the draft title");
+  if (!await page.getByRole("checkbox", {name: "Track a budget for this trip"}).isChecked()) throw new Error("Refresh lost the budget choice");
+  await page.getByRole("button", {name: "Clear draft", exact: true}).click();
+  await page.waitForFunction(() => localStorage.getItem("bea.trip-draft.me") === null);
+  if (await page.getByLabel("Trip name", {exact: true}).inputValue() !== "") throw new Error("Clear draft did not reset input");
+  const stableId = "00000000-0000-4000-8000-000000000011";
+  await page.evaluate((tripId) => {
+    localStorage.setItem("bea.trip-draft.me", JSON.stringify({version:1,uid:"me",expiresAt:Date.now()+86400000,
+      draft:{form:{title:"Recovered trip",city:"",country:"",start_date:"",end_date:"",dates_status:"tentative"},
+        multiCity:false,cities:[],dayTrips:[],withBudget:false,packTemplateId:"",
+        attempt:{ownerId:"me",tripId,stopIds:[]}}}));
+  }, stableId);
+  await page.reload({waitUntil: "domcontentloaded", timeout: 30000});
+  await page.getByRole("button", {name: "New trip", exact: true}).click();
+  if (!await page.getByLabel("Trip name", {exact: true}).isDisabled()) throw new Error("Interrupted payload is editable");
+  await page.screenshot({path:join(out,`${previewTheme}-recovery-draft.png`),animations:"disabled"});
+  const original = await page.evaluate(() => localStorage.getItem("bea.trip-draft.me"));
+  await page.getByText("Recovery options",{exact:true}).click();
+  await page.getByRole("button",{name:"Discard local recovery details",exact:true}).click();
+  if (await page.getByLabel("Trip name",{exact:true}).isDisabled()) throw new Error("Discard left creation locked");
+  await page.waitForFunction(() => localStorage.getItem("bea.trip-draft.me") === null);
+  await page.evaluate(value => localStorage.setItem("bea.trip-draft.me",value), original);
+  await page.reload({waitUntil:"domcontentloaded",timeout:30000});
+  await page.getByRole("button",{name:"New trip",exact:true}).click();
+  await page.getByRole("button", {name: "Retry creating this trip", exact: true}).click();
+  await page.waitForFunction(() => localStorage.getItem("bea.trip-draft.me") === null);
+  const tripWrites = (await writes(page)).filter(write => write.table === "trips" && write.op === "insert");
+  if (tripWrites.length !== 1 || tripWrites[0].payload.id !== stableId) throw new Error("Recovery did not use the original trip ID");
+}, "trips");
+
+await flow("trips: partial packing copy retries without another list", async (page) => {
+  const ids = Array.from({length: 4}, (_,i) => `00000000-0000-4000-8000-${String(i+20).padStart(12,"0")}`);
+  await page.evaluate(([tripId, packId, a, b]) => {
+    localStorage.setItem("bea.trip-draft.me", JSON.stringify({version:1,uid:"me",expiresAt:Date.now()+86400000,
+      draft:{form:{title:"Packing recovery",city:"",country:"",start_date:"",end_date:"",dates_status:"tentative"},
+        multiCity:false,cities:[],dayTrips:[],withBudget:false,packTemplateId:"old-template",
+        attempt:{ownerId:"me",tripId,stopIds:[],packing:{ownerId:"me",id:packId,name:"Carry-on",emoji:"",
+          items:[{id:a,label:"Raincoat",section:null,quantity:1},{id:b,label:"Socks",section:null,quantity:2}]}}}}));
+  }, ids);
+  await page.reload({waitUntil:"domcontentloaded", timeout:30000});
+  await page.getByRole("button", {name:"New trip",exact:true}).click();
+  await page.evaluate(() => {window.__failNextWrite = {table:"packing_items",afterCommit:false};});
+  await page.getByRole("button", {name:"Retry creating this trip",exact:true}).click();
+  await page.getByRole("alert").waitFor();
+  const first = await writes(page);
+  if (first.filter(w => w.table === "packing_lists" && w.op === "insert").length !== 1) throw new Error("Packing list was not created before the item failure");
+  await page.getByRole("button", {name:"Retry creating this trip",exact:true}).click();
+  await page.waitForFunction(() => localStorage.getItem("bea.trip-draft.me") === null);
+  const retried = await writes(page);
+  for (const table of ["trips", "packing_lists"]) if (retried.filter(w => w.table === table && w.op === "insert").length !== 1) throw new Error(`Retry duplicated ${table}`);
+  const items = retried.filter(w => w.table === "packing_items" && w.op === "insert").flatMap(w => w.payload);
+  if (items.length !== 2 || items[0].id !== ids[2] || items[1].id !== ids[3] || items[1].position !== 1) throw new Error("Retry lost original item IDs/order");
+}, "trips");
+
+await flow("trips: clearing a view query restores Upcoming", async (page) => {
+  await page.evaluate(() => { const url = new URL(location.href);url.searchParams.set("view","past");history.pushState(null,"",url);dispatchEvent(new PopStateEvent("popstate")); });
+  await page.waitForFunction(() => document.querySelector('[role="tab"][aria-selected="true"]')?.textContent?.includes("Past"));
+  await page.evaluate(() => { const url = new URL(location.href);url.searchParams.delete("view");history.pushState(null,"",url);dispatchEvent(new PopStateEvent("popstate")); });
+  await page.waitForFunction(() => document.querySelector('[role="tab"][aria-selected="true"]')?.textContent?.includes("Upcoming"));
+}, "trips");
+
+await flow("trips: date picker fits narrow phones and keeps 48px controls", async (page) => {
+  for (const width of [320,390,768]) {
+    await page.setViewportSize({width,height:844});
+    await page.getByRole("button", {name:"New trip",exact:true}).click();
+    await page.getByRole("dialog").getByRole("button", {name:/^(Dates|Mar)/}).click();
+    const dialog = page.getByRole("dialog").last();
+    const bounds = await dialog.evaluate(el => ({scroll:el.scrollWidth,width:el.clientWidth,viewport:innerWidth}));
+    if (bounds.scroll > bounds.width + 1) throw new Error(`Date dialog overflows at ${width}px: ${JSON.stringify(bounds)}`);
+    if (width < 416) {
+      await dialog.getByLabel("Start date", {exact:true}).fill("2027-03-10");
+      await dialog.getByLabel("End date", {exact:true}).fill("2027-03-12");
+      if (width === 320) await page.screenshot({path:join(out,`${previewTheme}-date-picker.png`),animations:"disabled"});
+    } else {
+      const day = dialog.locator("button[data-day]").first();
+      const rect = await day.boundingBox();
+      if (rect.width < 48 || rect.height < 48) throw new Error("Calendar day is under 48px");
+      for (const button of await dialog.locator("button.rdp-button_previous, button.rdp-button_next").all()) {
+        const target = await button.boundingBox();
+        if (target.width < 48 || target.height < 48) throw new Error("Month navigation is under 48px");
+      }
+    }
+    await dialog.getByRole("button", {name:"Done",exact:true}).click();
+    if (width < 416 && !(await page.getByRole("dialog").innerText()).includes("Mar")) throw new Error("Native dates did not update the range label");
+    await page.keyboard.press("Escape");
+  }
+}, "trips");
+
+await flow("trips: city removal and day-trip actions have 48px targets", async (page) => {
+  await page.getByRole("button",{name:"New trip",exact:true}).click();
+  await page.getByRole("radio",{name:"Several cities",exact:true}).click();
+  await page.getByRole("button",{name:"Add another city",exact:true}).click();
+  const removal = page.getByRole("button",{name:"Remove city 3",exact:true});
+  let rect = await removal.boundingBox();
+  if (rect.width < 48 || rect.height < 48) throw new Error("City removal is under 48px");
+  await page.getByPlaceholder("City 1 — search it").fill("Kyoto");
+  const dayTrip = page.getByRole("button",{name:"Day trip from Kyoto",exact:true});
+  rect = await dayTrip.boundingBox();
+  if (rect.width < 48 || rect.height < 48) throw new Error("Day-trip action is under 48px");
+  await dayTrip.click();
+  rect = await page.getByRole("button",{name:"Remove this day trip",exact:true}).boundingBox();
+  if (rect.width < 48 || rect.height < 48) throw new Error("Day-trip removal is under 48px");
 }, "trips");
 
 await flow("home: trip ahead keeps its map, stats, search and ideas", async (page) => {
@@ -753,11 +864,9 @@ await flow("shell: text tokens cover hover, opacity, sequence and dark error con
     // under parallel load the hover can lag the getComputedStyle read, which
     // otherwise reports the un-hovered colour. A real token miss still fails
     // here (the wait times out and throws), it just stops flaking.
-    await page.waitForFunction(() => {
+    const measurements = await page.waitForFunction(() => {
       const ps = document.querySelectorAll("[data-color-probes] p");
-      return ps.length > 2 && getComputedStyle(ps[0]).color === getComputedStyle(ps[2]).color;
-    });
-    const results = await page.evaluate(() => {
+      if (ps.length <= 2 || !ps[2].matches(":hover") || getComputedStyle(ps[0]).color !== getComputedStyle(ps[2]).color) return false;
       const canvas = document.createElement("canvas");
       canvas.width = canvas.height = 1;
       const ctx = canvas.getContext("2d", { willReadFrequently: true });
@@ -781,6 +890,8 @@ await flow("shell: text tokens cover hover, opacity, sequence and dark error con
         return { cls: el.className, ratio: (Math.max(bg, f) + 0.05) / (Math.min(bg, f) + 0.05), color };
       });
     });
+    const results = await measurements.jsonValue();
+    await measurements.dispose();
     const bad = results.filter((r) => r.ratio < 4.5);
     if (bad.length) throw new Error(`${accent} text contrast: ${JSON.stringify(bad)}`);
     if (results[0].color !== results[2].color) throw new Error("hover:text-primary missed the text token");
@@ -946,6 +1057,33 @@ await flow("companion: live day picker supports keyboard switching and All days"
   await page.keyboard.press("Home");
   await page.getByRole("tab", { name: "All days", selected: true }).first().waitFor();
   await page.getByText("Pick a day to follow.").waitFor();
+});
+
+await flow("companion: restored All days and city changes keep following today", async (page) => {
+  await page.clock.setFixedTime(new Date("2026-10-07T10:30:00"));
+  await page.evaluate(() => localStorage.setItem("bea-trip-page-t1", JSON.stringify({perspective:"companion",day:"__all__"})));
+  await page.reload({waitUntil:"domcontentloaded",timeout:30000});
+  await page.getByRole("button", {name:"Companion",exact:true,pressed:true}).waitFor();
+  if (await page.getByText("Pick a day to follow.").count()) throw new Error("Restoring All days stopped automatic today-following");
+  await page.getByRole("tab", {name:"All days",exact:true}).first().click();
+  await page.getByText("Pick a day to follow.").waitFor();
+  await page.reload({waitUntil:"domcontentloaded",timeout:30000});
+  await page.getByRole("button", {name:"Companion",exact:true,pressed:true}).waitFor();
+  if (await page.getByText("Pick a day to follow.").count()) throw new Error("An in-session opt-out persisted across reload");
+  await page.getByRole("tab",{name:"Timeline",exact:true}).click();
+  const all = page.getByRole("tab",{name:"All days",exact:true});
+  if (await all.count()) await all.first().click();
+  await page.getByRole("tab",{name:"Map",exact:true}).click();
+  await page.getByRole("button",{name:"Companion",exact:true}).click();
+  if (await page.getByText("Pick a day to follow.").count()) throw new Error("Timeline's All days stopped Companion following today");
+  await page.evaluate(() => {const url = new URL(location.href);url.searchParams.set("route","1");history.replaceState(null,"",url);});
+  await page.reload({waitUntil:"domcontentloaded",timeout:30000});
+  await page.getByRole("button",{name:"Companion",exact:true,pressed:true}).waitFor();
+  await page.getByRole("tab",{name:"All days",exact:true}).first().click();
+  await page.getByText("Pick a day to follow.").waitFor();
+  await page.locator('select:has(option[value="r1"])').selectOption("r1");
+  await page.locator('select:has(option[value="r1"])').selectOption("");
+  if (await page.getByText("Pick a day to follow.").count()) throw new Error("Changing city retained the manual All days opt-out");
 });
 
 await flow("stop card: one editor opens, saves and closes", async (page) => {

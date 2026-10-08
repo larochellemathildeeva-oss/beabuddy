@@ -48,8 +48,7 @@ function PrivacyPage() {
       <div className="space-y-4 pb-4">
         <p className="text-[16px] leading-relaxed text-muted-foreground">
           Béa is a private vault for your travels. This page explains, in plain words, what is
-          stored, where it lives, who can see it and how to remove it. Last updated 5 September
-          2026.
+          stored, where it lives, who can see it and how to remove it. Last updated 7 October 2026.
         </p>
 
         <Section title="Your account">
@@ -66,6 +65,17 @@ function PrivacyPage() {
             your account, so no other user of Béa can read your data, and the app itself only ever
             queries as you. On this device, Béa is designed to sign you out after about 45 minutes
             with no activity, as a free substitute for stricter hosted session controls.
+          </p>
+        </Section>
+
+        <Section title="New-trip drafts on this browser">
+          <p>
+            Béa keeps unfinished new-trip details and interrupted creation attempts in this browser,
+            under the account that started them. The copy includes the cities, dates, trip options
+            and any packing list selected for that creation. It is not encrypted and does not sync
+            between devices. Drafts are available for seven days after the last edit; expired copies
+            are removed when the draft is next checked. Clear draft removes an editable draft, and
+            erasing the account removes its local draft on this device.
           </p>
         </Section>
 
