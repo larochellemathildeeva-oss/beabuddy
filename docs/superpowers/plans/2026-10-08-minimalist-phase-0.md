@@ -16,7 +16,7 @@
 - Do **not** change `package.json` `version` (AGENTS.md). No PR label (patch bump).
 - Font sizes stay in px (build-time text scaling); no `rem`/`calc()` sizes added.
 - Calm default theme `calm`; saved choices of existing users are never overwritten.
-- Calm primary `#141414` on `#ffffff`; Dark primary off-white `#f6f3ee` on `#121212`; Colorful keeps `var(--acc)` (pink or periwinkle).
+- Calm primary `#111111` on `#ffffff`; Dark primary `#ffffff` on `#000000` (owner: clear dark/white); Colorful keeps `var(--acc)` (neon mint for pink, or periwinkle). As built; the original plan said `#141414` and off-white.
 - Shape tokens: `--r-card`, `--r-button`, `--r-input`, `--r-image` = `8px`; `--r-sheet` = `16px`; `--radius` = `0.5rem`.
 - Contrast: text pairs ≥ 4.5:1; non-text (`--field-border`, `--ring`) ≥ 3:1; every theme, and Colorful under both accents.
 - Reading fonts (`easy`, `lexend`, `system`) keep working and keep overriding DM Sans.

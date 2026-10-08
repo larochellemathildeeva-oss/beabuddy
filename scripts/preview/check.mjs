@@ -73,16 +73,9 @@ await build({
   },
 });
 writeFileSync(join(out, "app.css"), readFileSync(join(assets, css)));
-const fontLinks = process.env.PREVIEW_FONT_DIR
-  ? `<style>${[["Manrope", "200 800", "manrope.woff2"], ["Instrument Serif", "400", "serif.woff2"], ["Bodoni Moda", "400 900", "bodoni.woff2"]].map((font) => {
-    if (!existsSync(join(process.env.PREVIEW_FONT_DIR, font[2]))) throw new Error(`PREVIEW_FONT_DIR is missing ${font[2]} (the ${font[0]} font)`);
-    return font;
-  }).map(([family, weight, file]) => `@font-face{font-family:"${family}";font-weight:${weight};src:url(data:font/woff2;base64,${readFileSync(join(process.env.PREVIEW_FONT_DIR, file)).toString("base64")}) format("woff2");}`).join("")}</style>`
-  : '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Bodoni+Moda:wght@500;600;700&family=Manrope:wght@400;500;600;700&family=DM+Mono:wght@400&display=swap">';
 writeFileSync(
   join(out, "index.html"),
   `<!doctype html><html lang="en"><head><meta charset="utf-8"><script src="boot.js"></script>
-${fontLinks}
 <link rel="stylesheet" href="app.css"><link rel="stylesheet" href="page.css"></head>
 <body class="bg-background text-foreground font-sans antialiased"><div id="root"></div><script src="page.js"></script></body></html>`,
 );
@@ -107,7 +100,7 @@ const tile = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/+/9fwAJ+wP9KobjigAAAABJRU5ErkJggg==",
   "base64",
 );
-const types = { js: "text/javascript", css: "text/css", html: "text/html", png: "image/png", webp: "image/webp", jpg: "image/jpeg", svg: "image/svg+xml", json: "application/json" };
+const types = { js: "text/javascript", css: "text/css", html: "text/html", png: "image/png", webp: "image/webp", jpg: "image/jpeg", svg: "image/svg+xml", json: "application/json", woff2: "font/woff2" };
 
 async function open(sample) {
   const page = await browser.newPage({ viewport: { width: 414, height: 900 } });
@@ -130,6 +123,8 @@ async function open(sample) {
     if (url.host !== "preview.test") return route.abort();
     const file = url.pathname === "/" ? "/index.html" : url.pathname;
     try {
+      // The built stylesheet points at /assets/dm-sans-*.woff2: serve the real font file.
+      if (file.startsWith("/assets/") && existsSync(join(assets, file.slice(8)))) return route.fulfill({ body: readFileSync(join(assets, file.slice(8))), contentType: types[file.split(".").pop()] ?? "application/octet-stream" });
       if (file === "/index.html") return route.fulfill({
         body: readFileSync(join(out, file), "utf8").replace('<html lang="en">', `<html lang="en" data-theme="${previewTheme}" data-accent="pink" class="${previewTheme === "dark" ? "dark" : ""}">`),
         contentType: "text/html",
@@ -347,6 +342,17 @@ async function flow(name, run, sample = "default") {
   await page.close();
 }
 const writes = (page) => page.evaluate(() => window.__writes);
+// Calm and Dark keep their black and white whichever accent is chosen, so only
+// Colorful shows the accent picker. Where the picker is absent, set the accent
+// the way it does, so the colour tokens are still measured under both accents.
+async function chooseAccent(page, name) {
+  const radio = page.getByRole("radio", { name, exact: true });
+  if (await radio.count()) return radio.click();
+  await page.evaluate((n) => {
+    document.documentElement.dataset.accent = n.toLowerCase();
+    localStorage.setItem("bea-accent", n.toLowerCase());
+  }, name);
+}
 
 await flow("shell: every theme and accent saves, restores and responds to account changes", async (page) => {
   for (const name of ["Dark", "Calm", "Colorful"]) {
@@ -832,7 +838,7 @@ await flow("shell: phone widths and larger reading text keep labels and tap targ
 
 await flow("shell: short pages stay stable and moderate overflow still compresses", async (page) => {
   for (const width of [320, 390]) for (const scale of [1, 1.35]) for (const overflow of [50, 300]) {
-    await page.setViewportSize({ width, height: 900 });
+    await page.setViewportSize({ width, height: 1400 });
     await page.evaluate((scale) => {
       document.documentElement.style.setProperty("--text-scale", String(scale));
       document.querySelector("main").scrollTop = 0;
@@ -861,7 +867,7 @@ await flow("shell: short pages stay stable and moderate overflow still compresse
 }, "shell");
 
 await flow("shell: a null account accent resets visually without storing or uploading Pink", async (page) => {
-  await page.getByRole("radio", { name: "Periwinkle", exact: true }).click();
+  await chooseAccent(page, "Periwinkle");
   await page.waitForTimeout(900);
   await page.goto("https://preview.test/?sample=shell&reset-accent=yes", { waitUntil: "domcontentloaded" });
   await page.waitForTimeout(1000);
@@ -899,7 +905,7 @@ await flow("shell: compressed long titles stay on one line in both header layout
 await flow("shell: text tokens cover hover, opacity, sequence and dark error contrast", async (page) => {
   let previousSearchTint;
   for (const accent of ["Pink", "Periwinkle"]) {
-    await page.getByRole("radio", { name: accent, exact: true }).click();
+    await chooseAccent(page, accent);
     await page.evaluate(() => {
       document.querySelector("[data-color-probes]")?.remove();
       const probes = document.createElement("div");
@@ -913,7 +919,7 @@ await flow("shell: text tokens cover hover, opacity, sequence and dark error con
       }
       const map = document.createElement("div");
       map.className = "journal-map";
-      for (const tone of ["", "journal-pin--nested", "journal-pin--food", "journal-pin--transit", "journal-pin--stay"]) for (const selected of ["", "journal-pin--on"]) {
+      for (const tone of ["", "journal-pin--nested", "journal-pin--food", "journal-pin--transit", "journal-pin--stay", "journal-pin--done"]) for (const selected of ["", "journal-pin--on"]) {
         const pin = document.createElement("p");
         pin.className = `journal-pin ${tone} ${selected}`;
         pin.textContent = "1";

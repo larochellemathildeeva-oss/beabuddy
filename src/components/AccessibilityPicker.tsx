@@ -1,7 +1,7 @@
 import { useId } from "react";
 import { Switch } from "@/components/ui/switch";
 import { useAccessibility } from "@/hooks/useAccessibility";
-import type { HeadlineFont, ReadingFont, TextSize } from "@/lib/accessibility";
+import type { ReadingFont, TextSize } from "@/lib/accessibility";
 
 const SIZES: { id: TextSize; label: string }[] = [
   { id: "small", label: "Small" },
@@ -12,7 +12,7 @@ const SIZES: { id: TextSize; label: string }[] = [
 ];
 
 const FONTS: { id: ReadingFont; label: string; hint: string; family: string }[] = [
-  { id: "bea", label: "Béa", hint: "Manrope, serif titles", family: '"Manrope", sans-serif' },
+  { id: "bea", label: "Béa", hint: "DM Sans", family: '"DM Sans Variable", sans-serif' },
   {
     id: "easy",
     label: "Easy to read",
@@ -21,16 +21,6 @@ const FONTS: { id: ReadingFont; label: string; hint: string; family: string }[] 
   },
   { id: "lexend", label: "Lexend", hint: "Wider letters", family: '"Lexend", sans-serif' },
   { id: "system", label: "Your device's", hint: "No download", family: "system-ui, sans-serif" },
-];
-
-const HEADLINES: { id: HeadlineFont; label: string; hint: string; family: string }[] = [
-  { id: "bodoni", label: "Bodoni Moda", hint: "Bold, editorial", family: '"Bodoni Moda", serif' },
-  {
-    id: "instrument",
-    label: "Instrument Serif",
-    hint: "Soft, light",
-    family: '"Instrument Serif", serif',
-  },
 ];
 
 const TOGGLES: { id: "reduceMotion" | "moreContrast" | "boldText"; label: string; hint: string }[] =
@@ -119,30 +109,6 @@ export function AccessibilityPicker() {
               }`}
             >
               <span className="block text-[14px] font-semibold" style={{ fontFamily: f.family }}>
-                {f.label}
-              </span>
-              <span className="block text-[12px] text-muted-foreground">{f.hint}</span>
-            </button>
-          );
-        })}
-      </div>
-
-      <p className="mt-3 text-[13px] font-semibold">Title font</p>
-      <div role="radiogroup" aria-label="Title font" className="mt-1.5 grid grid-cols-2 gap-2">
-        {HEADLINES.map((f) => {
-          const on = value.headline === f.id;
-          return (
-            <button
-              key={f.id}
-              type="button"
-              role="radio"
-              aria-checked={on}
-              onClick={() => choose({ headline: f.id })}
-              className={`rounded-2xl border px-3 py-2.5 text-left transition-colors ${
-                on ? "border-primary bg-primary-soft" : "border-border bg-card"
-              }`}
-            >
-              <span className="block text-[18px] leading-tight" style={{ fontFamily: f.family }}>
                 {f.label}
               </span>
               <span className="block text-[12px] text-muted-foreground">{f.hint}</span>

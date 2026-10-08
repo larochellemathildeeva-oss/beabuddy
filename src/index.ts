@@ -1,10 +1,8 @@
 /**
  * Béa design system — entry point.
  *
- * Consumers must load these fonts in their app's <head>:
- *   <link rel="preconnect" href="https://fonts.googleapis.com">
- *   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
- *   <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Manrope:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+ * Importing this entry point brings the stylesheet, which self-hosts DM Sans: no
+ * font links are needed in the consuming app's <head>.
  */
 import "./styles.css";
 

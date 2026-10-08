@@ -63,7 +63,8 @@ export function ThemePicker() {
     <div className="rounded-xl bg-elevated p-3">
       <p className="text-body font-semibold">Theme</p>
       <p className="text-[16px] text-muted-foreground">
-        Changes Béa’s colors on every device you sign in on.
+        Changes Béa’s colors on every device you sign in on. Calm is black on white and Dark is
+        white on black; Colorful also lets you choose an accent.
       </p>
       <div role="radiogroup" aria-label="Theme" className="mt-3 grid grid-cols-3 gap-2">
         {THEMES.map((name) => {
@@ -105,33 +106,37 @@ export function ThemePicker() {
           );
         })}
       </div>
-      <p className="mt-4 text-body font-semibold">Accent</p>
-      <div role="radiogroup" aria-label="Accent" className="mt-2 flex flex-wrap gap-2">
-        {ACCENT_OPTIONS.map(({ name, label }) => (
-          <button
-            key={name}
-            type="button"
-            role="radio"
-            aria-checked={accent === name}
-            onClick={() => {
-              applyAccent(name);
-              saveAccountSetting("accent", name);
-              setAccent(name);
-              tellOtherPickers(ACCENT_KEY, name);
-            }}
-            className={`flex min-h-11 items-center gap-2 rounded-full border-2 px-3 py-2 text-[16px] font-semibold ${accent === name ? "border-primary bg-card" : "border-transparent"}`}
-          >
-            <span
-              data-accent={name}
-              aria-hidden
-              className="grid size-6 shrink-0 place-items-center rounded-full bg-[var(--acc)] text-[var(--primary-foreground)]"
-            >
-              {accent === name && <Check className="size-4" />}
-            </span>
-            {label}
-          </button>
-        ))}
-      </div>
+      {theme === "colorful" && (
+        <>
+          <p className="mt-4 text-body font-semibold">Accent</p>
+          <div role="radiogroup" aria-label="Accent" className="mt-2 flex flex-wrap gap-2">
+            {ACCENT_OPTIONS.map(({ name, label }) => (
+              <button
+                key={name}
+                type="button"
+                role="radio"
+                aria-checked={accent === name}
+                onClick={() => {
+                  applyAccent(name);
+                  saveAccountSetting("accent", name);
+                  setAccent(name);
+                  tellOtherPickers(ACCENT_KEY, name);
+                }}
+                className={`flex min-h-11 items-center gap-2 rounded-full border-2 px-3 py-2 text-[16px] font-semibold ${accent === name ? "border-primary bg-card" : "border-transparent"}`}
+              >
+                <span
+                  data-accent={name}
+                  aria-hidden
+                  className="grid size-6 shrink-0 place-items-center rounded-full bg-[var(--acc)] text-[var(--primary-foreground)]"
+                >
+                  {accent === name && <Check className="size-4" />}
+                </span>
+                {label}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
     </div>
   );
 }

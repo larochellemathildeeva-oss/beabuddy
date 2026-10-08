@@ -48,10 +48,12 @@ pastels) is not liked.
 
 **Assumptions (please confirm or correct)**
 - A1. Calm becomes the default theme (today `DEFAULT_THEME = "colorful"`).
-- A2. Colorful keeps its accent (pink/periwinkle) for the primary button,
-  active tab and focus ring; Calm's primary is near-black `#141414`; Dark's
-  primary is off-white on near-black. Pastels survive only as illustration
-  and photo-placeholder tints.
+- A2 (corrected after Phase 0). Calm is `#111111` ink on white and Dark is
+  pure white on pure black ("clear dark/white", owner decision 2026-10-08),
+  whichever accent is chosen. Colorful keeps the accent choice: its "pink" is
+  neon mint (`#5df0bf`) and its "periwinkle" is `#6675ff`. The accent picker is
+  shown only in Colorful. Pastels survive only as illustration and
+  photo-placeholder tints.
 - A3. The globe, day map and Home route map keep their own palettes but get
   the new chrome (controls, pills, attribution) and a per-theme tint.
 

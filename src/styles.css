@@ -1,6 +1,7 @@
 @import "tailwindcss" source(none);
 @source "../src";
 @import "tw-animate-css";
+@import "@fontsource-variable/dm-sans/wght.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -78,13 +79,12 @@
   --color-tile-5: var(--tile-5);
   --color-inverse-accent: var(--inverse-accent);
 
-  /* Library requirement: consumers must load these fonts in their <head>:
-     <link rel="preconnect" href="https://fonts.googleapis.com">
-     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-     <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Bodoni+Moda:wght@500;600;700&family=Manrope:wght@300;400;500;600;700&display=swap" rel="stylesheet"> */
-  --font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Bodoni Moda", "Instrument Serif", ui-serif, Georgia, serif;
-  --font-mono: "DM Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  /* DM Sans is self-hosted (the @import above): one family for every role, no
+     third-party font request. The reading-font options (data-font, below)
+     still override these three. */
+  --font-sans: "DM Sans Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "DM Sans Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "DM Sans Variable", ui-sans-serif, system-ui, sans-serif;
 }
 
 /* The owner's six accent tokens. Blush and danger remain independent. */
@@ -110,14 +110,14 @@
 
 :root,
 [data-theme="calm"] {
-  --radius: 1.02rem;
+  --radius: 0.5rem;
 
   /* The master design's sizes (bea-design-tokens.json), the same in every theme. */
-  --r-card: 16px;
-  --r-button: 16px;
-  --r-sheet: 28px;
-  --r-image: 16px;
-  --r-input: 13px;
+  --r-card: 8px;
+  --r-button: 8px;
+  --r-sheet: 16px;
+  --r-image: 8px;
+  --r-input: 8px;
   --h-button: 52px;
   --h-input: 52px;
   --h-row: 56px;
@@ -126,6 +126,8 @@
   --pad-screen: 20px;
   --success: #58745c;
   --warning: #b47a35;
+  /* Text on a finished stop's pin: 4.5:1 on every theme's --acc-done (check:contrast). */
+  --journal-done-ink: #111111;
 
   /* Calm keeps a white ground. All themes share the chosen accent. */
   --background: #ffffff;
@@ -272,7 +274,7 @@
   --accent-foreground: #ffffff;
   --destructive: #c22a52;
   --destructive-ink: #f08aa3;
-  --destructive-foreground: oklch(0.99 0.008 86);
+  --destructive-foreground: #fefbf6;
   --border: #2e2e2e;
   --input: #2e2e2e;
   --field-border: #8a847e;
@@ -424,17 +426,6 @@
      numbers set in the display face start at 500, headings at 700. */
   .font-display {
     font-weight: 500;
-  }
-
-  /* The traveller's other choice, Instrument Serif, has one weight. */
-  :root[data-headline="instrument"] {
-    --font-display: "Instrument Serif", ui-serif, Georgia, serif;
-  }
-  :root[data-headline="instrument"] .font-display,
-  :root[data-headline="instrument"] h1,
-  :root[data-headline="instrument"] h2,
-  :root[data-headline="instrument"] h3 {
-    font-weight: 400;
   }
 
   h1,
@@ -1120,12 +1111,15 @@
 /* Four families, each a warm earth tone so the map stays one palette. */
 .journal-pin--food {
   background: #c8902f;
+  color: #000000;
 }
 .journal-pin--transit {
   background: #5d7d93;
+  color: #000000;
 }
 .journal-pin--stay {
   background: #987799;
+  color: #000000;
 }
 .journal-pin--on {
   width: 36px;
@@ -1139,7 +1133,7 @@
 }
 .journal-pin--done {
   background: var(--acc-done);
-  color: var(--journal-ink);
+  color: var(--journal-done-ink);
 }
 /* Inside another stop: a smaller ring beside its parent, numbered like its card. */
 .journal-pin--nested {
@@ -3598,12 +3592,6 @@ html:not(.dark)
 [data-theme="calm"],
 [data-theme="colorful"],
 .dark {
-  --radius: 0px;
-  --r-card: 0px;
-  --r-button: 0px;
-  --r-image: 0px;
-  --r-input: 0px;
-  --r-sheet: 0px;
   --shadow-xs: none;
   --shadow-sm: none;
   --shadow-md: none;
@@ -4051,7 +4039,9 @@ main [class*="rounded-\\[var(--r-"] {
    writing, white accents. Colorful: white page, black writing, and soft
    neon on pills, tags, buttons and the chosen tab. */
 :root:not(.dark):not([data-theme="colorful"])[data-accent="pink"],
-:root:not(.dark):not([data-theme="colorful"]) [data-accent="pink"] {
+:root:not(.dark):not([data-theme="colorful"]) [data-accent="pink"],
+:root:not(.dark):not([data-theme="colorful"])[data-accent="periwinkle"],
+:root:not(.dark):not([data-theme="colorful"]) [data-accent="periwinkle"] {
   --acc: #111111;
   --acc2: #111111;
   --acc-soft: #f2f2f2;
@@ -4059,12 +4049,16 @@ main [class*="rounded-\\[var(--r-"] {
   --acc-line: #d9d9d9;
   --acc-track: #ececec;
   --acc-ink: #111111;
+  --primary-foreground: #ffffff;
 }
-:root:not(.dark):not([data-theme="colorful"])[data-accent="pink"] :is(.seq-1, .seq-2, .seq-3, .seq-4, .seq-5) {
+:root:not(.dark):not([data-theme="colorful"])[data-accent="pink"] :is(.seq-1, .seq-2, .seq-3, .seq-4, .seq-5),
+:root:not(.dark):not([data-theme="colorful"])[data-accent="periwinkle"] :is(.seq-1, .seq-2, .seq-3, .seq-4, .seq-5) {
   color: #ffffff;
 }
 :root.dark[data-accent="pink"],
-.dark [data-accent="pink"] {
+.dark [data-accent="pink"],
+:root.dark[data-accent="periwinkle"],
+.dark [data-accent="periwinkle"] {
   --acc: #ffffff;
   --acc2: #ffffff;
   --acc-soft: #1c1c1c;
@@ -4130,7 +4124,9 @@ main [class*="rounded-\\[var(--r-"] {
 }
 
 :root:not(.dark):not([data-theme="colorful"])[data-accent="pink"]
-  .journal-pin:not(.journal-pin--food):not(.journal-pin--transit):not(.journal-pin--stay):not(.journal-pin--nested) {
+  .journal-pin:not(.journal-pin--food):not(.journal-pin--transit):not(.journal-pin--stay):not(.journal-pin--nested):not(.journal-pin--done),
+:root:not(.dark):not([data-theme="colorful"])[data-accent="periwinkle"]
+  .journal-pin:not(.journal-pin--food):not(.journal-pin--transit):not(.journal-pin--stay):not(.journal-pin--nested):not(.journal-pin--done) {
   color: #ffffff;
 }
 
@@ -4207,7 +4203,9 @@ main [class*="rounded-\\[var(--r-"] {
 
 /* Pins: readable on each theme's own paper and tints. */
 :root.dark[data-accent="pink"] .journal-pin--nested,
-:root.dark[data-accent="pink"] .journal-pin--nested.journal-pin--done {
+:root.dark[data-accent="pink"] .journal-pin--nested.journal-pin--done,
+:root.dark[data-accent="periwinkle"] .journal-pin--nested,
+:root.dark[data-accent="periwinkle"] .journal-pin--nested.journal-pin--done {
   color: #111111;
 }
 :root[data-theme="colorful"]:not(.dark)[data-accent="pink"] .journal-pin--transit {

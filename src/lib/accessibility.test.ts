@@ -48,7 +48,6 @@ function fakeDocument(stored: Record<string, string>) {
 const ALL_ON: Accessibility = {
   textSize: "larger",
   font: "easy",
-  headline: "instrument",
   reduceMotion: true,
   moreContrast: true,
   boldText: true,
@@ -62,6 +61,24 @@ test("anything unknown or broken reads as the default", () => {
     parseAccessibility(JSON.stringify({ textSize: "huge", font: "comic", boldText: "yes" })),
     DEFAULT_ACCESSIBILITY,
   );
+});
+
+test("a retired title-font choice in old stored settings is ignored, never an error", () => {
+  for (const headline of ["bodoni", "instrument", "comic", 7, null]) {
+    const parsed = parseAccessibility(JSON.stringify({ headline, boldText: true }));
+    assert.deepEqual(parsed, { ...DEFAULT_ACCESSIBILITY, boldText: true });
+    assert.equal("headline" in parsed, false);
+    assert.equal(serializeAccessibility(parsed), '{"boldText":true}');
+  }
+});
+
+test("no title-font flag is put on the page, by apply or by the boot script", () => {
+  const live = fakeDocument({});
+  applyAccessibility(DEFAULT_ACCESSIBILITY, live.root);
+  assert.equal("headline" in live.root.dataset, false);
+  const boot = fakeDocument({ [ACCESSIBILITY_KEY]: JSON.stringify({ headline: "instrument" }) });
+  new Function(ACCESSIBILITY_BOOT_SCRIPT)();
+  assert.equal("headline" in boot.root.dataset, false);
 });
 
 test("only what differs from the default is stored", () => {
@@ -79,7 +96,7 @@ test("apply sets the scale and flags, and the default clears them", () => {
   assert.equal(root.props.get("--text-scale"), String(TEXT_SCALE.larger));
   assert.deepEqual(
     { ...root.dataset },
-    { font: "easy", headline: "instrument", motion: "reduce", contrast: "more", bold: "on" },
+    { font: "easy", motion: "reduce", contrast: "more", bold: "on" },
   );
   assert.equal(links[0]?.href, FONT_HREF.easy);
   applyAccessibility(DEFAULT_ACCESSIBILITY, root);

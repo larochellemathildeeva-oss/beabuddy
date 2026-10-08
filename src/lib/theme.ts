@@ -16,7 +16,7 @@ export type ThemeName = (typeof THEMES)[number];
 export const THEME_KEY = "bea-theme";
 /** The old Light/Dark switch. Read once so a Dark user stays dark. */
 export const DARK_KEY = "bea-dark";
-export const DEFAULT_THEME: ThemeName = "colorful";
+export const DEFAULT_THEME: ThemeName = "calm";
 
 export function isThemeName(value: unknown): value is ThemeName {
   return typeof value === "string" && (THEMES as readonly string[]).includes(value);

@@ -14,7 +14,7 @@
  * traveller kept offline (bea-map-…) are theirs, not the worker's: they stay
  * until the traveller, sign-out or erasure removes them.
  */
-const VERSION = "v3";
+const VERSION = "v4";
 const PAGES = `bea-pages-${VERSION}`;
 const ASSETS = `bea-assets-${VERSION}`;
 const SHELL = [
