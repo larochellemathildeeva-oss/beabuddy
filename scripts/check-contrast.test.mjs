@@ -62,3 +62,35 @@ test("shape tokens: 8px corners (16px sheets) in every theme, nothing later squa
     assert.equal(t["--radius"], "0.5rem", `${theme} --radius`);
   }
 });
+
+test("resolveTokens: :not() and .dark selectors on the root decide by theme, and specificity beats order", () => {
+  const fixture = `
+    :root:not(.dark):not([data-theme="colorful"])[data-accent="pink"] { --acc: #111111; }
+    :root, [data-accent="pink"] { --acc: #f6466e; }
+    :root.dark[data-accent="pink"] { --acc: #ffffff; }
+    [data-theme="colorful"] .not-root { --acc: #00ff00; }
+  `;
+  assert.equal(resolveTokens(fixture, "calm", "pink")["--acc"], "#111111");
+  assert.equal(resolveTokens(fixture, "colorful", "pink")["--acc"], "#f6466e");
+  assert.equal(resolveTokens(fixture, "dark", "pink")["--acc"], "#ffffff");
+  assert.equal(resolveTokens(fixture, "calm", "periwinkle")["--acc"], "#f6466e");
+});
+
+test("accent: Calm is black and Dark is white whichever accent is chosen; Colorful keeps the choice", () => {
+  const acc = (theme, accent) => resolveTokens(css, theme, accent)["--acc"];
+  assert.equal(acc("calm", "pink"), "#111111");
+  assert.equal(acc("calm", "periwinkle"), "#111111");
+  assert.equal(acc("dark", "pink"), "#ffffff");
+  assert.equal(acc("dark", "periwinkle"), "#ffffff");
+  assert.equal(acc("colorful", "pink"), "#5df0bf");
+  assert.equal(acc("colorful", "periwinkle"), "#6675ff");
+});
+
+test("primary buttons: Calm and Dark buttons carry readable text on their fill", () => {
+  const calm = resolveTokens(css, "calm", "periwinkle");
+  assert.equal(calm["--primary"], "#111111");
+  assert.equal(calm["--primary-foreground"], "#ffffff");
+  const dark = resolveTokens(css, "dark", "periwinkle");
+  assert.equal(dark["--primary"], "#ffffff");
+  assert.equal(dark["--primary-foreground"], "#000000");
+});

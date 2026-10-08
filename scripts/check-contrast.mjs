@@ -70,12 +70,36 @@ function topLevelRules(css) {
   return rules;
 }
 
-function appliesTo(selector, theme, accent) {
-  const s = selector.trim();
-  if (s === ":root") return true;
-  if (s === `[data-theme="${theme}"]`) return true;
-  if (theme === "dark" && (s === ".dark" || s === '[data-theme="dark"]')) return true;
-  return s === `[data-accent="${accent}"]`;
+const COMPOUND_TOKEN =
+  /^(:root|\.dark|:not\(\.dark\)|\[data-theme="([\w-]+)"\]|:not\(\[data-theme="([\w-]+)"\]\)|\[data-accent="([\w-]+)"\])/;
+
+/**
+ * How specific `selector` is for this theme and accent, or 0 when it does not
+ * apply. Only selectors made of root-level pieces are understood (:root,
+ * .dark, :not(.dark), [data-theme], :not([data-theme]), [data-accent]); each
+ * piece counts one class level, as in CSS. Anything with a space or another
+ * piece describes an inner element and is not a token source.
+ */
+function specificity(selector, theme, accent) {
+  let rest = selector.trim();
+  let count = 0;
+  while (rest) {
+    const m = rest.match(COMPOUND_TOKEN);
+    if (!m) return 0;
+    const [piece, , isTheme, notTheme, isAccent] = m;
+    const dark = theme === "dark";
+    const ok =
+      piece === ":root" ||
+      (piece === ".dark" && dark) ||
+      (piece === ":not(.dark)" && !dark) ||
+      (isTheme !== undefined && isTheme === theme) ||
+      (notTheme !== undefined && notTheme !== theme) ||
+      (isAccent !== undefined && isAccent === accent);
+    if (!ok) return 0;
+    count++;
+    rest = rest.slice(piece.length);
+  }
+  return count;
 }
 
 function declarations(body) {
@@ -87,9 +111,18 @@ function declarations(body) {
 /** Every token the given theme and accent end up with, aliases followed. */
 export function resolveTokens(css, theme, accent) {
   const raw = {};
+  const won = {};
+  let order = 0;
   for (const { selector, body } of topLevelRules(css)) {
-    if (!selector.split(",").some((s) => appliesTo(s, theme, accent))) continue;
-    for (const [name, value] of declarations(body)) raw[name] = value;
+    const spec = Math.max(0, ...selector.split(",").map((x) => specificity(x, theme, accent)));
+    if (!spec) continue;
+    for (const [name, value] of declarations(body)) {
+      order++;
+      const prior = won[name];
+      if (prior && prior.spec > spec) continue;
+      won[name] = { spec, order };
+      raw[name] = value;
+    }
   }
   const resolve = (name, seen = new Set()) => {
     const value = raw[name];

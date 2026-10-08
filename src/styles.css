@@ -4034,7 +4034,9 @@ main [class*="rounded-\\[var(--r-"] {
    writing, white accents. Colorful: white page, black writing, and soft
    neon on pills, tags, buttons and the chosen tab. */
 :root:not(.dark):not([data-theme="colorful"])[data-accent="pink"],
-:root:not(.dark):not([data-theme="colorful"]) [data-accent="pink"] {
+:root:not(.dark):not([data-theme="colorful"]) [data-accent="pink"],
+:root:not(.dark):not([data-theme="colorful"])[data-accent="periwinkle"],
+:root:not(.dark):not([data-theme="colorful"]) [data-accent="periwinkle"] {
   --acc: #111111;
   --acc2: #111111;
   --acc-soft: #f2f2f2;
@@ -4042,12 +4044,16 @@ main [class*="rounded-\\[var(--r-"] {
   --acc-line: #d9d9d9;
   --acc-track: #ececec;
   --acc-ink: #111111;
+  --primary-foreground: #ffffff;
 }
-:root:not(.dark):not([data-theme="colorful"])[data-accent="pink"] :is(.seq-1, .seq-2, .seq-3, .seq-4, .seq-5) {
+:root:not(.dark):not([data-theme="colorful"])[data-accent="pink"] :is(.seq-1, .seq-2, .seq-3, .seq-4, .seq-5),
+:root:not(.dark):not([data-theme="colorful"])[data-accent="periwinkle"] :is(.seq-1, .seq-2, .seq-3, .seq-4, .seq-5) {
   color: #ffffff;
 }
 :root.dark[data-accent="pink"],
-.dark [data-accent="pink"] {
+.dark [data-accent="pink"],
+:root.dark[data-accent="periwinkle"],
+.dark [data-accent="periwinkle"] {
   --acc: #ffffff;
   --acc2: #ffffff;
   --acc-soft: #1c1c1c;
@@ -4113,6 +4119,8 @@ main [class*="rounded-\\[var(--r-"] {
 }
 
 :root:not(.dark):not([data-theme="colorful"])[data-accent="pink"]
+  .journal-pin:not(.journal-pin--food):not(.journal-pin--transit):not(.journal-pin--stay):not(.journal-pin--nested),
+:root:not(.dark):not([data-theme="colorful"])[data-accent="periwinkle"]
   .journal-pin:not(.journal-pin--food):not(.journal-pin--transit):not(.journal-pin--stay):not(.journal-pin--nested) {
   color: #ffffff;
 }
