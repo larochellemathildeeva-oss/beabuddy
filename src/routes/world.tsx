@@ -53,6 +53,7 @@ import { useVisitedProvinces } from "@/hooks/useVisitedProvinces";
 import { countryCode, countryDisplayName, countryKey } from "@/lib/country-names";
 import {
   cityPins,
+  countriesVisited,
   countryMarks,
   isVisitedPin,
   visitedCities,
@@ -270,7 +271,13 @@ function WorldPage() {
       }, 0),
     [t.trips],
   );
-  const worldShare = useMemo(() => countryWorldShare(byCountry.length), [byCountry.length]);
+  // The same figure as You: places been there and trips started.
+  const countryCount = countriesVisited(
+    byCountry.map((c) => c.key),
+    t.trips,
+    toLocalISODate(new Date()),
+  );
+  const worldShare = useMemo(() => countryWorldShare(countryCount), [countryCount]);
 
   useEffect(() => {
     if (tab !== "stats" || !statsOpen || !t.trips.length) return;
@@ -372,8 +379,8 @@ function WorldPage() {
   const figures: WorldStat[] = [
     {
       key: "countries",
-      value: byCountry.length,
-      label: plainLabel(byCountry.length, "Country", "Countries"),
+      value: countryCount,
+      label: plainLabel(countryCount, "Country", "Countries"),
     },
     { key: "cities", value: cities.length, label: plainLabel(cities.length, "City", "Cities") },
     { key: "been", value: places.length, label: "Been there" },
@@ -622,7 +629,7 @@ function WorldPage() {
             <span className="mt-1.5 block text-[13.5px] leading-snug">
               {worldNote({
                 cities: cities.length,
-                countries: byCountry.length,
+                countries: countryCount,
                 continents: continents.length,
                 bucket: wishlistRows.length,
               })}
@@ -686,7 +693,7 @@ function WorldPage() {
           <p className="sr-only">
             {[
               cities.length > 0 ? plural(cities.length, "city", "cities") : "",
-              plural(byCountry.length, "country", "countries"),
+              plural(countryCount, "country", "countries"),
               continents.length > 0 ? plural(continents.length, "continent", "continents") : "",
             ]
               .filter(Boolean)
@@ -1171,7 +1178,7 @@ function WorldPage() {
                           hint={`${worldShare.visited} of ${worldShare.world} countries`}
                         />
                       ) : (
-                        <Stat value={byCountry.length} label="Countries" />
+                        <Stat value={countryCount} label="Countries" />
                       ))}
                     {statsLayout.layout.cities && <Stat value={cities.length} label="Cities" />}
                     {statsLayout.layout.trips && (

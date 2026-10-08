@@ -14,7 +14,8 @@ test("other sub-screens climb to their tab", () => {
 });
 
 test("pages opened from You climb back to You, or to the page above them", () => {
-  for (const p of ["/preferences", "/photos", "/expenses"]) assert.equal(backFallback(p), "/profile", p);
+  for (const p of ["/preferences", "/photos", "/expenses"])
+    assert.equal(backFallback(p), "/profile", p);
   assert.equal(backFallback("/memories"), "/photos");
   assert.equal(backFallback("/story"), "/memories");
   assert.equal(backFallback("/calendar"), "/trips");

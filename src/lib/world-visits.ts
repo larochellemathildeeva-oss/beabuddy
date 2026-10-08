@@ -438,3 +438,23 @@ export function countryMarks(
   }
   return marks;
 }
+
+/**
+ * How many countries you have been to, the one number You and World both
+ * show: the countries of the places you marked been there (`visitedKeys`,
+ * the keys from `visitsByCountry`) and of trips that have started, each
+ * country once in any language. A trip with no start date does not count.
+ */
+export function countriesVisited(
+  visitedKeys: readonly string[],
+  trips: readonly { country: string | null; start_date: string | null }[],
+  today: string,
+): number {
+  const keys = new Set(visitedKeys.map((key) => countryKey(key)).filter(Boolean));
+  for (const trip of trips) {
+    if (!trip.start_date || trip.start_date > today) continue;
+    const key = countryKey(trip.country);
+    if (key) keys.add(key);
+  }
+  return keys.size;
+}

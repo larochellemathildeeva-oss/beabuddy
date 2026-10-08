@@ -45,6 +45,7 @@ import {
 import { listSavedDirectionTripIds } from "@/hooks/useOfflineDirections";
 
 import { useTrips } from "@/hooks/useTrips";
+import { useCountriesVisited } from "@/hooks/useCountriesVisited";
 import { useTripPhotos } from "@/hooks/useTripPhotos";
 import { toLocalISODate } from "@/lib/trip-dates";
 import { supabase } from "@/integrations/supabase/client";
@@ -193,9 +194,8 @@ function ProfilePage() {
   const todayKey = toLocalISODate(new Date());
   // Trips that have started: an upcoming destination is not "been there" yet.
   const startedTrips = t.trips.filter((trip) => (trip.start_date ?? "") <= todayKey);
-  const countryCount = new Set(
-    startedTrips.map((trip) => (trip.country ?? "").trim().toLowerCase()).filter(Boolean),
-  ).size;
+  // The same figure as World: places been there and trips started.
+  const countryCount = useCountriesVisited(t.trips);
   const highlights = [...startedTrips]
     .sort((x, y) => (y.start_date ?? "").localeCompare(x.start_date ?? ""))
     .slice(0, 3);
