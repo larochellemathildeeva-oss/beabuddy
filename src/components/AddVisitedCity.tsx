@@ -15,7 +15,7 @@ import {
 import { placeSuggestionLines } from "@/lib/place-label";
 import { searchPlaces, type ParsedPlace } from "@/lib/places.functions";
 import { localPlaceHits, PLACE_LOOKUP_GAP_MS } from "@/lib/world-countries";
-import type { PinType } from "@/data/atlas";
+import { pinLabel, type PinType } from "@/data/atlas";
 import { foldAccents } from "@/lib/fuzzy";
 
 function typeWord(type: PinType): string {
@@ -38,9 +38,8 @@ function wait(ms: number) {
 }
 
 const types: { type: PinType; label: string }[] = [
-  { type: "visited", label: "Been there" },
-  { type: "wishlist", label: "Wishlist" },
-  { type: "nexttime", label: "Next time" },
+  { type: "visited", label: pinLabel.visited },
+  { type: "wishlist", label: pinLabel.wishlist },
 ];
 
 /**

@@ -17,7 +17,7 @@ import {
   type KeeperTrip,
 } from "@/lib/trip-keepers";
 
-const pinChoices: KeeperPinType[] = ["reco", "visited", "nexttime", "wishlist"];
+const pinChoices: KeeperPinType[] = ["reco", "wishlist", "visited"];
 
 const TRIP_COLS = "id, title, city, country, start_date, end_date";
 /** Rows per request, under the API's default cap so a full page means "ask again". */

@@ -63,6 +63,7 @@ await build({
     "@/lib/geocode-plan.functions": join(src, "fake-geocode-plan.ts"),
     "@/lib/place-details.functions": join(src, "fake-place-details.ts"),
     "@/lib/weather.functions": join(src, "fake-weather.ts"),
+    "@/lib/article-search.functions": join(src, "fake-article-search.ts"),
     "@/lib/city-locate": join(src, "fake-city-locate.ts"),
     "node:net": join(src, "fake-node.ts"),
     "node:dns/promises": join(src, "fake-node.ts"),
@@ -692,7 +693,7 @@ await flow("world: four views, filters, search, add sheet, bucket menu, stats op
   await page.keyboard.press("Escape");
   await page.waitForTimeout(400);
   if ((await page.getByRole("group", { name: "Show on the map" }).count()) !== 0) throw new Error("Globe filters did not hide");
-  if ((await text()).toLowerCase().includes("next time") === false) throw new Error("Your travel lists did not show on the Map");
+  if ((await page.getByRole("button", { name: /^Bucket list\s*\d+ places?$/ }).count()) === 0) throw new Error("Your travel lists did not show on the Map");
   const order = await page.evaluate(() => [...document.querySelectorAll("[data-guide^=world-module-]")].map((e) => e.getAttribute("data-guide")));
   if (order.join() !== "world-module-notes,world-module-bucket") throw new Error(`modules out of order: ${order.join()}`);
   if (!(await text()).includes("so far.")) throw new Error("Notes from Béa says nothing");
@@ -722,9 +723,12 @@ await flow("world: four views, filters, search, add sheet, bucket menu, stats op
   await view("Bucket list");
   for (const word of ["Dream now, pin later.", "New Zealand", "Morocco", "Help me choose"])
     if (!(await text()).includes(word)) throw new Error(`Bucket list lost "${word}"`);
-  await page.getByRole("button", { name: "More for New Zealand" }).click();
-  for (const word of ["Open in Recs", "Been there"])
-    if (!(await text()).includes(word)) throw new Error(`the bucket row menu lost "${word}"`);
+  await page.getByRole("button", { name: /^Queenstown/ }).first().click();
+  await page.waitForTimeout(300);
+  if ((await page.getByRole("dialog", { name: /Queenstown/ }).getByRole("button", { name: /Been there/ }).count()) === 0)
+    throw new Error("the location sheet lost Been there");
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(300);
   await page.getByRole("button", { name: "Compare places" }).click();
   if (!(await text()).toLowerCase().includes("what matters to you")) throw new Error("Help me choose did not open");
   // Been there: city chips are on the page and spin the globe.
@@ -750,21 +754,111 @@ await flow("world: four views, filters, search, add sheet, bucket menu, stats op
   if ((await page.getByRole("button", { name: /^Bucket list/ }).count()) !== 1) throw new Error("the Bucket list tile is gone");
 }, "world");
 
-await flow("recs: header, pills, list chips, saved-for-trip cards, More ways and Add to a day", async (page) => {
+await flow("world: Find recs lists articles with their sources and opens one in the reader", async (page) => {
+  await page.getByRole("tab", { name: "Bucket list", exact: true }).click();
+  await page.waitForTimeout(400);
+  await page.locator('[data-guide="bucket-list"]').getByRole("button", { name: /^Los Angeles/ }).first().click();
+  await page.waitForTimeout(400);
+  const sheet = page.getByRole("dialog", { name: /Los Angeles/ });
+  await sheet.getByRole("button", { name: "Find recs for Los Angeles" }).click();
+  await page.waitForTimeout(500);
+  for (const title of ["The 25 best restaurants in Los Angeles", "Things to do in LA this autumn"])
+    if ((await sheet.getByRole("button", { name: new RegExp(title) }).count()) === 0) throw new Error(`no article "${title}"`);
+  if ((await sheet.getByRole("link", { name: /example\.com/ }).count()) === 0) throw new Error("the search's sources are not shown");
+  await sheet.getByRole("button", { name: /The 25 best restaurants/ }).click();
+  await page.waitForTimeout(400);
+  if ((await sheet.getByPlaceholder(/https:\/\//).inputValue()) !== "https://example.com/la-restaurants") throw new Error("the reader did not open the article");
+}, "world");
+
+await flow("world: Find recs says when it cannot search, and Paste a link still works", async (page) => {
+  await page.evaluate(() => { window.__articleRefuse = "Béa has reached today's AI limit for your account."; });
+  await page.getByRole("tab", { name: "Bucket list", exact: true }).click();
+  await page.waitForTimeout(400);
+  await page.locator('[data-guide="bucket-list"]').getByRole("button", { name: /^Los Angeles/ }).first().click();
+  await page.waitForTimeout(400);
+  const sheet = page.getByRole("dialog", { name: /Los Angeles/ });
+  await sheet.getByRole("button", { name: "Find recs for Los Angeles" }).click();
+  await page.waitForTimeout(500);
+  if (!/today's AI limit/.test(await sheet.getByRole("alert").innerText())) throw new Error("the refusal is not said");
+  if ((await sheet.getByRole("button", { name: "Paste an article link" }).count()) === 0) throw new Error("Paste a link went away");
+}, "world");
+
+await flow("world: the Bucket list holds cities and countries only, each with its recs", async (page) => {
+  await page.getByRole("tab", { name: "Bucket list", exact: true }).click();
+  await page.waitForTimeout(400);
+  const list = page.locator('[data-guide="bucket-list"]');
+  const words = await list.innerText();
+  if (!words.includes("Los Angeles")) throw new Error("Los Angeles is not on the Bucket list");
+  if (words.includes("Bestia") || words.includes("Grand Central Market")) throw new Error("a business shows on World's Bucket list");
+  const la = list.getByRole("button", { name: /^Los Angeles/ }).first();
+  if (!/2 recs/.test(await la.innerText())) throw new Error(`Los Angeles does not say 2 recs: ${await la.innerText()}`);
+  for (const row of await list.getByRole("button").all()) {
+    const box = await row.boundingBox();
+    if (box && box.height < 48) throw new Error(`a Bucket list row is ${Math.round(box.height)}px tall`);
+  }
+  await la.click();
+  await page.waitForTimeout(400);
+  const sheet = page.getByRole("dialog", { name: /Los Angeles/ });
+  for (const name of ["Bestia", "Grand Central Market"]) if ((await sheet.getByText(name).count()) === 0) throw new Error(`the LA sheet lacks ${name}`);
+  await sheet.getByRole("button", { name: "Paste an article link" }).click();
+  await page.waitForTimeout(300);
+  if ((await sheet.getByPlaceholder(/https:\/\//).count()) === 0) throw new Error("Paste an article link did not open the reader");
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(300);
+  if ((await page.getByRole("dialog", { name: /Los Angeles/ }).count()) !== 0) throw new Error("Escape did not close the location sheet");
+  await page.getByRole("tab", { name: "Stats", exact: true }).click();
+  await page.waitForTimeout(300);
+  if ((await page.getByText(/Next time|Wishlist/).count()) !== 0) throw new Error("Stats still names Next time or Wishlist");
+  await page.getByRole("tab", { name: "Been there", exact: true }).click();
+  await page.waitForTimeout(300);
+  if (!/\d+ recs?/.test(await page.locator('[data-guide="places-list"]').innerText())) throw new Error("no Been there place shows its recs");
+}, "world");
+
+await flow("recs: header, pills, list chips, saved-for-trip cards, More ways and Add to trip", async (page) => {
   const text = async () => page.locator("body").innerText();
   for (const word of ["Places worth keeping.", "Add place", "Nearby map", "More ways", "Recently saved", "Explore nearby"])
     if (!(await text()).includes(word)) throw new Error(`Recs lost "${word}"`);
-  await page.getByRole("button", { name: /^Wishlist/ }).click();
-  if (await page.getByRole("button", { name: /^Wishlist/ }).getAttribute("aria-pressed") !== "true") throw new Error("the Wishlist chip did not apply");
+  await page.getByRole("button", { name: /^Bucket list/ }).click();
+  if (await page.getByRole("button", { name: /^Bucket list/ }).getAttribute("aria-pressed") !== "true") throw new Error("the Bucket list chip did not apply");
   await page.getByRole("button", { name: /^All/ }).click();
   if (!(await text()).includes("Saved for ")) throw new Error("no Saved for the next trip's city");
-  await page.getByRole("button", { name: "Add to a day" }).first().click();
+  await page.getByRole("button", { name: "Add to trip" }).first().click();
   await page.waitForTimeout(300);
-  if ((await page.getByRole("dialog").count()) === 0) throw new Error("Add to a day opened nothing");
+  if ((await page.getByRole("dialog").count()) === 0) throw new Error("Add to trip opened nothing");
   await page.keyboard.press("Escape");
   await page.getByRole("button", { name: /More ways/ }).click();
   for (const word of ["From my trips", "I'm here now", "By hand", "Paste a list", "Send places", "Open a share", "Pin somewhere nearby"])
     if (!(await text()).includes(word)) throw new Error(`More ways lost "${word}"`);
+}, "recs");
+
+await flow("recs: chips read All, Recs, Bucket list, Been there; no city or old list name shows", async (page) => {
+  const chips = await page.getByRole("group", { name: "Lists" }).getByRole("button").evaluateAll((els) => els.map((e) => e.childNodes[0]?.textContent?.trim()));
+  if (chips.join("|") !== "All|Recs|Bucket list|Been there") throw new Error(`chips are ${chips.join(", ")}`);
+  if ((await page.getByText(/Wishlist|Next time|Visited/).count()) !== 0) throw new Error("an old list name is still on the page");
+  if ((await page.getByText("Porto", { exact: true }).count()) !== 0) throw new Error("a saved city shows in Recs");
+  if ((await page.getByRole("button", { name: /Add to a day/ }).count()) !== 0) throw new Error("a card still says Add to a day");
+  if ((await page.getByRole("button", { name: /Add to trip/ }).count()) === 0) throw new Error("no card offers Add to trip");
+}, "recs");
+
+await flow("recs: the add-or-search box has a name; the list chips fit at 320px and the largest text", async (page) => {
+  if ((await page.getByRole("textbox", { name: "Search or add a place" }).count()) === 0) throw new Error("the add-or-search box has no name");
+  await page.setViewportSize({ width: 320, height: 800 });
+  await page.evaluate(() => document.documentElement.style.setProperty("--text-scale", "1.45"));
+  await page.waitForTimeout(400);
+  const row = await page.getByRole("group", { name: "Lists" }).evaluate((el) => ({ scroll: el.scrollWidth, width: el.clientWidth }));
+  if (row.scroll > row.width + 1) throw new Error(`the list chips run off the screen (${row.scroll} > ${row.width})`);
+}, "recs");
+
+await flow("save sheet: lists are Recommendation, Bucket list, Been there; Next time opens as Bucket list", async (page) => {
+  await page.getByRole("button", { name: /^Venice Canals: note, list, who told you$/ }).first().click();
+  await page.waitForTimeout(500);
+  const dialog = page.getByRole("dialog").last();
+  const radios = await dialog.getByRole("radio").evaluateAll((els) => els.map((e) => [e.textContent.trim(), e.getAttribute("aria-checked")]));
+  const names = radios.map(([name]) => name);
+  if (names.join("|") !== "Recommendation|Bucket list|Been there") throw new Error(`lists are ${names.join(", ")}`);
+  const checked = radios.filter(([, on]) => on === "true").map(([name]) => name);
+  if (checked.join() !== "Bucket list") throw new Error(`a Next time place opens as ${checked.join() || "nothing"}`);
+  if ((await page.getByText(/Next time|Wishlist/).count()) !== 0) throw new Error("the page still says Next time or Wishlist");
 }, "recs");
 
 await flow("you: header, Béa card, grouped rows, Customize Home, theme and More", async (page) => {

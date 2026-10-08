@@ -144,8 +144,8 @@ export const HELP_FAQ_GROUPS: { title: string; items: Faq[] }[] = [
         walk: "save",
       },
       {
-        q: "What's the difference between a recommendation and a wishlist?",
-        a: "Wishlist: a place you personally want to visit.\n\nRecommendation: a place someone suggested to you, or a specific spot worth remembering.\n\nA city can be a wishlist. A café, restaurant, museum, or hidden gem is often a recommendation.",
+        q: "What's the difference between a recommendation and the bucket list?",
+        a: "Bucket list: a place you personally want to go — a city or country on World, or a café, landmark or activity in Recs.\n\nRecommendation: a place someone suggested to you, or a specific spot worth remembering.\n\nCities and countries live on World; cafés, restaurants, museums, landmarks and activities live in Recs, and each city on World shows the recs saved for it.",
       },
       {
         q: "Can I remember who suggested a place?",
@@ -170,7 +170,7 @@ export const HELP_FAQ_GROUPS: { title: string; items: Faq[] }[] = [
     items: [
       {
         q: "What is the globe for?",
-        a: "The globe is your travel life in one place. It helps you see where you've been, where you want to go, places you're saving for later, and recommendations waiting for future trips.\n\nPin colours: visited, next time, wishlist, and recommendation. Chips above the globe hide whole groups when the map gets busy. You can also add cities or countries by hand, and choose which travel statistics to show.",
+        a: "The globe is your travel life in one place. It helps you see where you've been, where you want to go, places you're saving for later, and recommendations waiting for future trips.\n\nPin colours: been there, bucket list, and recommendation. Chips above the globe hide whole groups when the map gets busy. You can also add cities or countries by hand, and choose which travel statistics to show.",
         walk: "map",
       },
       {

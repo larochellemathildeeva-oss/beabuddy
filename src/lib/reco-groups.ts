@@ -18,7 +18,7 @@ import type { PinType } from "../data/atlas.ts";
  * Most actionable first, done last. A recommendation is someone waiting for an
  * answer; visited is a memory, and it has the globe and the story for that.
  */
-export const RECO_GROUP_ORDER: PinType[] = ["reco", "wishlist", "nexttime", "visited"];
+export const RECO_GROUP_ORDER: PinType[] = ["reco", "wishlist", "visited"];
 
 export type RecoGroup<T> = { type: PinType; rows: T[] };
 
@@ -31,9 +31,11 @@ export type RecoGroup<T> = { type: PinType; rows: T[] };
 export function groupRecosByType<T extends { type: PinType }>(rows: readonly T[]): RecoGroup<T>[] {
   const buckets = new Map<PinType, T[]>();
   for (const row of rows) {
-    const bucket = buckets.get(row.type);
+    // Next time is part of the Bucket list (place-lists.ts).
+    const type = row.type === "nexttime" ? "wishlist" : row.type;
+    const bucket = buckets.get(type);
     if (bucket) bucket.push(row);
-    else buckets.set(row.type, [row]);
+    else buckets.set(type, [row]);
   }
   return RECO_GROUP_ORDER.flatMap((type) => {
     const group = buckets.get(type);

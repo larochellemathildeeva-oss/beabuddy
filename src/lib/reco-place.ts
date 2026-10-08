@@ -22,9 +22,9 @@ const GENERIC_CATEGORIES = new Set(["", "place", "places"]);
 
 export type RecoPlaceFields = {
   name: string;
-  city?: string | null;
-  country?: string | null;
-  category?: string | null;
+  city?: string | null | undefined;
+  country?: string | null | undefined;
+  category?: string | null | undefined;
 };
 
 export function placeChipLabel(city: string): string {
@@ -69,19 +69,25 @@ export function isAreaPlace(place: RecoPlaceFields): boolean {
   return isCountryLevelPlace(place) || isCityLevelPlace(place);
 }
 
+// A neighbourhood is visited like an attraction, inside a city: it is a rec.
+const NEIGHBOURHOOD = new Set(["neighbourhood", "neighborhood", "suburb", "quarter"]);
+
+/** A whole city or country: shown on World, never in Recs (place-lists.ts). */
+export function isLocation(place: RecoPlaceFields): boolean {
+  const category = foldAccents(place.category ?? "").replace(/_/g, " ");
+  return !NEIGHBOURHOOD.has(category) && isAreaPlace(place);
+}
+
 /**
- * True when Recs leaves the row out: cities (filters there, not recs), and a
- * country you have been to, which belongs on the globe. A country saved to the
- * wishlist or next time stays, since saving it says it went to Recs.
+ * True when Recs leaves the row out: every city and country, whatever its
+ * list. Recs holds businesses, landmarks and attractions; places live on World.
  */
 export function hiddenFromRecs(
   place: RecoPlaceFields,
-  type: string | null | undefined,
-  visited?: boolean | null,
+  _type?: string | null,
+  _visited?: boolean | null,
 ): boolean {
-  if (isCityLevelPlace(place)) return true;
-  // World counts either mark as been there, so Recs does too.
-  return isCountryLevelPlace(place) && (type === "visited" || visited === true);
+  return isLocation(place);
 }
 
 /** Unique city/place chips from saved recs' city fields — not from city-as-pin rows. */

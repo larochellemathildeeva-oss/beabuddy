@@ -54,7 +54,7 @@ export const HOW_SCENES: readonly Scene[] = [
     id: "vault",
     eyebrow: "Your vault",
     heading: "Four kinds of wanting.",
-    body: "Visited, Next time, Wishlist, Recommendation. Every place you save carries who told you about it and where it is on the map. Send a handful to a friend and they keep the ones they want, with your name on them.",
+    body: "Recommendation, Bucket list, Been there. Every place you save carries who told you about it and where it is on the map. Send a handful to a friend and they keep the ones they want, with your name on them.",
     signature: BEA_SIGNATURE.recs,
     figure: "vault",
   },

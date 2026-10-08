@@ -26,6 +26,7 @@ export const AI_COST = {
   receipt: 2,
   packing: 2,
   comparePlaces: 2,
+  articleSearch: 2,
   planEdit: 2,
   dayEdit: 2,
   recoList: 3,

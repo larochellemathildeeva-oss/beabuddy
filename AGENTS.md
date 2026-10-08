@@ -326,6 +326,32 @@ memory only. Bump `SEARCH_CACHE_VERSION` when a change to the search should
 not be answered from old results. The migration is applied by hand; until it
 is, memory only, with one warning in the log.
 
+## Places and lists
+
+Saved places live in `recommendations` and are split when shown, with no
+migration (`place-lists.ts`, pure and tested): a **location** (a whole city
+or country, `isLocation`) shows on World only; everything else — businesses,
+landmarks, attractions, neighbourhoods — is a **rec** and shows in Recs only
+(`hiddenFromRecs`). Screens name three lists: **Recommendation**, **Bucket
+list** and **Been there** (`pinLabel`, `listOf`). Wishlist and Next time are
+one Bucket list: both stored values stay, new saves never write `nexttime`,
+and every picker offers `SAVE_LISTS`. A city saved from Recs goes to World's
+Bucket list and says so. Each World location shows the recs saved for it
+(`recsForLocation`: same city in any spelling, country by `countryKey`; a
+country counts recs whose city is not a saved location of its own) and opens
+`LocationSheet`: its recs, **Find recs** and Paste an article link.
+
+**Find recs** (`article-search.ts`, pure and tested; `article-search.server.ts`;
+`findArticles`): one Grounding with Google Search call for up to three
+articles about the place, only its city and country sent, shown with
+`SearchGroundingNote`. Cached in process 7 days per place
+(`articleCacheKey`); a cached answer is free, a new one reserves
+`AI_COST.articleSearch` (2); reading the article is `recoList` (3).
+`GEMINI_SEARCH_GROUNDING=off` leaves Paste a link only. Only place names and
+the article link (as `source`) are saved, never the article's text. The end
+state merges Recs and World into one Places tab
+(`docs/superpowers/specs/2026-10-08-places-lists-design.md`, section 5).
+
 ## Import audit
 
 **The frozen gate (CI).** `npm run audit:ci` runs on every pull request, with

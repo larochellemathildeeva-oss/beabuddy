@@ -43,6 +43,7 @@ export function PlaceSearchInput({
   quickAdd,
   stop,
   ariaLabelledBy,
+  ariaLabel,
 }: {
   value: string;
   onChange: (v: string) => void;
@@ -75,6 +76,8 @@ export function PlaceSearchInput({
   stop?: { title: string; lat?: number | null; lon?: number | null } | undefined;
   /** The id of a visible label for the text box. */
   ariaLabelledBy?: string | undefined;
+  /** The field's name when no visible label names it. */
+  ariaLabel?: string | undefined;
 }) {
   const search = useServerFn(searchPlaces);
   const parseLink = useServerFn(parsePlaceLink);
@@ -322,6 +325,7 @@ export function PlaceSearchInput({
           spellCheck={false}
           placeholder={placeholder}
           {...(ariaLabelledBy ? { "aria-labelledby": ariaLabelledBy } : {})}
+          {...(ariaLabel && !ariaLabelledBy ? { "aria-label": ariaLabel } : {})}
           className="flex-1 resize-none rounded-xl border border-[var(--field-border)] bg-card px-3 py-2 text-[15px]"
         />
         <button

@@ -135,9 +135,10 @@ export const preferenceGroups: { title: string; hint: string; tags: string[] }[]
 ];
 
 export const pinLabel: Record<PinType, string> = {
-  visited: "Visited",
-  nexttime: "Next time",
-  wishlist: "Wishlist",
+  // Wishlist and Next time are one list, the Bucket list (place-lists.ts).
+  visited: "Been there",
+  nexttime: "Bucket list",
+  wishlist: "Bucket list",
   reco: "Recommendation",
 };
 

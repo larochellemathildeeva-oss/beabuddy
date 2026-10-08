@@ -86,13 +86,19 @@ test("isAreaPlace keeps countries and cities off the Recs list, venues on it", (
   );
 });
 
-test("hiddenFromRecs hides a visited country but keeps a wishlist one", () => {
+test("hiddenFromRecs hides every city and country: they live on World", () => {
   const japan = { name: "Japan", city: "Japan", country: "Japan", category: "Country" };
   assert.equal(hiddenFromRecs(japan, "visited"), true);
-  assert.equal(hiddenFromRecs(japan, "wishlist"), false);
-  assert.equal(hiddenFromRecs(japan, "nexttime"), false);
-  assert.equal(hiddenFromRecs(japan, "wishlist", true), true);
-  assert.equal(hiddenFromRecs(japan, "wishlist", false), false);
+  assert.equal(hiddenFromRecs(japan, "wishlist"), true);
+  assert.equal(hiddenFromRecs(japan, "nexttime"), true);
+  assert.equal(hiddenFromRecs(japan, "wishlist", false), true);
+  assert.equal(
+    hiddenFromRecs(
+      { name: "Montmartre", city: "Montmartre", country: "France", category: "neighbourhood" },
+      "wishlist",
+    ),
+    false,
+  );
   assert.equal(
     hiddenFromRecs({ name: "Kyoto", city: "Kyoto", category: "City" }, "wishlist"),
     true,

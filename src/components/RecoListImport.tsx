@@ -1,8 +1,9 @@
-import { useRef, useState, type ChangeEvent } from "react";
+import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { friendlyError } from "@/lib/friendly-error";
 import { useServerFn } from "@tanstack/react-start";
 import { Camera, ImageIcon } from "@/components/icons";
 import { pinColorClass, pinLabel, type PinType } from "@/data/atlas";
+import { SAVE_LISTS } from "@/lib/place-lists";
 import type { NewReco } from "@/hooks/useRecommendations";
 import { aiFailure } from "@/lib/ai-errors";
 import { downscaleImage } from "@/lib/image";
@@ -24,16 +25,22 @@ function wait(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-const pinChoices: PinType[] = ["reco", "wishlist", "nexttime", "visited"];
+const pinChoices = SAVE_LISTS;
 
 export function RecoListImport({
   signedIn,
   onAddMany,
   onSaved,
+  place,
+  initialPageUrl,
 }: {
   signedIn: boolean;
   onAddMany: (rows: NewReco[]) => Promise<void>;
   onSaved?: () => void;
+  /** Opened from a World location: places with no city or country of their own get these. */
+  place?: { city: string | null; country: string | null } | undefined;
+  /** A link to read straight away (an article Béa found). */
+  initialPageUrl?: string | undefined;
 }) {
   const parseList = useServerFn(parseRecoList);
   const search = useServerFn(searchPlaces);
@@ -46,7 +53,7 @@ export function RecoListImport({
   const [searchingAt, setSearchingAt] = useState(-1);
   const [recommendedBy, setRecommendedBy] = useState("");
   const [paste, setPaste] = useState("");
-  const [pageUrl, setPageUrl] = useState("");
+  const [pageUrl, setPageUrl] = useState(initialPageUrl ?? "");
   const [listSource, setListSource] = useState("Uploaded list");
 
   const ingest = async (input: {
@@ -70,7 +77,7 @@ export function RecoListImport({
       const started = startRecoDrafts(
         out.items.map((item) => ({
           name: item.name,
-          ...(item.city ? { city: item.city } : {}),
+          ...(item.city || place?.city ? { city: item.city || place?.city || "" } : {}),
           ...(item.notes ? { notes: item.notes } : {}),
           ...(item.category ? { category: item.category } : {}),
         })),
@@ -156,10 +163,28 @@ export function RecoListImport({
     });
   };
 
+  // Closed (the location sheet shut mid-read): no more map lookups or updates.
+  const alive = useRef(true);
+  useEffect(
+    () => () => {
+      alive.current = false;
+    },
+    [],
+  );
+  // An article Béa found is read as soon as the reader opens, once.
+  const autoRead = useRef(false);
+  useEffect(() => {
+    if (!initialPageUrl || autoRead.current) return;
+    autoRead.current = true;
+    void onReadPaste();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once, on open
+  }, []);
+
   const lookupOneByOne = async (rows: RecoListDraft[]) => {
     const next = [...rows];
     let mapCalls = 0;
     for (let i = 0; i < next.length; i++) {
+      if (!alive.current) return;
       const row = next[i];
       if (!row || row.query.length < 2) {
         next[i] = { ...row!, status: "empty" };
@@ -217,7 +242,11 @@ export function RecoListImport({
 
   const save = async () => {
     if (!drafts) return;
-    const payload = draftsToSave(drafts, recommendedBy, listSource);
+    const payload = draftsToSave(drafts, recommendedBy, listSource).map((row) => ({
+      ...row,
+      ...(!row.city && place?.city ? { city: place.city } : {}),
+      ...(!row.country && place?.country ? { country: place.country } : {}),
+    }));
     if (payload.length === 0) {
       setError("Pick at least one place to save.");
       return;

@@ -64,9 +64,8 @@ function prefersReducedMotion(): boolean {
  * blue / green / amber / purple.
  */
 function pinTypeWord(type: Pin["type"]): string {
-  if (type === "visited") return "visited";
-  if (type === "nexttime") return "next time";
-  if (type === "wishlist") return "wishlist";
+  if (type === "visited") return "been there";
+  if (type === "nexttime" || type === "wishlist") return "bucket list";
   return "recommendation";
 }
 

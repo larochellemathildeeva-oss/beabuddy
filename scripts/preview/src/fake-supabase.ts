@@ -210,10 +210,13 @@ const wishPlaces = [
   ["Marrakech", "Morocco", 31.63, -8.0, "wishlist"],
   ["Rabat", "Morocco", 34.02, -6.83, "wishlist"],
   ["Copenhagen", "Denmark", 55.68, 12.57, "nexttime"],
+  ["Los Angeles", "United States", 34.05, -118.24, "wishlist"],
 ].map(([city, country, lat, lon, type], i) => ({ id: `ws-${i}`, user_id: "me", name: city, city, country, address: null, category: "City", notes: null, recommended_by: null, source: null, url: null, lat, lon, visited: false, pin_type: type, created_at: ago(3000 + i) }));
+// Two recs saved for Los Angeles, a Bucket list city: World shows "2 recs" on it.
+const laRecs = [["Bestia", "Food"], ["Grand Central Market", "Food"]].map(([name, category], i) => ({ id: `la-${i}`, user_id: "me", name, city: "Los Angeles", country: "United States", address: null, category, notes: null, recommended_by: null, source: null, url: null, lat: 34.04 + i * 0.01, lon: -118.23, visited: false, pin_type: i ? "wishlist" : "reco", created_at: ago(2000 + i) }));
 const worldDb: Record<string, Row[]> = {
   ...homeDb,
-  recommendations: [...beenPlaces, ...wishPlaces],
+  recommendations: [...beenPlaces, ...wishPlaces, ...laRecs],
 };
 const noneDb: Record<string, Row[]> = {
   profiles: [{ id: "me", display_name: "Alex", app_settings: {} }],
@@ -228,6 +231,8 @@ const recsDb: Record<string, Row[]> = {
   profiles: [{ id: "me", display_name: "Mattie", home_city: "Montréal", app_settings: {} }],
   recommendations: [
     ...savedPlaces,
+    // A city saved to the Bucket list: it belongs on World, never in Recs.
+    { id: "tc-city", user_id: "me", name: "Porto", city: "Porto", country: "Portugal", address: null, category: "City", notes: null, recommended_by: null, source: null, url: null, lat: 41.15, lon: -8.61, visited: false, pin_type: "wishlist", created_at: ago(50) },
     ...[["Grand Central Market", "Food", "reco", "Go at golden hour."], ["Griffith Observatory", "Viewpoint", "wishlist", null], ["Venice Canals", "Park", "nexttime", null]].map(([name, category, pin_type, notes], i) => ({
       id: `tc-${i}`, user_id: "me", name, city: tripCity, country: "United States", address: null, category, notes, recommended_by: i === 1 ? "Sam" : null, source: null, url: null, lat: 34.05 + i * 0.01, lon: -118.24, visited: false, pin_type, created_at: ago(100 + i),
     })),

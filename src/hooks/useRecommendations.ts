@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { lastLoaded, rememberLoaded, screenGeneration } from "@/lib/screen-cache";
 import type { Database } from "@/integrations/supabase/types";
 import type { Pin, PinType } from "@/data/atlas";
 import { isMissingTravelTagsColumn, tagsForSave } from "@/lib/reco-tags";
@@ -164,11 +165,19 @@ export async function addRecommendationOnce(reco: NewReco): Promise<void> {
 }
 
 export function useRecommendations() {
-  const [rows, setRows] = useState<RecoRowDB[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [signedIn, setSignedIn] = useState(false);
+  // Home, World and Recs open on the saves they last showed, then refresh them
+  // (screen-cache.ts), instead of drawing empty at every tab switch.
+  const [last] = useState(() => lastLoaded<RecoRowDB[]>("recommendations"));
+  const [rows, setRows] = useState<RecoRowDB[]>(last ?? []);
+  const [loading, setLoading] = useState(!last);
+  const [signedIn, setSignedIn] = useState(Boolean(last));
+  // Loads can overlap (the first one and the one after a save): only the
+  // newest may set the rows, or an older answer would put a save back out.
+  const latestLoad = useRef(0);
 
   const reload = useCallback(async () => {
+    const load = ++latestLoad.current;
+    const since = screenGeneration();
     const { data: session } = await supabase.auth.getSession();
     setSignedIn(!!session.session);
     if (!session.session) {
@@ -179,7 +188,10 @@ export function useRecommendations() {
     try {
       // A failed read is not an empty vault — keep what is already on screen
       // rather than showing none and implying every rec is gone.
-      setRows(await selectRecos());
+      const fresh = await selectRecos();
+      if (load !== latestLoad.current) return;
+      setRows(fresh);
+      rememberLoaded("recommendations", fresh, since);
     } catch {
       /* keep rows */
     }
@@ -188,7 +200,11 @@ export function useRecommendations() {
 
   useEffect(() => {
     void reload();
-    const { data: sub } = supabase.auth.onAuthStateChange(() => void reload());
+    // A new subscription fires INITIAL_SESSION at once: the load above already
+    // covers it, so only real sign-in changes load again.
+    const { data: sub } = supabase.auth.onAuthStateChange((event) => {
+      if (event !== "INITIAL_SESSION") void reload();
+    });
     return () => sub.subscription.unsubscribe();
   }, [reload]);
 
