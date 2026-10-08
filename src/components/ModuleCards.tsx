@@ -59,30 +59,22 @@ export function ModuleCard({
     <>
       <span className="relative flex min-w-0 flex-1 flex-col">
         <span className="label-caps block">{label ?? title}</span>
-        {big ? (
-          <span className="module-big mt-1 block font-display font-bold tabular-nums">{big}</span>
-        ) : null}
+        {big ? <span className="module-big mt-1.5 block font-bold tabular-nums">{big}</span> : null}
         {headline ? (
-          <span className="mt-2 block font-display text-[30px] leading-[34px] tracking-[-0.5px]">
-            {headline}
-          </span>
+          <span className="mt-1.5 block text-[20px] leading-[1.4]">{headline}</span>
         ) : null}
-        {sub && (
-          <span className="mt-1.5 block font-display text-[16px] leading-[22px] text-muted-foreground">
-            {sub}
-          </span>
-        )}
+        {sub && <span className="mt-1.5 block text-[14px] leading-[1.4]">{sub}</span>}
         {children && <span className="relative mt-2 block">{children}</span>}
       </span>
       {art && (
-        <span className="module-photo relative -my-3.5 -mr-3.5 ml-3 block w-[112px] shrink-0 self-stretch overflow-hidden">
+        <span className="module-photo relative -my-4 -mr-4 ml-4 block w-[112px] shrink-0 self-stretch overflow-hidden">
           <img src={art} alt="" className="art-dim absolute inset-0 size-full object-cover" />
         </span>
       )}
       {button}
     </>
   );
-  const cls = `relative flex min-h-[168px] w-full overflow-hidden border border-border p-3.5 text-left ${
+  const cls = `relative flex min-h-[168px] w-full overflow-hidden border border-border p-4 text-left ${
     tone ? `tile-fill-${tone}` : "bg-card"
   }`;
   if (!action) {

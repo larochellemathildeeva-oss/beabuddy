@@ -27,7 +27,7 @@ import { isUnderway } from "@/lib/trip-card";
 export function HomeSectionTitle({ title, aside }: { title: string; aside?: ReactNode }) {
   return (
     <div className="mb-3 flex items-baseline justify-between gap-3">
-      <h2 className="font-display text-[27px] leading-none">{title}</h2>
+      <h2 className="text-[20px] font-semibold leading-[1.4]">{title}</h2>
       {aside ? (
         <div className="flex shrink-0 items-center gap-0.5 text-[14px] font-semibold text-primary">
           {aside}
@@ -144,7 +144,7 @@ export function HomeTripHero({
         </div>
         <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-3 p-4">
           <div className="min-w-0">
-            <p className="line-clamp-2 break-words font-display text-[38px] leading-[0.98] [text-shadow:0_1px_12px_rgba(0,0,0,0.35)]">
+            <p className="line-clamp-2 break-words text-[28px] font-bold leading-[1.2] [text-shadow:0_1px_12px_rgba(0,0,0,0.35)]">
               {trip.title}
             </p>
             {dates ? <p className="mt-1 text-[14px] font-semibold">{dates}</p> : null}
@@ -334,7 +334,7 @@ export function HomeYourTrips({ trips, photos }: { trips: TripRow[]; photos: Tri
               }}
             />
             <span className="absolute inset-x-0 bottom-0 p-2">
-              <span className="line-clamp-2 break-words font-display text-[19px] leading-[1.05]">
+              <span className="line-clamp-2 break-words text-[16px] font-semibold leading-[1.2]">
                 {t.title}
               </span>
               <span className="block truncate text-[12px] text-white/90">

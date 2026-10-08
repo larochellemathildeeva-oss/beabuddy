@@ -18,7 +18,7 @@ export function HomeUpcoming({ trip, photos }: { trip: TripRow; photos: TripPhot
 
   return (
     <section>
-      <HomeTripBanner trip={trip} photos={photos} cities={stopCities} />
+      <HomeTripBanner trip={trip} photos={photos} cities={stopCities} kicker="Upcoming trip" />
     </section>
   );
 }
@@ -46,7 +46,7 @@ export function HomeTripStats({ trip, glance }: { trip: TripRow; glance: TripGla
   const packed = packing
     ? new Intl.NumberFormat(undefined, { style: "percent" }).format(percent / 100)
     : "—";
-  const cell = "flex min-h-11 min-w-0 flex-col justify-center px-3 py-2";
+  const cell = "flex min-h-11 min-w-0 flex-col justify-center p-4";
 
   return (
     <section
@@ -99,12 +99,8 @@ export function HomeTripStats({ trip, glance }: { trip: TripRow; glance: TripGla
 function Stat({ big, small }: { big: string; small: ReactNode }) {
   return (
     <span className="block min-w-0">
-      <span className="block truncate font-display text-[34px] font-bold leading-none tracking-[-1px]">
-        {big}
-      </span>
-      <span className="block whitespace-nowrap text-[12px] leading-snug text-muted-foreground">
-        {small}
-      </span>
+      <span className="block truncate text-[28px] font-bold leading-[1.2]">{big}</span>
+      <span className="mt-1 block whitespace-nowrap text-[12px] leading-[1.4]">{small}</span>
     </span>
   );
 }
@@ -112,7 +108,10 @@ function Stat({ big, small }: { big: string; small: ReactNode }) {
 /** "Where to next?": the way into planning another trip. */
 export function HomeWhereNext() {
   return (
-    <Link to="/trips/plan" className="flex h-[52px] items-center gap-3 border border-border px-4">
+    <Link
+      to="/trips/plan"
+      className="home-where-next flex h-[52px] items-center gap-3 border border-border px-4"
+    >
       <span className="flex-1 text-[14px] text-muted-foreground">Where to next?</span>
       <ArrowRight className="size-[18px] shrink-0" aria-hidden />
     </Link>
@@ -155,7 +154,7 @@ export function HomeSuggested({
     <section data-guide="home-suggested">
       <p className="label-caps mb-1">Béa suggests</p>
       <div className="mb-1.5 flex items-center justify-between gap-3">
-        <h2 className="font-sans text-[16.5px] font-semibold">Suggested for your trip</h2>
+        <h2>Suggested for your trip</h2>
         <Link
           to="/recommendations"
           className="-me-2 flex min-h-11 min-w-11 shrink-0 items-center justify-center gap-1 px-2 text-[14px] font-medium"

@@ -451,8 +451,8 @@ function SignedInHome() {
         return trip ? <HomeSuggested trip={trip} here={tripModules.here} /> : null;
       case "weather":
         return (
-          <div className="p-3">
-            <p className="mb-3 font-display text-[20px]">Weather here</p>
+          <div className="p-4">
+            <p className="mb-3 text-[12px] leading-[1.4]">Weather here</p>
             <HomeWeather near={near} />
           </div>
         );
@@ -484,7 +484,7 @@ function SignedInHome() {
           </section>
         ) : (
           <div className="p-4">
-            <p className="font-display text-[20px]">Future me note</p>
+            <p className="text-[12px] leading-[1.4]">Future me note</p>
             <Link to="/recommendations" className="mt-3 flex min-h-11 items-center text-primary">
               Save a place for your next visit
             </Link>
@@ -590,7 +590,7 @@ function SignedInHome() {
 function SectionHead({ title, aside }: { title: string; aside?: string }) {
   return (
     <div className="mb-3 flex items-baseline justify-between">
-      <h2 className="font-display text-[27px] leading-none">{title}</h2>
+      <h2 className="text-[20px] font-semibold leading-[1.4]">{title}</h2>
       {aside && <span className="text-[12px] text-muted-foreground">{aside}</span>}
     </div>
   );
