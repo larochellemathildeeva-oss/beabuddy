@@ -21,7 +21,7 @@ Method: the `audit` skill (karanmrn/karanagentskills), run on the repo's preview
 ## Highest-impact changes
 
 1. **Trip page header (step 7):** the trip menu button is cut off on a 390px phone. Collapse the five round buttons into two (Add, Trip menu), or move Search and Menu off this header. *(Bug; fix before Phase 4.)*
-2. **One count for countries (steps 10, 11):** World says 4, You says 0. Use one function for both. *(Bug.)*
+2. **One count for countries (steps 10, 11):** World says 4, You says 0. Confirmed in code: You counts countries of trips that have started (`profile.tsx:196`), World counts countries of places marked visited (`world.tsx:210`). Use one function for both. *(Bug.)*
 3. **Finish the type change on page bodies (steps 2, 3, 6, 7, 10, 11):** capital-letter 11px labels and buttons remain on sign-in, Welcome, Trips, trip tabs, World tabs and You. This is the Phase 2 and 4 restyle; sign-in and Welcome should join Phase 2.
 4. **One list name (steps 9, 10):** Bucket list / Been there / Next time everywhere.
 5. **Menu as a hub (step 5):** add Sign out, Appearance, Feedback and a close button; drop "Profile settings".
