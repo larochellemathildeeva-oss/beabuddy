@@ -4,8 +4,7 @@ import { Check } from "@/components/icons";
 import { pinColorClass, pinLabel, type PinType } from "@/data/atlas";
 import type { NewReco, RecoRowDB } from "@/hooks/useRecommendations";
 import { PlaceArt, Sheet } from "./RecsParts";
-
-const LISTS: PinType[] = ["reco", "wishlist", "nexttime", "visited"];
+import { SAVE_LISTS } from "@/lib/place-lists";
 
 /**
  * After a save: it is already kept, and everything here is optional — a note,
@@ -27,7 +26,8 @@ export function SaveSheet({
   const [who, setWho] = useState(row?.recommended_by ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const list = (row?.pin_type ?? "reco") as PinType;
+  // An old Next time row is on the Bucket list; it is only rewritten if the list changes.
+  const list = (row?.pin_type === "nexttime" ? "wishlist" : (row?.pin_type ?? "reco")) as PinType;
   const name = row?.name ?? fallbackName;
 
   const run = async (patch: Partial<NewReco>) => {
@@ -98,7 +98,7 @@ export function SaveSheet({
       <div className="mt-5">
         <p className="text-[15px] font-semibold">Add to a list</p>
         <div className="mt-2 divide-y divide-border rounded-2xl border border-border bg-card">
-          {LISTS.map((t) => {
+          {SAVE_LISTS.map((t) => {
             const on = list === t;
             return (
               <button
@@ -107,7 +107,10 @@ export function SaveSheet({
                 role="radio"
                 aria-checked={on}
                 disabled={!row}
-                onClick={() => void run({ pin_type: t }).catch(() => {})}
+                onClick={() => {
+                  if (on) return;
+                  void run({ pin_type: t }).catch(() => {});
+                }}
                 className="flex w-full items-center gap-3 px-3.5 py-3 text-left text-[15px] disabled:opacity-60"
               >
                 <span

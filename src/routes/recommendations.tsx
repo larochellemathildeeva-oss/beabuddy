@@ -46,7 +46,7 @@ import { beaCheer, useBeaSettings } from "@/hooks/useBeaSettings";
 import { useTrips } from "@/hooks/useTrips";
 import { pinColorClass, pinLabel, type Pin, type PinType } from "@/data/atlas";
 import { groupCountLabel, groupRecosByType } from "@/lib/reco-groups";
-import { listOf } from "@/lib/place-lists";
+import { listOf, SAVE_LISTS } from "@/lib/place-lists";
 import { useRecommendations, type RecoRowDB } from "@/hooks/useRecommendations";
 import {
   PLACE_TRAVEL_TAGS,
@@ -107,7 +107,7 @@ export const Route = createFileRoute("/recommendations")({
   component: RecommendationsPage,
 });
 
-const pinChoices: PinType[] = ["reco", "wishlist", "nexttime", "visited"];
+const pinChoices = SAVE_LISTS;
 
 /** Optional draft fields, shown as chips rather than seven stacked inputs. */
 const DRAFT_FIELDS = [

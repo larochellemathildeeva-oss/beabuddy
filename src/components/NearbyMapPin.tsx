@@ -38,10 +38,9 @@ type Place = {
 };
 
 const pinTypes: { type: PinType; label: string }[] = [
-  { type: "wishlist", label: "Wishlist" },
-  { type: "nexttime", label: "Next time" },
-  { type: "visited", label: "Visited" },
-  { type: "reco", label: "Recommendation" },
+  { type: "reco", label: pinLabel.reco },
+  { type: "wishlist", label: pinLabel.wishlist },
+  { type: "visited", label: pinLabel.visited },
 ];
 
 /**

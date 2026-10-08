@@ -16,6 +16,7 @@ import {
 } from "@/components/icons";
 import { PlaceFacts } from "@/components/PlaceFacts";
 import { pinColorClass, pinLabel, type PinType } from "@/data/atlas";
+import { SAVE_LISTS } from "@/lib/place-lists";
 import type { NewReco, RecoRowDB } from "@/hooks/useRecommendations";
 import { findDuplicate } from "@/lib/captured-place";
 import { GEOAPIFY_ATTRIBUTION, OSM_ATTRIBUTION } from "@/lib/geo-endpoints";
@@ -61,7 +62,7 @@ type Found = {
 
 type LatLon = { lat: number; lon: number };
 
-const pinTypes: PinType[] = ["wishlist", "nexttime", "visited", "reco"];
+const pinTypes = SAVE_LISTS;
 
 /**
  * Explore nearby: a map of where you are with what is around it, as pins by

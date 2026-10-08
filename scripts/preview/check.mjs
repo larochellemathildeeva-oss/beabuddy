@@ -767,6 +767,18 @@ await flow("recs: header, pills, list chips, saved-for-trip cards, More ways and
     if (!(await text()).includes(word)) throw new Error(`More ways lost "${word}"`);
 }, "recs");
 
+await flow("save sheet: lists are Recommendation, Bucket list, Been there; Next time opens as Bucket list", async (page) => {
+  await page.getByRole("button", { name: /^Venice Canals: note, list, who told you$/ }).first().click();
+  await page.waitForTimeout(500);
+  const dialog = page.getByRole("dialog").last();
+  const radios = await dialog.getByRole("radio").evaluateAll((els) => els.map((e) => [e.textContent.trim(), e.getAttribute("aria-checked")]));
+  const names = radios.map(([name]) => name);
+  if (names.join("|") !== "Recommendation|Bucket list|Been there") throw new Error(`lists are ${names.join(", ")}`);
+  const checked = radios.filter(([, on]) => on === "true").map(([name]) => name);
+  if (checked.join() !== "Bucket list") throw new Error(`a Next time place opens as ${checked.join() || "nothing"}`);
+  if ((await page.getByText(/Next time|Wishlist/).count()) !== 0) throw new Error("the page still says Next time or Wishlist");
+}, "recs");
+
 await flow("you: header, Béa card, grouped rows, Customize Home, theme and More", async (page) => {
   const text = async () => page.locator("body").innerText();
   for (const word of ["Travel, your way.", "Your Béa", "Travel preferences", "Packing lists", "Photos & memories", "Work travel", "Trip documents", "Settings & storage", "Appearance", "Data & imports", "Privacy & legal", "Help & FAQ", "Feedback", "About Béa", "Sign out"])

@@ -3,6 +3,7 @@ import { friendlyError } from "@/lib/friendly-error";
 import { useServerFn } from "@tanstack/react-start";
 import { Camera, ImageIcon } from "@/components/icons";
 import { pinColorClass, pinLabel, type PinType } from "@/data/atlas";
+import { SAVE_LISTS } from "@/lib/place-lists";
 import type { NewReco } from "@/hooks/useRecommendations";
 import { aiFailure } from "@/lib/ai-errors";
 import { downscaleImage } from "@/lib/image";
@@ -24,7 +25,7 @@ function wait(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-const pinChoices: PinType[] = ["reco", "wishlist", "nexttime", "visited"];
+const pinChoices = SAVE_LISTS;
 
 export function RecoListImport({
   signedIn,
