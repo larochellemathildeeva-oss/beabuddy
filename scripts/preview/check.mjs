@@ -877,6 +877,15 @@ await flow("shell: a null account accent resets visually without storing or uplo
   if (result.accent !== "pink" || result.stored !== null || result.uploaded) throw new Error(`account accent reset: ${JSON.stringify(result)}`);
 }, "shell");
 
+await flow("shell: header actions are named icon buttons at least 48px", async (page) => {
+  for (const [role, name] of [["link", "Search your places"], ["button", "Menu"]]) {
+    const el = page.getByRole(role, { name, exact: true });
+    const box = await el.boundingBox();
+    if (!box || box.width < 48 || box.height < 48) throw new Error(`${name} is ${box?.width}x${box?.height}`);
+    if (!(await el.locator("svg").count())) throw new Error(`${name} has no icon`);
+  }
+}, "shell");
+
 await flow("shell: compressed long titles stay on one line in both header layouts", async (page) => {
   const title = "Places worth remembering on a long journey through several cities.";
   for (const beside of [false, true]) {

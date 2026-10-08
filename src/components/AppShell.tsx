@@ -14,7 +14,16 @@ import { COMPRESS_AT, measureHeaderHeights, nextCompressed } from "../lib/page-h
 import { planeFromMatches, planeIsUndeclared, travelDirection } from "../lib/route-plane";
 import { BrandMark, PageHeader } from "./PageHeader";
 
-import { ArrowLeft, Globe2, Home, MapPinned, Bookmark, User } from "@/components/icons";
+import {
+  ArrowLeft,
+  Bookmark,
+  Globe2,
+  Home,
+  MapPinned,
+  Menu,
+  Search,
+  User,
+} from "@/components/icons";
 import logo from "../assets/bea-logo.png";
 
 const APP_VERSION = typeof __APP_VERSION__ === "string" ? __APP_VERSION__ : "1.0.0";
@@ -230,9 +239,9 @@ export function AppShell({
                 to="/recommendations"
                 search={{ find: true }}
                 aria-label="Search your places"
-                className="mono-caps grid min-h-11 min-w-11 place-items-center px-1 text-[13px] text-muted-foreground"
+                className="grid size-12 place-items-center rounded-[var(--r-button)] text-foreground"
               >
-                Search
+                <Search className="size-6" aria-hidden />
               </Link>
               {user && <PageGuide round hideToggle />}
               {user && (
@@ -240,9 +249,10 @@ export function AppShell({
                   type="button"
                   onClick={() => setMenuOpen(true)}
                   aria-haspopup="dialog"
-                  className="mono-caps grid min-h-11 min-w-11 place-items-center px-1 text-[13px] text-muted-foreground"
+                  aria-label="Menu"
+                  className="grid size-12 place-items-center rounded-[var(--r-button)] text-foreground"
                 >
-                  Menu
+                  <Menu className="size-6" aria-hidden />
                 </button>
               )}
             </div>
@@ -288,9 +298,9 @@ export function AppShell({
                   to="/recommendations"
                   search={{ find: true }}
                   aria-label="Search your places"
-                  className="mono-caps grid min-h-11 min-w-11 place-items-center px-1 text-[13px] text-muted-foreground"
+                  className="grid size-12 place-items-center rounded-[var(--r-button)] text-foreground"
                 >
-                  Search
+                  <Search className="size-6" aria-hidden />
                 </Link>
               )}
               {user && (
@@ -298,9 +308,10 @@ export function AppShell({
                   type="button"
                   onClick={() => setMenuOpen(true)}
                   aria-haspopup="dialog"
-                  className="mono-caps grid min-h-11 min-w-11 place-items-center px-1 text-[13px] text-muted-foreground"
+                  aria-label="Menu"
+                  className="grid size-12 place-items-center rounded-[var(--r-button)] text-foreground"
                 >
-                  Menu
+                  <Menu className="size-6" aria-hidden />
                 </button>
               )}
               {!user && (
