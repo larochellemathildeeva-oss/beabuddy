@@ -108,6 +108,12 @@ export function createModuleStore<K extends string>(config: {
       [userId],
     );
     const reset = useCallback(() => write(userId, null), [userId]);
+    // Still the defaults: nothing saved for this account on this phone.
+    const customized = useSyncExternalStore(
+      subscribe,
+      () => getStored(config.keyFor(userId)) !== null,
+      () => false,
+    );
     const layout = Object.fromEntries(keys.map((k) => [k, modules.on.has(k)])) as Record<
       K,
       boolean
@@ -116,6 +122,7 @@ export function createModuleStore<K extends string>(config: {
       layout,
       modules,
       shown: shownModules(modules),
+      customized,
       fixed,
       toggle,
       move,

@@ -3699,14 +3699,48 @@ a.bg-primary {
 .home-widget :is([data-guide="home-suggested"], [data-guide="home-near"]) {
   padding: 16px;
 }
-.home-widget [data-guide="home-past"] {
-  padding-inline: 16px;
+/* The design's cells: Small and Wide 175px tall, Large 350, at a 350px grid. */
+.home-widget[data-size="small"],
+.home-widget[data-size="wide"] {
+  min-height: 50cqw;
 }
-.home-widget .home-where-next {
-  margin: 0 16px 16px;
+.home-widget[data-size="large"] {
+  min-height: 100cqw;
 }
-.home-widget [data-guide="home-next"] {
-  border-inline: 0;
+.home-widget .home-widget-content {
+  display: flex;
+  flex-direction: column;
+}
+.home-widget .home-widget-content > * {
+  flex: 1;
+}
+/* Labels in the grid are ink, as the design sets every word on Home. */
+.home-widget .label-caps {
+  color: var(--foreground);
+}
+.home-widget [data-guide="home-trip"] {
+  flex: 1;
+}
+/* The whole module opens; the design draws no corner button. */
+.home-widget .module-card-action {
+  display: none;
+}
+.home-widget [data-guide="home-trip"] {
+  display: flex;
+  flex-direction: column;
+}
+.home-trip-card {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+/* A Small Travellers cell is the figure alone, as drawn; Wide and Large keep the faces. */
+.home-widget[data-size="small"] [data-guide="home-module-group"] .\-space-x-2 {
+  display: none;
+}
+.home-trip-card > .home-trip-photo {
+  flex: 1;
+  min-height: 125px;
 }
 /* The trip's name on Home's card is the one 28px title in the grid. */
 .home-widget .home-trip-card h2 {

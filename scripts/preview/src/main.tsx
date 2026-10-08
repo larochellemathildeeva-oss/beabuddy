@@ -6,7 +6,7 @@ import { createRoot } from "react-dom/client";
 import { Toaster } from "sonner";
 import { TripDetail } from "@/components/TripDetail";
 import { HomeYourTrips } from "@/components/HomeTripCard";
-import { HomeUpcoming, HomeTripStats, HomeWhereNext, HomeSuggested } from "@/components/HomeLivingMap";
+import { HomeUpcoming, HomeWhereNext, HomeSuggested } from "@/components/HomeLivingMap";
 import { HomeWeather } from "@/components/HomeWeather";
 import { TripListRow } from "@/components/TripsList";
 import { useTrips } from "@/hooks/useTrips";
@@ -57,7 +57,6 @@ function HomePreview() {
   return (
     <div className="space-y-5">
       <HomeUpcoming trip={trip} photos={[]} />
-      <HomeTripStats trip={trip} glance={glances[trip.id]} />
       <HomeWhereNext />
       <HomeSuggested trip={trip} here={{ city: "Hiroshima", stopCountry: "Japan" }} />
       <HomeWeather near={near} />

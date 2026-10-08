@@ -611,26 +611,27 @@ await flow("trips: recovered city rows still receive background pinning", async 
   if ((await writes(page)).filter(w => w.table === "trip_stops" && w.op === "insert").length !== 1) throw new Error("Recovery repeated a committed city insert");
 },"trips");
 
-await flow("home: trip ahead keeps its map, stats, search and ideas", async (page) => {
+await flow("home: trip ahead is the design's modules; the rest are in Customize home", async (page) => {
   const text = () => page.evaluate(() => document.body.innerText);
-  for (const word of ["to-do", "packed", "Where to next?", "Suggested for your trip"])
-    if (!(await text()).toLowerCase().includes(word.toLowerCase())) throw new Error(`Home lost "${word}"`);
-  if ((await page.getByRole("link", { name: /Where to next/ }).getAttribute("href")) !== "/trips/plan") throw new Error("Where to next? lost its route");
-  if ((await page.getByRole("link", { name: /Iconic Landmarks/ }).count()) !== 1) throw new Error("Suggested ideas are gone");
-  // Customize home sits at the foot of Home: the trip modules from the
-  // mockup switch on, reorder, and Reset brings back the first layout.
+  const order = () => page.evaluate(() => [...document.querySelectorAll("[data-guide^=home-module-]")].map((e) => e.getAttribute("data-guide")));
+  if ((await order()).join() !== "home-module-saved,home-module-group,home-module-weather,home-module-notes") throw new Error(`Home is not the design's: ${(await order()).join()}`);
+  for (const word of ["AC781", "Your trips", "Suggested for your trip", "Nearby recommendations"])
+    if ((await text()).includes(word)) throw new Error(`"${word}" is still on Home by default`);
+  // Customize home brings back every other module, in the order chosen.
   await page.getByRole("button", { name: /^Customize home/ }).last().click();
   await page.waitForTimeout(400);
-  for (const name of ["Saved for this trip", "Trip tools", "Weather there", "Notes from Béa", "Group plans", "Right now there", "Worth a detour"])
+  for (const name of ["Suggested for your trip", "Trip tools", "Right now there", "Worth a detour"])
     await page.getByRole("switch", { name: `Show ${name}` }).click();
   await page.getByRole("button", { name: "Move Notes from Béa up" }).click();
   await page.waitForTimeout(300);
   await page.keyboard.press("Escape");
   await page.waitForTimeout(600);
-  const homeOrder = await page.evaluate(() => [...document.querySelectorAll("[data-guide^=home-module-]")].map((e) => e.getAttribute("data-guide")));
-  const want = ["home-module-saved", "home-module-now", "home-module-group", "home-module-tools", "home-module-weather", "home-module-notes", "home-module-detour"];
-  if (homeOrder.join() !== want.join()) throw new Error(`Home modules out of order: ${homeOrder.join()}`);
-  for (const word of ["Currency", "Transport", "Translate", "Offline", "to go", "Griffith Observatory", "Live from Los Angeles"])
+  const shown = await order();
+  for (const guide of ["home-module-now", "home-module-tools", "home-module-detour"])
+    if (!shown.includes(guide)) throw new Error(`Customize home did not add ${guide}: ${shown.join()}`);
+  if (shown.indexOf("home-module-notes") > shown.indexOf("home-module-weather")) throw new Error(`Notes did not move up: ${shown.join()}`);
+  if ((await page.getByRole("link", { name: /Iconic Landmarks/ }).count()) !== 1) throw new Error("Suggested ideas did not come back");
+  for (const word of ["Currency", "Transport", "Translate", "Offline", "Live from Los Angeles"])
     if (!(await text()).includes(word)) throw new Error(`Home modules lost "${word}"`);
   if (!/\d+°[CF]/.test(await text())) throw new Error("the weather modules show no temperature");
   if ((await page.getByRole("link", { name: "Currency" }).getAttribute("href"))?.includes("menu=currency") !== true) throw new Error("Currency does not open the trip's converter");
@@ -653,7 +654,7 @@ await flow("home: on a trip shows the current and next stop under the route", as
     if (!(await text()).toLowerCase().includes(word.toLowerCase())) throw new Error(`On-trip Home lost "${word}"`);
   if (await page.getByText("Breakfast at Father Carpenter").count()) throw new Error("a stop already left is shown as current or next");
   if ((await page.getByRole("link", { name: /^Current stop: Museum Island/ }).count()) !== 1) throw new Error("the current stop is not a link");
-  if ((await page.getByRole("link", { name: "Open Paris to Berlin" }).count()) !== 1) throw new Error("the trip arrow is gone");
+  if ((await page.getByRole("link", { name: "View trip" }).count()) !== 1) throw new Error("the trip's View trip link is gone");
 }, "homepage-ontrip");
 
 await flow("home: with no trip, saved cities wait on the map and in tiles", async (page) => {
@@ -1787,20 +1788,20 @@ if (flowSelected("a journey saved as a stop becomes a note on the stop it leads 
   await page.close();
 }
 
-if (flowSelected("home: upcoming trip shows real flight, packing and planning links")) {
-  const name = "home: upcoming trip shows real flight, packing and planning links";
-  const { page, errors } = await open("home");
+if (flowSelected("home: the design's modules, and View trip opens the trip")) {
+  const name = "home: the design's modules, and View trip opens the trip";
+  const { page, errors } = await open("homepage");
   try {
-    for (const text of ["AC781", "YUL → LAX", "67%", "Where to next?", "Suggested for your trip"]) {
+    for (const text of ["Upcoming trip", "LA · Coastal Sun & Art", "Places saved", "Weather there", "Notes from Béa", "Customize home"]) {
       if ((await page.getByText(text, { exact: false }).count()) === 0) throw new Error(`missing "${text}"`);
     }
-    const open = page.getByRole("link", { name: /Open LA/ });
-    if ((await open.count()) !== 1) throw new Error("no Open itinerary link");
-    if ((await open.getAttribute("href")) !== "/trips/la") throw new Error(`Open itinerary goes to ${await open.getAttribute("href")}`);
-    const later = page.getByRole("link", { name: /JQAPALA A/ });
-    if ((await later.count()) !== 1) throw new Error("the later trip is not listed");
-    if ((await later.getAttribute("href")) !== "/trips/t1") throw new Error("the later trip does not open its page");
-    if ((await page.getByText("Your trips", { exact: true }).count()) === 0) throw new Error("no other-trips heading");
+    // The rest moved: to-dos, flight and packing into the trip, other trips to Trips.
+    for (const text of ["AC781", "Your trips", "Suggested for your trip"]) {
+      if ((await page.getByText(text, { exact: true }).count()) > 0) throw new Error(`"${text}" is still on Home`);
+    }
+    const view = page.getByRole("link", { name: "View trip" });
+    if ((await view.count()) !== 1) throw new Error("no View trip link");
+    if ((await view.getAttribute("href")) !== "/trips/la") throw new Error(`View trip goes to ${await view.getAttribute("href")}`);
     if (errors.length) throw new Error(errors.join(" | "));
     console.log(`✓ ${name}`);
   } catch (e) {

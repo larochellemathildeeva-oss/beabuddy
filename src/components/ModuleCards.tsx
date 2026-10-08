@@ -32,8 +32,11 @@ export function ModuleCard({
   action,
   children,
   guide,
+  figure = false,
 }: {
   title: string;
+  /** A figure module: the number first, its label under it. */
+  figure?: boolean;
   /** The small mono label shown instead of the title, when the title is the longer name. */
   label?: string;
   /** One large figure (a count, a temperature) under the label. */
@@ -58,8 +61,13 @@ export function ModuleCard({
   const body = (
     <>
       <span className="relative flex min-w-0 flex-1 flex-col">
-        <span className="label-caps block">{label ?? title}</span>
-        {big ? <span className="module-big mt-1.5 block font-bold tabular-nums">{big}</span> : null}
+        {figure ? null : <span className="label-caps block">{label ?? title}</span>}
+        {big ? (
+          <span className={`module-big block font-bold tabular-nums ${figure ? "" : "mt-1.5"}`}>
+            {big}
+          </span>
+        ) : null}
+        {figure ? <span className="label-caps mt-1 block">{label ?? title}</span> : null}
         {headline ? (
           <span className="mt-1.5 block text-[20px] leading-[1.4]">{headline}</span>
         ) : null}

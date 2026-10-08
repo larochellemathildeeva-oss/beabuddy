@@ -5,13 +5,7 @@ import { hasPendingOAuthResultInWindow } from "@/lib/auth-redirect";
 import { AppShell } from "@/components/AppShell";
 import { ArrowRight } from "@/components/icons";
 import { Globe } from "@/components/Globe";
-import { HomeYourTrips } from "@/components/HomeTripCard";
-import {
-  HomeSuggested,
-  HomeTripStats,
-  HomeUpcoming,
-  HomeWhereNext,
-} from "@/components/HomeLivingMap";
+import { HomeSuggested, HomeUpcoming, HomeWhereNext } from "@/components/HomeLivingMap";
 import {
   HomeNoTripHero,
   HomeOnTrip,
@@ -33,7 +27,7 @@ import { greetingFor, heroTags } from "@/lib/trip-glance";
 
 import { useAuth } from "@/hooks/useAuth";
 import { useFutureNotes } from "@/hooks/useFutureNotes";
-import { useHomeLayout, type HomeSectionKey } from "@/hooks/useHomeLayout";
+import { NO_TRIP_DEFAULTS, useHomeLayout, type HomeSectionKey } from "@/hooks/useHomeLayout";
 import { HomeTripModule } from "@/components/HomeModules";
 import { useHomeTripModules } from "@/hooks/useHomeTripModules";
 import { HomeWidgetGrid } from "@/components/HomeWidgetGrid";
@@ -351,7 +345,7 @@ function SignedInHome() {
   const empty = photo.rows.length === 0 && vault.rows.length === 0 && notes.rows.length === 0;
   const sampleCtaDismissed = Boolean(user?.id && hasDismissedSampleCta(safeStorage(), user.id));
   const showSamplePrompt = empty && !sampleCtaDismissed;
-  const { layout, modules, shown, resize, reorder } = useHomeLayout();
+  const { layout, modules, shown, customized, resize, reorder } = useHomeLayout();
   const [editing, setEditing] = useState(false);
   const doneRef = useRef<HTMLButtonElement>(null);
   // Entering arrangement from the Customize card at the bottom: bring the
@@ -408,7 +402,9 @@ function SignedInHome() {
       (!TRIP_ONLY.has(k) || Boolean(trip && !trips.loading)) &&
       (k !== "stops" || (tripUnderway && Boolean(trip && glances[trip.id]))) &&
       (k !== "trip" || !trips.loading) &&
-      (k !== "suggested" || Boolean(trip && !trips.loading)),
+      (k !== "suggested" || Boolean(trip && !trips.loading)) &&
+      // Untouched, Home with a trip ahead is the design's: no no-trip modules.
+      (customized || !NO_TRIP_DEFAULTS.has(k) || !trip || trips.loading),
   );
   const tripWeather =
     Boolean(trip && !trips.loading) &&
@@ -417,25 +413,23 @@ function SignedInHome() {
   /** One module, as the traveller arranged them (Customize home). */
   const homeModule = (key: HomeSectionKey): ReactNode => {
     switch (key) {
+      // The trip alone, as the design's card. Its to-dos, flight and packing
+      // are inside the trip; the other trips and a new one are on Trips.
       case "trip":
-        return trips.loading ? null : (
-          <div className="space-y-3">
-            {trip &&
-              (underway ? (
-                <HomeOnTrip
-                  trip={trip}
-                  photos={photos}
-                  glance={glances[trip.id]}
-                  showStops={false}
-                />
-              ) : (
-                <HomeUpcoming trip={trip} photos={photos} />
-              ))}
-            {trip && <HomeTripStats trip={trip} glance={glances[trip.id]} />}
-            <HomeYourTrips trips={others} photos={photos} />
-            {!trip && others.length === 0 && (
-              <p className="p-4 text-muted-foreground">Your next trip starts here.</p>
-            )}
+        if (trips.loading) return null;
+        return trip ? (
+          underway ? (
+            <HomeOnTrip trip={trip} photos={photos} glance={glances[trip.id]} showStops={false} />
+          ) : (
+            <HomeUpcoming trip={trip} photos={photos} />
+          )
+        ) : (
+          <div className="space-y-3 p-4">
+            <p className="text-[16px]">
+              {others.length > 0
+                ? "No trip under way or coming up."
+                : "Your next trip starts here."}
+            </p>
             <HomeWhereNext />
           </div>
         );
@@ -509,10 +503,9 @@ function SignedInHome() {
       {...(noTripMap
         ? {}
         : {
-            eyebrow: `Home / ${today}`,
             title: (
               <>
-                {greeting}.
+                {greeting},
                 <span className="home-subtitle mt-3 block">
                   {trip && !trips.loading
                     ? `Let’s get back to ${trip.city?.split(",")[0]?.trim() || trip.title}.`
@@ -523,7 +516,6 @@ function SignedInHome() {
               </>
             ),
           })}
-      actionBesideEyebrow
     >
       <div className="space-y-5">
         {editing && (
@@ -579,9 +571,8 @@ function SignedInHome() {
 
         <CustomizeHome variant="card" onArrange={() => setEditing(true)} />
 
-        {((layout.weather && near.consent && near.state === "ok") || tripWeather) && (
-          <WeatherCredit />
-        )}
+        {((shownModules.includes("weather") && near.consent && near.state === "ok") ||
+          tripWeather) && <WeatherCredit />}
       </div>
     </AppShell>
   );

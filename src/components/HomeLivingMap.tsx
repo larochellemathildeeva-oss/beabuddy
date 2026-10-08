@@ -1,12 +1,10 @@
-import { useMemo, type ReactNode } from "react";
+import { useMemo } from "react";
 import { Link } from "@tanstack/react-router";
 import { ArrowRight } from "@/components/icons";
 import { HomeTripBanner } from "@/components/HomeTripBanner";
 import type { TripPhotoRow } from "@/hooks/useTripPhotos";
 import type { TripRow } from "@/hooks/useTrips";
-import type { TripGlance } from "@/hooks/useTripGlances";
 import { useTripStops } from "@/hooks/useTripStops";
-import { flightParts } from "@/lib/home-route-map";
 import { placeArtUrl } from "@/lib/place-art";
 
 const SOFT_SHADOW = "";
@@ -17,101 +15,16 @@ export function HomeUpcoming({ trip, photos }: { trip: TripRow; photos: TripPhot
   const stopCities = useMemo(() => stops.map((s) => s.city).filter(Boolean), [stops]);
 
   return (
-    <section>
+    <section className="flex flex-col">
       <HomeTripBanner trip={trip} photos={photos} cities={stopCities} kicker="Upcoming trip" />
     </section>
-  );
-}
-
-function shortDay(iso: string | null | undefined): string {
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso ?? "");
-  if (!m) return "";
-  return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])).toLocaleDateString(undefined, {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-  });
-}
-
-/**
- * The trip in three numbers: to-dos left, the flight, how packed. Each opens
- * its own list.
- */
-export function HomeTripStats({ trip, glance }: { trip: TripRow; glance: TripGlance | undefined }) {
-  const open = glance?.todos.open ?? 0;
-  const flight = glance?.flight ?? null;
-  const parts = flight ? flightParts(`${flight.title} ${flight.detail ?? ""}`) : null;
-  const packing = glance?.packing ?? null;
-  const percent = packing ? Math.round(packing.ratio * 100) : 0;
-  const packed = packing
-    ? new Intl.NumberFormat(undefined, { style: "percent" }).format(percent / 100)
-    : "—";
-  const cell = "flex min-h-11 min-w-0 flex-col justify-center p-4";
-
-  return (
-    <section
-      data-guide="home-next"
-      aria-label="This trip at a glance"
-      className="grid grid-cols-[0.8fr_1.4fr_1fr] divide-x divide-border border border-border bg-card"
-    >
-      <Link
-        to="/trips/$tripId"
-        params={{ tripId: trip.id }}
-        search={{ prep: "todo" }}
-        className={cell}
-      >
-        <Stat big={String(open)} small={open === 1 ? "to-do" : "to-dos"} />
-      </Link>
-      <Link
-        to="/trips/$tripId"
-        params={{ tripId: trip.id }}
-        search={flight ? {} : { view: "bookings" }}
-        className={cell}
-      >
-        {flight ? (
-          <Stat
-            big={parts?.code ?? flight.title}
-            small={
-              <>
-                {parts?.route ? <span className="block truncate">{parts.route}</span> : null}
-                {shortDay(flight.day_date) ? (
-                  <span className="block truncate">{shortDay(flight.day_date)}</span>
-                ) : null}
-              </>
-            }
-          />
-        ) : (
-          <Stat big="Flight" small="Not added yet" />
-        )}
-      </Link>
-      <Link
-        to="/trips/$tripId"
-        params={{ tripId: trip.id }}
-        search={{ prep: "packing" }}
-        className={cell}
-      >
-        <Stat big={packed} small={packing ? "packed" : "Packing list"} />
-      </Link>
-    </section>
-  );
-}
-
-function Stat({ big, small }: { big: string; small: ReactNode }) {
-  return (
-    <span className="block min-w-0">
-      <span className="block truncate text-[28px] font-bold leading-[1.2]">{big}</span>
-      <span className="mt-1 block whitespace-nowrap text-[12px] leading-[1.4]">{small}</span>
-    </span>
   );
 }
 
 /** "Where to next?": the way into planning another trip. */
 export function HomeWhereNext() {
   return (
-    <Link
-      to="/trips/plan"
-      className="home-where-next flex h-[52px] items-center gap-3 border border-border px-4"
-    >
+    <Link to="/trips/plan" className="flex h-[52px] items-center gap-3 border border-border px-4">
       <span className="flex-1 text-[14px] text-muted-foreground">Where to next?</span>
       <ArrowRight className="size-[18px] shrink-0" aria-hidden />
     </Link>

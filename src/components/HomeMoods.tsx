@@ -53,7 +53,7 @@ export function HomeOnTrip({
   const tags = heroTags(trip.start_date, trip.end_date, trip.dates_status === "tentative");
 
   return (
-    <section>
+    <section className="flex flex-col">
       <HomeTripBanner trip={trip} photos={photos} cities={cityNames} kicker="Happening now" />
       <div className="trip-panel -mx-4 space-y-3 px-4 pt-4">
         {showStops && <NowCards trip={trip} glance={glance} day={tags.when} />}
