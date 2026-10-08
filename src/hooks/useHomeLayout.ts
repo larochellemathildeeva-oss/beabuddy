@@ -81,6 +81,19 @@ export const NO_TRIP_DEFAULTS: ReadonlySet<HomeSectionKey> = new Set([
   "future",
 ]);
 
+/**
+ * Whether Home has no trip ahead, once the trips have loaded. Until then the
+ * defaults are the trip ones, so nothing appears and then goes again.
+ */
+let noTripKnown = false;
+
+/** The defaults for this moment: without the no-trip modules while a trip may be ahead. */
+export function homeDefaultsNow(noTrip: boolean): HomeSectionKey[] {
+  return noTrip
+    ? DEFAULT_HOME_MODULES
+    : DEFAULT_HOME_MODULES.filter((k) => !NO_TRIP_DEFAULTS.has(k));
+}
+
 /** Wide modules take a row; the others sit two to a row as cards. */
 export const HOME_SMALL: ReadonlySet<HomeSectionKey> = new Set([
   "saved",
@@ -103,4 +116,12 @@ export const useHomeLayout = createModuleStore({
   fixed: [],
   // Home already showed it before it could be switched off.
   newOn: ["suggested"],
+  defaultsNow: () => homeDefaultsNow(noTripKnown),
 });
+
+/** Home reports, once its trips have loaded, whether there is no trip ahead. */
+export function setHomeNoTrip(noTrip: boolean): void {
+  if (noTrip === noTripKnown) return;
+  noTripKnown = noTrip;
+  useHomeLayout.refresh();
+}
