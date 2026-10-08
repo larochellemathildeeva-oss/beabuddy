@@ -1,6 +1,7 @@
 @import "tailwindcss" source(none);
 @source "../src";
 @import "tw-animate-css";
+@import "@fontsource-variable/dm-sans/wght.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -78,13 +79,12 @@
   --color-tile-5: var(--tile-5);
   --color-inverse-accent: var(--inverse-accent);
 
-  /* Library requirement: consumers must load these fonts in their <head>:
-     <link rel="preconnect" href="https://fonts.googleapis.com">
-     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-     <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Bodoni+Moda:wght@500;600;700&family=Manrope:wght@300;400;500;600;700&display=swap" rel="stylesheet"> */
-  --font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Bodoni Moda", "Instrument Serif", ui-serif, Georgia, serif;
-  --font-mono: "DM Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  /* DM Sans is self-hosted (the @import above): one family for every role, no
+     third-party font request. The reading-font options (data-font, below)
+     still override these three. */
+  --font-sans: "DM Sans Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "DM Sans Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "DM Sans Variable", ui-sans-serif, system-ui, sans-serif;
 }
 
 /* The owner's six accent tokens. Blush and danger remain independent. */
