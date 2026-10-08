@@ -792,6 +792,10 @@ await flow("world: the Bucket list holds cities and countries only, each with it
   if (words.includes("Bestia") || words.includes("Grand Central Market")) throw new Error("a business shows on World's Bucket list");
   const la = list.getByRole("button", { name: /^Los Angeles/ }).first();
   if (!/2 recs/.test(await la.innerText())) throw new Error(`Los Angeles does not say 2 recs: ${await la.innerText()}`);
+  for (const row of await list.getByRole("button").all()) {
+    const box = await row.boundingBox();
+    if (box && box.height < 48) throw new Error(`a Bucket list row is ${Math.round(box.height)}px tall`);
+  }
   await la.click();
   await page.waitForTimeout(400);
   const sheet = page.getByRole("dialog", { name: /Los Angeles/ });

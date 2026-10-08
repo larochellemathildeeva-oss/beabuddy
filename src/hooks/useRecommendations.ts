@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { lastLoaded, rememberLoaded, screenGeneration } from "@/lib/screen-cache";
 import type { Database } from "@/integrations/supabase/types";
@@ -171,8 +171,12 @@ export function useRecommendations() {
   const [rows, setRows] = useState<RecoRowDB[]>(last ?? []);
   const [loading, setLoading] = useState(!last);
   const [signedIn, setSignedIn] = useState(Boolean(last));
+  // Loads can overlap (the first one and the one after a save): only the
+  // newest may set the rows, or an older answer would put a save back out.
+  const latestLoad = useRef(0);
 
   const reload = useCallback(async () => {
+    const load = ++latestLoad.current;
     const since = screenGeneration();
     const { data: session } = await supabase.auth.getSession();
     setSignedIn(!!session.session);
@@ -185,6 +189,7 @@ export function useRecommendations() {
       // A failed read is not an empty vault — keep what is already on screen
       // rather than showing none and implying every rec is gone.
       const fresh = await selectRecos();
+      if (load !== latestLoad.current) return;
       setRows(fresh);
       rememberLoaded("recommendations", fresh, since);
     } catch {

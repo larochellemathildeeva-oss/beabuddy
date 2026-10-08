@@ -19,3 +19,21 @@ test("saved places are not fetched a second time by the sign-in event a subscrip
   const source = readFileSync(new URL("../hooks/useRecommendations.ts", import.meta.url), "utf8");
   assert.match(source, /INITIAL_SESSION/, "useRecommendations reloads on INITIAL_SESSION too");
 });
+
+test("a slower, older load never replaces a newer one", () => {
+  const source = readFileSync(new URL("../hooks/useRecommendations.ts", import.meta.url), "utf8");
+  assert.match(
+    source,
+    /latestLoad\.current/,
+    "useRecommendations applies every load, even a stale one",
+  );
+});
+
+test("a closed article reader stops looking places up", () => {
+  const source = readFileSync(new URL("../components/RecoListImport.tsx", import.meta.url), "utf8");
+  assert.match(
+    source,
+    /if \(!alive\.current\) return/,
+    "RecoListImport keeps searching after it closes",
+  );
+});

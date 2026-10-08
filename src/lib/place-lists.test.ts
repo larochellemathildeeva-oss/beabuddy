@@ -3,6 +3,7 @@ import { test } from "node:test";
 import { pinLabel } from "../data/atlas.ts";
 import {
   bucketLocationGroups,
+  canPinAsBeen,
   isLocation,
   listOf,
   recsForLocation,
@@ -162,4 +163,17 @@ test("a country pin is a country even when its name and country are spelt differ
   ]);
   assert.equal(japan!.city, null);
   assert.equal(japan!.name, "Japan");
+});
+
+test("a place goes to Been there only when it has a point on the map to pin", () => {
+  assert.equal(canPinAsBeen([{ lat: 34.05, lon: -118.24 }]), true);
+  assert.equal(
+    canPinAsBeen([
+      { lat: null, lon: null },
+      { lat: 34.05, lon: -118.24 },
+    ]),
+    true,
+  );
+  assert.equal(canPinAsBeen([{ lat: null, lon: null }]), false);
+  assert.equal(canPinAsBeen([]), false);
 });

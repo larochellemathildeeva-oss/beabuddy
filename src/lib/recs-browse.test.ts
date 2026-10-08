@@ -69,6 +69,14 @@ describe("recentlySaved and listCounts", () => {
   });
   it("counts a row with no list as a recommendation", () => {
     assert.deepEqual(listCounts(rows), { reco: 2, bucket: 2, visited: 0 });
+    // Counted where they are listed: a row marked visited is Been there, whatever its list.
+    assert.deepEqual(
+      listCounts([
+        { pin_type: "wishlist", visited: true },
+        { pin_type: "reco", visited: true },
+      ]),
+      { reco: 0, bucket: 0, visited: 2 },
+    );
   });
 });
 

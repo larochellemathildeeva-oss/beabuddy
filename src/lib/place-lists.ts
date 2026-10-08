@@ -102,3 +102,13 @@ export function bucketLocationGroups<
   }
   return [...groups.values()];
 }
+
+/**
+ * Been there puts a place on the globe, which needs its point on the map: a
+ * place saved without one would leave the Bucket list and show nowhere.
+ */
+export function canPinAsBeen(
+  rows: readonly { lat?: number | null; lon?: number | null }[],
+): boolean {
+  return rows.some((r) => typeof r.lat === "number" && typeof r.lon === "number");
+}

@@ -2,6 +2,7 @@ import { generateText } from "ai";
 import { AI_CALL, searchTools, withModelFallback } from "@/lib/ai.server";
 import {
   articleCacheKey,
+  articleCacheTtl,
   articleSearchPrompt,
   keepSourcedArticles,
   readArticles,
@@ -11,10 +12,10 @@ import { readSearchGrounding, type SearchGrounding } from "@/lib/search-groundin
 
 export type ArticleSearch = { articles: FoundArticle[]; grounding: SearchGrounding | null };
 
-// A week per place: the same city asked again by anyone costs nothing.
-const TTL_MS = 7 * 24 * 60 * 60 * 1000;
+// A week per place (an hour when nothing was found): the same place asked
+// again by anyone costs nothing (articleCacheTtl).
 const MAX_ENTRIES = 200;
-const cache = new Map<string, { at: number; found: ArticleSearch }>();
+const cache = new Map<string, { until: number; found: ArticleSearch }>();
 
 /** Whether Béa can search the web at all (GEMINI_SEARCH_GROUNDING). */
 export function articleSearchAvailable(): boolean {
@@ -24,7 +25,7 @@ export function articleSearchAvailable(): boolean {
 /** A cached answer for this place, or null. Asking the cache costs nothing. */
 export function cachedArticles(city: string | null, country: string | null): ArticleSearch | null {
   const hit = cache.get(articleCacheKey(city, country));
-  return hit && Date.now() - hit.at < TTL_MS ? hit.found : null;
+  return hit && Date.now() < hit.until ? hit.found : null;
 }
 
 /** Searches the web for articles about the place. Throws when the search fails. */
@@ -49,9 +50,10 @@ export async function searchArticles(
     articles: keepSourcedArticles(readArticles(result.text), grounding?.sources ?? []),
     grounding,
   };
-  if (found.articles.length > 0) {
-    if (cache.size >= MAX_ENTRIES) cache.delete(cache.keys().next().value!);
-    cache.set(articleCacheKey(city, country), { at: Date.now(), found });
-  }
+  if (cache.size >= MAX_ENTRIES) cache.delete(cache.keys().next().value!);
+  cache.set(articleCacheKey(city, country), {
+    until: Date.now() + articleCacheTtl(found.articles.length),
+    found,
+  });
   return found;
 }

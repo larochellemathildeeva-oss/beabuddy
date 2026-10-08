@@ -163,6 +163,14 @@ export function RecoListImport({
     });
   };
 
+  // Closed (the location sheet shut mid-read): no more map lookups or updates.
+  const alive = useRef(true);
+  useEffect(
+    () => () => {
+      alive.current = false;
+    },
+    [],
+  );
   // An article Béa found is read as soon as the reader opens, once.
   const autoRead = useRef(false);
   useEffect(() => {
@@ -176,6 +184,7 @@ export function RecoListImport({
     const next = [...rows];
     let mapCalls = 0;
     for (let i = 0; i < next.length; i++) {
+      if (!alive.current) return;
       const row = next[i];
       if (!row || row.query.length < 2) {
         next[i] = { ...row!, status: "empty" };

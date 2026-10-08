@@ -3,6 +3,7 @@
  * place is, how its type reads, and what "recently saved" and a collection's
  * count mean. Pure, so the landing, Explore nearby and the saved list agree.
  */
+import { listOf } from "./place-lists.ts";
 import { recMapsUrl } from "./reco-open.ts";
 
 export const BROWSE_KINDS = ["Restaurants", "Cafés", "Things to do", "Stays", "More"] as const;
@@ -162,12 +163,14 @@ export function recentlySaved<T extends { created_at: string }>(
 
 /** How many saves each list holds; a row with no list is a recommendation. */
 export function listCounts(
-  rows: readonly { pin_type: string | null }[],
+  rows: readonly { pin_type: string | null; visited?: boolean | null }[],
 ): Record<"reco" | "bucket" | "visited", number> {
   const out = { reco: 0, bucket: 0, visited: 0 };
+  // Counted where the lists show them (listOf): a row marked visited is Been there.
   for (const r of rows) {
-    if (r.pin_type === "visited") out.visited += 1;
-    else if (r.pin_type === "wishlist" || r.pin_type === "nexttime") out.bucket += 1;
+    const list = listOf(r);
+    if (list === "been") out.visited += 1;
+    else if (list === "bucket") out.bucket += 1;
     else out.reco += 1;
   }
   return out;

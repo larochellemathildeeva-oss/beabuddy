@@ -64,7 +64,7 @@ import {
 import { countryWorldShare } from "@/lib/travel-stats";
 import { continentOf, visitedContinents } from "@/lib/continents";
 import { isCityLevelPlace } from "@/lib/reco-place";
-import { bucketLocationGroups, isLocation, recsForLocation } from "@/lib/place-lists";
+import { bucketLocationGroups, canPinAsBeen, isLocation, recsForLocation } from "@/lib/place-lists";
 import { LocationSheet, type SheetLocation } from "@/components/world/LocationSheet";
 import { ConfirmSheet } from "@/components/ConfirmSheet";
 import { FindRecs } from "@/components/world/FindRecs";
@@ -847,7 +847,12 @@ function WorldPage() {
               />
             )}
             actions={
-              openLocation.rows?.length ? (
+              openLocation.rows?.length && !canPinAsBeen(openLocation.rows) ? (
+                <p className="text-[14px] text-muted-foreground">
+                  To put {openLocation.name} on your globe, add it with Add a destination: Béa needs
+                  its place on the map.
+                </p>
+              ) : openLocation.rows?.length ? (
                 <button
                   type="button"
                   disabled={rowBusy === openLocation.rows[0]?.id}
@@ -1359,7 +1364,11 @@ function PlaceRow({
           className="art-dim h-[60px] w-[84px] shrink-0 rounded-xl object-cover"
         />
         {onOpen ? (
-          <button type="button" onClick={onOpen} className="flex min-w-0 flex-1 text-left">
+          <button
+            type="button"
+            onClick={onOpen}
+            className="flex min-h-12 min-w-0 flex-1 items-center self-stretch text-left"
+          >
             {text}
           </button>
         ) : (
