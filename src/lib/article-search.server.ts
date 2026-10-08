@@ -3,6 +3,7 @@ import { AI_CALL, searchTools, withModelFallback } from "@/lib/ai.server";
 import {
   articleCacheKey,
   articleSearchPrompt,
+  keepSourcedArticles,
   readArticles,
   type FoundArticle,
 } from "@/lib/article-search";
@@ -42,9 +43,11 @@ export async function searchArticles(
       prompt: articleSearchPrompt(city, country),
     }),
   );
+  const grounding = readSearchGrounding(result.providerMetadata);
   const found = {
-    articles: readArticles(result.text),
-    grounding: readSearchGrounding(result.providerMetadata),
+    // Only sites the search really returned: a written link can be made up.
+    articles: keepSourcedArticles(readArticles(result.text), grounding?.sources ?? []),
+    grounding,
   };
   if (found.articles.length > 0) {
     if (cache.size >= MAX_ENTRIES) cache.delete(cache.keys().next().value!);

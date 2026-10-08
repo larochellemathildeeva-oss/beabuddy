@@ -49,3 +49,26 @@ export function readArticles(text: string): FoundArticle[] {
   }
   return out;
 }
+
+/**
+ * The articles whose site the search actually returned. A grounded answer can
+ * still write a plausible link that does not exist; Google's sources name the
+ * sites it really read (their links are redirects, their titles the domains).
+ */
+export function keepSourcedArticles(
+  articles: readonly FoundArticle[],
+  sources: readonly { title: string; url: string }[],
+): FoundArticle[] {
+  const domains = sources
+    .map((s) =>
+      s.title
+        .trim()
+        .toLowerCase()
+        .replace(/^www\./, ""),
+    )
+    .filter((d) => d.includes("."));
+  return articles.filter((article) => {
+    const host = new URL(article.url).hostname.toLowerCase().replace(/^www\./, "");
+    return domains.some((d) => host === d || host.endsWith(`.${d}`));
+  });
+}

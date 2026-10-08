@@ -8,9 +8,9 @@
  * location shows the recs saved for it.
  */
 import type { PinType } from "../data/atlas.ts";
-import { countryKey } from "./country-names.ts";
+import { countryDisplayName, countryKey } from "./country-names.ts";
 import { foldAccents } from "./fuzzy.ts";
-import { isLocation, type RecoPlaceFields } from "./reco-place.ts";
+import { isCountryLevelPlace, isLocation, type RecoPlaceFields } from "./reco-place.ts";
 
 export { isLocation };
 
@@ -49,7 +49,9 @@ export function recsForLocation<T extends RecoPlaceFields>(
   if (city) {
     return rows.filter((row) => {
       if (cityKey(row.city) !== city) return false;
-      if (!location.country?.trim()) return !row.country?.trim();
+      // A city saved with no country matches on the city alone; one with a
+      // country never claims a rec without one (it could be a namesake).
+      if (!location.country?.trim()) return true;
       return sameCountry(row.country, location.country);
     });
   }
@@ -62,4 +64,41 @@ export function recsForLocation<T extends RecoPlaceFields>(
   return rows.filter(
     (row) => sameCountry(row.country, location.country) && !savedCities.has(cityKey(row.city)),
   );
+}
+
+export type LocationGroup<T> = {
+  key: string;
+  name: string;
+  /** Null for a country. */
+  city: string | null;
+  country: string | null;
+  rows: T[];
+};
+
+/**
+ * World's Bucket list: every location not yet been to (Bucket list, or saved
+ * as a plain recommendation, which no other screen shows), one entry per
+ * place however many times or spellings it was saved.
+ */
+export function bucketLocationGroups<
+  T extends RecoPlaceFields & { pin_type: string | null; visited?: boolean | null },
+>(rows: readonly T[]): LocationGroup<T>[] {
+  const groups = new Map<string, LocationGroup<T>>();
+  for (const row of rows) {
+    if (listOf(row) === "been" || !isLocation(row)) continue;
+    const isCountry = isCountryLevelPlace(row);
+    const country = row.country?.trim() || (isCountry ? row.name : null);
+    const city = isCountry ? null : row.city?.split(",")[0]?.trim() || row.name.trim();
+    const key = isCountry
+      ? `c:${countryKey(country)}`
+      : `t:${cityKey(city)}|${countryKey(country)}`;
+    const group = groups.get(key);
+    if (group) {
+      group.rows.push(row);
+      continue;
+    }
+    const name = isCountry ? countryDisplayName(row.name) || row.name : (city ?? row.name);
+    groups.set(key, { key, name, city, country, rows: [row] });
+  }
+  return [...groups.values()];
 }

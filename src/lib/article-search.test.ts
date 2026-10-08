@@ -1,6 +1,11 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
-import { articleCacheKey, articleSearchPrompt, readArticles } from "./article-search.ts";
+import {
+  articleCacheKey,
+  articleSearchPrompt,
+  keepSourcedArticles,
+  readArticles,
+} from "./article-search.ts";
 import { AI_COST } from "./ai-quota.ts";
 
 test("one cache entry per city and country, whatever the spelling", () => {
@@ -45,4 +50,24 @@ test("the search names only the city and country", () => {
 
 test("finding articles costs 2 units", () => {
   assert.equal(AI_COST.articleSearch, 2);
+});
+
+test("only articles from sites the search actually found are offered", () => {
+  const articles = [
+    { title: "Real", url: "https://www.timeout.com/los-angeles/best" },
+    { title: "Made up", url: "https://la-guide.example/top-10" },
+    { title: "Subdomain", url: "https://la.eater.com/maps/best" },
+  ];
+  const sources = [
+    {
+      title: "timeout.com",
+      url: "https://vertexaisearch.cloud.google.com/grounding-api-redirect/a",
+    },
+    { title: "eater.com", url: "https://vertexaisearch.cloud.google.com/grounding-api-redirect/b" },
+  ];
+  assert.deepEqual(
+    keepSourcedArticles(articles, sources).map((a) => a.title),
+    ["Real", "Subdomain"],
+  );
+  assert.deepEqual(keepSourcedArticles(articles, []), []);
 });

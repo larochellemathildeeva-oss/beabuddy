@@ -245,7 +245,7 @@ export const guides: Record<string, Guide> = {
       "The + at the top: add by hand, paste a list, send or open a share",
       "Jump to Restaurants, Cafés, Things to do or Stays",
       "Explore nearby: a map of what's around you, to pin and save",
-      "Browse your collections: Recommendations, Wishlist, Next time",
+      "Browse your collections: Recommendations, Bucket list, Been there",
       "Search and filter everything you saved by city and type",
       "Send places to a friend, or open a share someone sent you",
     ],
@@ -287,7 +287,7 @@ export const guides: Record<string, Guide> = {
       },
       {
         title: "Your vault",
-        body: "Your collections — Recommendations, Wishlist, Next time — and what you saved most recently. Open one to see who recommended it, the note you left, and the travel tags Béa guessed.",
+        body: "Your collections — Recommendations, Bucket list, Been there — and what you saved most recently. Open one to see who recommended it, the note you left, and the travel tags Béa guessed.",
         selector: "[data-guide='reco-list']",
       },
     ],

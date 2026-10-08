@@ -85,10 +85,9 @@ function Capture() {
 
 function Vault() {
   const kinds = [
-    { label: "Visited", tone: "bg-visited" },
-    { label: "Next time", tone: "bg-nexttime" },
-    { label: "Wishlist", tone: "bg-wishlist" },
     { label: "Recommendation", tone: "bg-reco" },
+    { label: "Bucket list", tone: "bg-wishlist" },
+    { label: "Been there", tone: "bg-visited" },
   ];
   return (
     <div className="flex h-[168px] w-full flex-col justify-center gap-2">

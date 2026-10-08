@@ -1,7 +1,13 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
 import { pinLabel } from "../data/atlas.ts";
-import { isLocation, listOf, recsForLocation, SAVE_LISTS } from "./place-lists.ts";
+import {
+  bucketLocationGroups,
+  isLocation,
+  listOf,
+  recsForLocation,
+  SAVE_LISTS,
+} from "./place-lists.ts";
 
 test("Wishlist and Next time are one Bucket list; visited is Been there", () => {
   assert.equal(listOf({ pin_type: "wishlist" }), "bucket");
@@ -83,10 +89,18 @@ test("a country counts recs in cities that are not saved locations themselves", 
   );
 });
 
-test("a rec with no country matches a city only when the location has none either", () => {
-  const rows = [rec("Somewhere", "Springfield", null)];
-  assert.equal(recsForLocation({ city: "Springfield", country: "USA" }, rows, []).length, 0);
+test("a city saved with no country matches its recs on the city alone", () => {
+  const rows = [
+    rec("Time Out Market", "Lisbon", "Portugal"),
+    rec("Somewhere", "Springfield", null),
+  ];
+  assert.deepEqual(
+    recsForLocation({ city: "Lisbon", country: null }, rows, []).map((r) => r.name),
+    ["Time Out Market"],
+  );
   assert.equal(recsForLocation({ city: "Springfield", country: null }, rows, []).length, 1);
+  // A rec with no country is not claimed by a city that has one: it could be a namesake.
+  assert.equal(recsForLocation({ city: "Springfield", country: "USA" }, rows, []).length, 0);
 });
 
 test("the shown names are Recommendation, Bucket list and Been there", () => {
@@ -96,4 +110,56 @@ test("the shown names are Recommendation, Bucket list and Been there", () => {
     nexttime: "Bucket list",
     visited: "Been there",
   });
+});
+
+const loc = (id: string, over: Record<string, unknown>) => ({
+  id,
+  name: "",
+  city: null as string | null,
+  country: null as string | null,
+  category: "City",
+  pin_type: "wishlist" as string | null,
+  visited: false,
+  ...over,
+});
+
+test("the same city saved twice in two spellings is one Bucket list location", () => {
+  const groups = bucketLocationGroups([
+    loc("a", { name: "Los Ángeles", city: "Los Ángeles", country: "USA" }),
+    loc("b", {
+      name: "Los Angeles",
+      city: "Los Angeles",
+      country: "United States",
+      pin_type: "nexttime",
+    }),
+  ]);
+  assert.equal(groups.length, 1);
+  assert.deepEqual(
+    groups[0]!.rows.map((r) => r.id),
+    ["a", "b"],
+  );
+});
+
+test("a location saved as a recommendation is on the Bucket list; been there and recs are not", () => {
+  const groups = bucketLocationGroups([
+    loc("city", { name: "Santa Monica", city: "Santa Monica", country: "USA", pin_type: "reco" }),
+    loc("none", {
+      name: "Japan",
+      city: "Japan",
+      country: "Japan",
+      category: "Country",
+      pin_type: null,
+    }),
+    loc("been", { name: "Paris", city: "Paris", country: "France", pin_type: "visited" }),
+    loc("food", { name: "Bestia", city: "Los Angeles", country: "USA", category: "Food" }),
+  ]);
+  assert.deepEqual(groups.map((g) => g.rows[0]!.id).sort(), ["city", "none"]);
+});
+
+test("a country pin is a country even when its name and country are spelt differently", () => {
+  const [japan] = bucketLocationGroups([
+    loc("j", { name: "Japan", city: "Japan", country: "日本", category: "Country" }),
+  ]);
+  assert.equal(japan!.city, null);
+  assert.equal(japan!.name, "Japan");
 });

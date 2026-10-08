@@ -64,7 +64,7 @@ import {
 import { countryWorldShare } from "@/lib/travel-stats";
 import { continentOf, visitedContinents } from "@/lib/continents";
 import { isCityLevelPlace } from "@/lib/reco-place";
-import { isLocation, listOf, recsForLocation } from "@/lib/place-lists";
+import { bucketLocationGroups, isLocation, recsForLocation } from "@/lib/place-lists";
 import { LocationSheet, type SheetLocation } from "@/components/world/LocationSheet";
 import { ConfirmSheet } from "@/components/ConfirmSheet";
 import { FindRecs } from "@/components/world/FindRecs";
@@ -217,16 +217,13 @@ function WorldPage() {
   // The saved lists, from the same recommendations Recs keeps. World shows the
   // locations (cities, countries); every other save is a rec, counted under the
   // location it is in (place-lists.ts).
-  const bucketLocations = useMemo(
-    () => vault.rows.filter((r) => listOf(r) === "bucket" && isLocation(r)),
-    [vault.rows],
-  );
+  const bucketLocations = useMemo(() => bucketLocationGroups(vault.rows), [vault.rows]);
   const recRows = useMemo(() => vault.rows.filter((r) => !isLocation(r)), [vault.rows]);
   const locationRows = useMemo(() => vault.rows.filter((r) => isLocation(r)), [vault.rows]);
   const recsFor = (where: { city: string | null; country: string | null }) =>
     recsForLocation(where, recRows, locationRows);
   const recsLine = (n: number) => (n > 0 ? plural(n, "rec", "recs") : "");
-  const [openLocation, setOpenLocation] = useState<(SheetLocation & { row?: RecoRowDB }) | null>(
+  const [openLocation, setOpenLocation] = useState<(SheetLocation & { rows?: RecoRowDB[] }) | null>(
     null,
   );
   const [confirmBeen, setConfirmBeen] = useState(false);
@@ -342,10 +339,11 @@ function WorldPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query, byCountry]);
 
-  const markBeen = async (row: RecoRowDB) => {
-    setRowBusy(row.id);
+  const markBeen = async (rows: RecoRowDB[]) => {
+    setRowBusy(rows[0]?.id ?? null);
     try {
-      await vault.update(row.id, { pin_type: "visited" });
+      // Every row saved for the place, so it does not stay on the Bucket list.
+      for (const row of rows) await vault.update(row.id, { pin_type: "visited" });
     } finally {
       setRowBusy(null);
       setOpenLocation(null);
@@ -524,14 +522,10 @@ function WorldPage() {
 
   // "Right now there": the first bucket-list place Béa can put on the map.
   const nowPlace = useMemo(() => {
-    for (const row of bucketLocations) {
-      if (typeof row.lat === "number" && typeof row.lon === "number")
-        return {
-          name: row.city?.trim() || row.name,
-          country: row.country,
-          lat: row.lat,
-          lon: row.lon,
-        };
+    for (const place of bucketLocations) {
+      const row = place.rows.find((r) => typeof r.lat === "number" && typeof r.lon === "number");
+      if (row && typeof row.lat === "number" && typeof row.lon === "number")
+        return { name: place.name, country: place.country, lat: row.lat, lon: row.lon };
     }
     return null;
   }, [bucketLocations]);
@@ -853,14 +847,16 @@ function WorldPage() {
               />
             )}
             actions={
-              openLocation.row && listOf(openLocation.row) === "bucket" ? (
+              openLocation.rows?.length ? (
                 <button
                   type="button"
-                  disabled={rowBusy === openLocation.row.id}
+                  disabled={rowBusy === openLocation.rows[0]?.id}
                   onClick={() => setConfirmBeen(true)}
                   className="min-h-12 w-full rounded-[var(--r-button)] border border-[var(--field-border)] px-4 text-[16px] font-semibold disabled:opacity-50"
                 >
-                  {rowBusy === openLocation.row.id ? "Moving…" : "Been there — put it on my globe"}
+                  {rowBusy === openLocation.rows[0]?.id
+                    ? "Moving…"
+                    : "Been there — put it on my globe"}
                 </button>
               ) : null
             }
@@ -874,7 +870,7 @@ function WorldPage() {
           confirmLabel="Move to Been there"
           onConfirm={() => {
             setConfirmBeen(false);
-            if (openLocation?.row) void markBeen(openLocation.row);
+            if (openLocation?.rows?.length) void markBeen(openLocation.rows);
           }}
         />
 
@@ -924,21 +920,21 @@ function WorldPage() {
                 </div>
               ) : (
                 <ul className="plain-card divide-y divide-border overflow-visible">
-                  {bucketLocations.map((row, i) => {
-                    const isCountry = !row.city?.trim() || row.name === row.country;
-                    const name = isCountry
-                      ? countryDisplayName(row.country ?? row.name) || row.name
-                      : row.city?.split(",")[0]?.trim() || row.name;
-                    const where = { city: isCountry ? null : name, country: row.country };
+                  {bucketLocations.map((place, i) => {
+                    const where = { city: place.city, country: place.country };
                     const recs = recsFor(where);
                     return (
                       <PlaceRow
-                        key={row.id}
-                        picture={bannerArtUrl(bannerSceneFor([name, row.country ?? ""], name))}
-                        title={name}
-                        sub={isCountry ? "" : countryDisplayName(row.country) || ""}
+                        key={place.key}
+                        picture={bannerArtUrl(
+                          bannerSceneFor([place.name, place.country ?? ""], place.name),
+                        )}
+                        title={place.name}
+                        sub={place.city ? countryDisplayName(place.country) || "" : ""}
                         count={recsLine(recs.length)}
-                        onOpen={() => setOpenLocation({ name, ...where, row })}
+                        onOpen={() =>
+                          setOpenLocation({ name: place.name, ...where, rows: place.rows })
+                        }
                         pin={
                           <MapPin
                             className={`seq-text-${(i % 5) + 1} size-6`}
