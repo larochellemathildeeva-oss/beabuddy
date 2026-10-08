@@ -3,6 +3,7 @@ import {
   writeTripDraft,
   forgetTripDraft,
   hasTripDraftInput,
+  tripDraftFingerprint,
   type TripDraft,
 } from "@/lib/trip-draft";
 import { tripsView, type TripsView } from "@/lib/trips-view";
@@ -178,6 +179,7 @@ function TripsPage() {
     search.plan === "build" || search.plan === "import" ? search.plan : draftContext.plan;
   const activeAsk = search.ask ?? draftContext.ask;
   const recoveryDraft = useRef<TripDraft | null>(null);
+  const lastSavedDraft = useRef<string | null>(null);
   const activeAccount = useRef(user?.id);
   activeAccount.current = user?.id;
   useEffect(() => {
@@ -196,6 +198,7 @@ function TripsPage() {
         /* blocked storage */
       }
     }
+    lastSavedDraft.current = draft ? tripDraftFingerprint(draft) : null;
     setForm(
       draft?.form ?? {
         title: "",
@@ -241,13 +244,18 @@ function TripsPage() {
       ...(activePlan ? { plan: activePlan } : {}),
       ...(activeAsk ? { ask: activeAsk } : {}),
     };
+    const fingerprint = tripDraftFingerprint(draft);
+    if (fingerprint === lastSavedDraft.current) return;
     try {
       if (hasTripDraftInput(draft)) {
-        if (!writeTripDraft(window.localStorage, uid, draft))
+        if (!writeTripDraft(window.localStorage, uid, draft)) {
           setDraftNotice(
             "This browser cannot keep the draft. Keep this page open until the trip is saved.",
           );
+          return;
+        }
       } else forgetTripDraft(window.localStorage, uid);
+      lastSavedDraft.current = fingerprint;
     } catch {
       setDraftNotice(
         "This browser cannot keep the draft. Keep this page open until the trip is saved.",
@@ -894,6 +902,16 @@ function TripsPage() {
               <summary className="flex min-h-12 cursor-pointer items-center font-semibold text-primary">
                 Recovery options
               </summary>
+              {recoveryDraft.current?.attempt &&
+                t.trips.some((trip) => trip.id === recoveryDraft.current?.attempt?.tripId) && (
+                  <Link
+                    to="/trips/$tripId"
+                    params={{ tripId: recoveryDraft.current.attempt.tripId }}
+                    className="flex min-h-12 items-center font-semibold text-primary"
+                  >
+                    Open the saved trip
+                  </Link>
+                )}
               <p>
                 Some parts may already be saved in Trips. Discarding local recovery details does not
                 delete those parts. Retry finishes the original trip; starting again creates a
@@ -984,17 +1002,23 @@ function TripsPage() {
                       : {}),
                   },
                 };
-                recoveryDraft.current = snapshot;
+                let stored = false;
                 try {
-                  if (!writeTripDraft(window.localStorage, uid, snapshot))
-                    setDraftNotice(
-                      "This browser cannot keep recovery details. Keep this page open until the trip is saved.",
-                    );
+                  stored = writeTripDraft(window.localStorage, uid, snapshot);
                 } catch {
-                  setDraftNotice(
-                    "This browser cannot keep recovery details. Keep this page open until the trip is saved.",
-                  );
+                  /* blocked storage */
                 }
+                if (!stored) {
+                  recoveryDraft.current = null;
+                  saving.current = false;
+                  setSaveBusy(false);
+                  setCreateLocked(false);
+                  setError(
+                    "Béa has not started creating this trip because this browser could not save its recovery details. Free some browser storage and try again.",
+                  );
+                  return;
+                }
+                recoveryDraft.current = snapshot;
               }
               const snapshot = recoveryDraft.current;
               const attempt = (createAttempt.current ??= new SaveAttempt());

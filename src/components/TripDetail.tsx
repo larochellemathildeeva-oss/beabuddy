@@ -1174,6 +1174,13 @@ export function TripDetail({
   useEffect(() => {
     if (perspective !== "companion") setAllDaysPicked(false);
   }, [perspective]);
+  const pickDayManually = useCallback(
+    (day: DayChoice) => {
+      setAllDaysPicked(perspective === "companion" && day === ALL_DAYS);
+      setDayChoiceValue(day);
+    },
+    [perspective],
+  );
   const activePerspective = TRIP_PERSPECTIVES.find((p) => p.id === perspective)!;
 
   // The last tab and day for this trip, kept on this device so a refresh or
@@ -1381,7 +1388,7 @@ export function TripDetail({
     return dates ? `${name} (${dates})` : name;
   };
   // Swipe the Companion view sideways to change day.
-  const stepDay = useDayStepper(chips, chosenDay, setDayChoice);
+  const stepDay = useDayStepper(chips, chosenDay, pickDayManually);
   const daySwipe = useDaySwipe(stepDay);
   const ordinalFor = (key: string) => chips.find((chip) => chip.key === key)?.ordinal ?? "";
   const datedDayCount = chips.filter((chip) => chip.key).length;
@@ -1738,14 +1745,7 @@ export function TripDetail({
                 )}
                 {offerDays ? (
                   <div className="min-w-0 flex-1">
-                    <DayCards
-                      chips={chips}
-                      value={chosenDay}
-                      onChange={(day) => {
-                        setAllDaysPicked(perspective === "companion" && day === ALL_DAYS);
-                        setDayChoiceValue(day);
-                      }}
-                    />
+                    <DayCards chips={chips} value={chosenDay} onChange={pickDayManually} />
                   </div>
                 ) : null}
               </div>
@@ -1820,7 +1820,7 @@ export function TripDetail({
         )}
 
         {perspective === "companion" && (
-          <div className="space-y-3" {...(offerDays ? daySwipe : {})}>
+          <div data-guide="trip-companion" className="space-y-3" {...(offerDays ? daySwipe : {})}>
             {nowStops.length > 0 && companionDay ? (
               <>
                 <p className="now-day-line">

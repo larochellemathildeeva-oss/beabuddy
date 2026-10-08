@@ -58,6 +58,19 @@ trip collaboration, budget, documents, offline tools and all three themes.
   wider screens keep the range calendar with 48px days/month navigation. The
   range can still be cleared, confirmed or reduced to a single day.
 
+## Follow-up: PR #307 review
+
+- A creation attempt must persist its recovery snapshot before any server write.
+  Storage failure leaves the form editable and starts no trip, so an older draft
+  cannot silently create a duplicate after refresh.
+- Date status and multi-city mode count as edits on their own. Restoring an
+  unchanged draft does not extend its seven-day expiry.
+- Companion swipes and day-picker taps share the explicit All days behavior.
+- Reconciled city rows with missing coordinates are still sent to background
+  pinning after a lost response. A failed city save refreshes the saved trip
+  list, allowing Recovery options to open the confirmed trip without another
+  creation. Recovery details remain available for retry.
+
 These changes address all six inline findings on PR #306. They do not make
 multi-table creation atomic. Other entry points, import review payloads,
 documents and cross-device drafts are not made durable by this batch. Losing
@@ -116,5 +129,6 @@ undated, long-title, guest and populated trip states and theme checks. The previ
 default, follows Appearance to reach customization, and filters standalone
 checks consistently when a single flow is requested. Browser
 fixtures do not establish live Supabase configuration, cross-device behavior or
-screen-reader conformance. Publish a PR for review; do not merge or deploy as part
-of the audit. No package version changes or database migration in this change.
+screen-reader conformance. Publish a PR for review and merge after fixes and required checks pass, as
+authorized by the owner. Canner deploys from main; verify the deployed result
+separately. No package version changes or database migration in this change.

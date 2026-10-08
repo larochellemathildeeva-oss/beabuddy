@@ -463,26 +463,39 @@ export function useTrips() {
           const ids = t.recovery.stopIds;
           if (ids.length !== stopRows.length)
             throw new Error("The saved trip needs its original cities.");
-          await recoverableInsert(
-            stopRows.map((row, i) => ({ ...row, id: ids[i]! })),
-            async () => {
-              const result = await supabase
-                .from("trip_stops")
-                .select("id")
-                .eq("trip_id", created.id)
-                .in("id", ids);
-              if (result.error) throw result.error;
-              return result.data;
-            },
-            async (missing) => {
-              const result = await supabase
-                .from("trip_stops")
-                .insert(missing)
-                .select("id, city, country, lat, lon");
-              if (result.error) throw result.error;
-              saved = result.data;
-            },
-          );
+          try {
+            await recoverableInsert(
+              stopRows.map((row, i) => ({ ...row, id: ids[i]! })),
+              async () => {
+                const result = await supabase
+                  .from("trip_stops")
+                  .select("id")
+                  .eq("trip_id", created.id)
+                  .in("id", ids);
+                if (result.error) throw result.error;
+                return result.data;
+              },
+              async (missing) => {
+                const result = await supabase
+                  .from("trip_stops")
+                  .insert(missing)
+                  .select("id, city, country, lat, lon");
+                if (result.error) throw result.error;
+                saved = result.data;
+              },
+            );
+            const recovered = await supabase
+              .from("trip_stops")
+              .select("id, city, country, lat, lon")
+              .eq("trip_id", created.id)
+              .in("id", ids);
+            if (recovered.error) throw recovered.error;
+            saved = recovered.data.filter((stop) => stop.lat === null || stop.lon === null);
+          } catch (failure) {
+            // The trip itself is confirmed: expose it even when cities failed.
+            await load();
+            throw failure;
+          }
         } else {
           const result = await supabase
             .from("trip_stops")
@@ -494,8 +507,8 @@ export function useTrips() {
         // A city typed rather than picked is found on the map by its name,
         // in the background: the trip opens without waiting for it.
         if (saved) void pinCityStops(saved);
-        // The trip is made either way, so open it and say what is missing
-        // rather than report the whole trip as failed.
+        // Legacy callers without recovery keep the soft failure. The new-trip
+        // sheet keeps its recovery record and offers retry or Open the saved trip.
         if (error)
           toast.error(
             "The trip is made, but its cities didn't save. Add them in Settings → Cities on this trip.",

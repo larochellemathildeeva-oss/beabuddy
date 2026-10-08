@@ -63,6 +63,7 @@ await build({
     "@/lib/geocode-plan.functions": join(src, "fake-geocode-plan.ts"),
     "@/lib/place-details.functions": join(src, "fake-place-details.ts"),
     "@/lib/weather.functions": join(src, "fake-weather.ts"),
+    "@/lib/city-locate": join(src, "fake-city-locate.ts"),
     "node:net": join(src, "fake-node.ts"),
     "node:dns/promises": join(src, "fake-node.ts"),
   },
@@ -534,6 +535,73 @@ await flow("trips: city removal and day-trip actions have 48px targets", async (
   rect = await page.getByRole("button",{name:"Remove this day trip",exact:true}).boundingBox();
   if (rect.width < 48 || rect.height < 48) throw new Error("Day-trip removal is under 48px");
 }, "trips");
+
+await flow("trips: storage failure prevents creation and preserves an editable draft", async (page) => {
+  await page.getByRole("button",{name:"New trip",exact:true}).click();
+  await page.getByLabel("Trip name",{exact:true}).fill("Storage failure trip");
+  await page.waitForFunction(() => JSON.parse(localStorage.getItem("bea.trip-draft.me") ?? "null")?.draft.form.title === "Storage failure trip");
+  await page.evaluate(() => {
+    const original = Storage.prototype.setItem;
+    Storage.prototype.setItem = function(key,value) {
+      if (key === "bea.trip-draft.me" && JSON.parse(value).draft.attempt) throw new DOMException("Full","QuotaExceededError");
+      return original.call(this,key,value);
+    };
+  });
+  await page.getByRole("button",{name:"Create trip",exact:true}).click();
+  await page.getByRole("alert").filter({hasText:/has not started creating/}).waitFor();
+  if ((await writes(page)).some(w => w.table === "trips" && w.op === "insert")) throw new Error("Server writes started without a stored attempt");
+  await page.reload({waitUntil:"domcontentloaded",timeout:30000});
+  await page.getByRole("button",{name:"New trip",exact:true}).click();
+  if (await page.getByLabel("Trip name",{exact:true}).inputValue() !== "Storage failure trip") throw new Error("Failed snapshot erased editable input");
+  await page.getByRole("button",{name:"Create trip",exact:true}).click();
+  await page.waitForFunction(() => localStorage.getItem("bea.trip-draft.me") === null);
+  if ((await writes(page)).filter(w => w.table === "trips" && w.op === "insert").length !== 1) throw new Error("Reload created more than one trip");
+},"trips");
+
+await flow("trips: untouched draft expiry and standalone choices survive reload", async (page) => {
+  await page.getByRole("button",{name:"New trip",exact:true}).click();
+  await page.getByRole("button",{name:"Confirmed dates",exact:true}).click();
+  await page.waitForFunction(() => JSON.parse(localStorage.getItem("bea.trip-draft.me") ?? "null")?.draft.form.dates_status === "confirmed");
+  const first = await page.evaluate(() => localStorage.getItem("bea.trip-draft.me"));
+  await page.reload({waitUntil:"domcontentloaded",timeout:30000});
+  await page.getByRole("button",{name:"New trip",exact:true}).click();
+  if (await page.evaluate(() => localStorage.getItem("bea.trip-draft.me")) !== first) throw new Error("Opening extended draft expiry");
+  await page.getByRole("radio",{name:"Several cities",exact:true}).click();
+  await page.waitForFunction(() => JSON.parse(localStorage.getItem("bea.trip-draft.me") ?? "null")?.draft.multiCity === true);
+  const second = await page.evaluate(() => localStorage.getItem("bea.trip-draft.me"));
+  await page.reload({waitUntil:"domcontentloaded",timeout:30000});
+  await page.getByRole("button",{name:"New trip",exact:true}).click();
+  if (await page.getByRole("radio",{name:"Several cities",exact:true}).getAttribute("aria-checked") !== "true") throw new Error("Reload lost multi-city mode");
+  if (await page.evaluate(() => localStorage.getItem("bea.trip-draft.me")) !== second) throw new Error("Restoring mode extended expiry");
+},"trips");
+
+await flow("trips: failed cities still allow opening the saved trip", async (page) => {
+  await page.getByRole("button",{name:"New trip",exact:true}).click();
+  await page.getByLabel("Trip name",{exact:true}).fill("Saved trip, pending cities");
+  await page.getByRole("radio",{name:"Several cities",exact:true}).click();
+  await page.getByPlaceholder("City 1 — search it").fill("Kyoto");
+  await page.getByPlaceholder("City 2 — search it").fill("Tokyo");
+  await page.evaluate(() => {window.__failNextWrite = {table:"trip_stops",afterCommit:false};});
+  await page.getByRole("button",{name:"Create trip",exact:true}).click();
+  await page.getByText("Recovery options",{exact:true}).click();
+  const tripId = await page.evaluate(() => JSON.parse(localStorage.getItem("bea.trip-draft.me")).draft.attempt.tripId);
+  if (await page.getByRole("link",{name:"Open the saved trip",exact:true}).getAttribute("href") !== `/trips/${tripId}`) throw new Error("Recovery link does not open the confirmed trip");
+  if ((await writes(page)).filter(w => w.table === "trips" && w.op === "insert").length !== 1) throw new Error("Opening recovery duplicated the trip");
+},"trips");
+
+await flow("trips: recovered city rows still receive background pinning", async (page) => {
+  await page.getByRole("button",{name:"New trip",exact:true}).click();
+  await page.getByLabel("Trip name",{exact:true}).fill("Recovered cities");
+  await page.getByRole("radio",{name:"Several cities",exact:true}).click();
+  await page.getByPlaceholder("City 1 — search it").fill("Kyoto");
+  await page.getByPlaceholder("City 2 — search it").fill("Tokyo");
+  await page.evaluate(() => {window.__failNextWrite = {table:"trip_stops",afterCommit:true};});
+  await page.getByRole("button",{name:"Create trip",exact:true}).click();
+  await page.waitForFunction(() => window.__cityPins?.some(rows => rows.some(row => row.city === "Kyoto")));
+  const requests = await page.evaluate(() => window.__cityPins.flat());
+  if (!requests.some(row => row.city === "Tokyo" && row.lat === null)) throw new Error("Committed city omitted from background pinning");
+  if ((await writes(page)).filter(w => w.table === "trip_stops" && w.op === "insert").length !== 1) throw new Error("Recovery repeated a committed city insert");
+},"trips");
 
 await flow("home: trip ahead keeps its map, stats, search and ideas", async (page) => {
   const text = () => page.evaluate(() => document.body.innerText);
@@ -1084,6 +1152,17 @@ await flow("companion: restored All days and city changes keep following today",
   await page.locator('select:has(option[value="r1"])').selectOption("r1");
   await page.locator('select:has(option[value="r1"])').selectOption("");
   if (await page.getByText("Pick a day to follow.").count()) throw new Error("Changing city retained the manual All days opt-out");
+});
+
+await flow("companion: swipe to All days asks which day to follow", async (page) => {
+  await goTab(page,"Companion");
+  const surface = page.locator("[data-guide=trip-companion]");
+  await surface.evaluate(el => {
+    const touch = (x) => new Touch({identifier:1,target:el,clientX:x,clientY:400});
+    el.dispatchEvent(new TouchEvent("touchstart",{bubbles:true,touches:[touch(100)]}));
+    el.dispatchEvent(new TouchEvent("touchend",{bubbles:true,changedTouches:[touch(250)]}));
+  });
+  await page.getByText("Pick a day to follow.").waitFor();
 });
 
 await flow("stop card: one editor opens, saves and closes", async (page) => {

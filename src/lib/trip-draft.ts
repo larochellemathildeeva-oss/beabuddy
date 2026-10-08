@@ -121,9 +121,16 @@ export function forgetTripDraft(store: DraftStorage, uid: string): void {
     /* storage unavailable */
   }
 }
+export function tripDraftFingerprint(draft: TripDraft): string {
+  const parsed = tripDraftSchema.safeParse(draft);
+  return JSON.stringify(parsed.success ? parsed.data : draft);
+}
+
 export function hasTripDraftInput(draft: TripDraft): boolean {
   return Boolean(
     draft.attempt ||
+    draft.multiCity ||
+    draft.form.dates_status !== "tentative" ||
     draft.form.title.trim() ||
     draft.form.city.trim() ||
     draft.form.country.trim() ||

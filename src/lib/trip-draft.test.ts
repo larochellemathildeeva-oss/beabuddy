@@ -6,6 +6,8 @@ import {
   forgetTripDraft,
   tripDraftKey,
   TRIP_DRAFT_TTL,
+  hasTripDraftInput,
+  tripDraftFingerprint,
   type TripDraft,
 } from "./trip-draft.ts";
 const draft: TripDraft = {
@@ -108,4 +110,30 @@ test("blocked or full storage returns failure without throwing", () => {
   assert.equal(writeTripDraft(store, "a", draft), false);
   assert.equal(readTripDraft(store, "a"), null);
   assert.doesNotThrow(() => forgetTripDraft(store, "a"));
+});
+
+test("mode and date-status selections alone count as draft input", () => {
+  const empty: TripDraft = {
+    ...draft,
+    form: { ...draft.form, title: "", city: "", country: "" },
+    withBudget: false,
+  };
+  assert.equal(hasTripDraftInput(empty), false);
+  assert.equal(hasTripDraftInput({ ...empty, multiCity: true }), true);
+  assert.equal(
+    hasTripDraftInput({ ...empty, form: { ...empty.form, dates_status: "confirmed" } }),
+    true,
+  );
+});
+test("restoration fingerprints match without rewriting or extending expiry", () => {
+  const store = storage();
+  writeTripDraft(store, "a", draft, 1000);
+  const before = store.getItem(tripDraftKey("a"));
+  const restored = readTripDraft(store, "a", 2000)!;
+  assert.equal(tripDraftFingerprint(restored), tripDraftFingerprint(draft));
+  assert.equal(store.getItem(tripDraftKey("a")), before);
+  assert.notEqual(
+    tripDraftFingerprint({ ...draft, form: { ...draft.form, title: "Edited" } }),
+    tripDraftFingerprint(restored),
+  );
 });
