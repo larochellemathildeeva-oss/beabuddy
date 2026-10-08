@@ -4124,9 +4124,9 @@ main [class*="rounded-\\[var(--r-"] {
 }
 
 :root:not(.dark):not([data-theme="colorful"])[data-accent="pink"]
-  .journal-pin:not(.journal-pin--food):not(.journal-pin--transit):not(.journal-pin--stay):not(.journal-pin--nested),
+  .journal-pin:not(.journal-pin--food):not(.journal-pin--transit):not(.journal-pin--stay):not(.journal-pin--nested):not(.journal-pin--done),
 :root:not(.dark):not([data-theme="colorful"])[data-accent="periwinkle"]
-  .journal-pin:not(.journal-pin--food):not(.journal-pin--transit):not(.journal-pin--stay):not(.journal-pin--nested) {
+  .journal-pin:not(.journal-pin--food):not(.journal-pin--transit):not(.journal-pin--stay):not(.journal-pin--nested):not(.journal-pin--done) {
   color: #ffffff;
 }
 
