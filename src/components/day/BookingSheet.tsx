@@ -92,7 +92,7 @@ export function BookingSheet({
           type="button"
           disabled={busy}
           onClick={() => void save()}
-          className="menu-done bg-primary mono-caps disabled:opacity-60"
+          className="menu-done bg-primary disabled:opacity-60"
         >
           {busy ? "Saving…" : "Save booking"}
         </button>

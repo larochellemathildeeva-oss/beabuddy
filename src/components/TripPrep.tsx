@@ -119,11 +119,7 @@ export function TripPrep({
             </button>
           ))}
         </div>
-        <button
-          type="button"
-          onClick={() => setMenuOpen(false)}
-          className="menu-done bg-primary mono-caps"
-        >
+        <button type="button" onClick={() => setMenuOpen(false)} className="menu-done bg-primary">
           Done
         </button>
       </Sheet>

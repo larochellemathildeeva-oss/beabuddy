@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/button";
 import { Sheet } from "@/components/Sheet";
 
 /**
@@ -44,20 +45,12 @@ export function ConfirmSheet({
     >
       <div>
         <p className="menu-row-note pb-5 text-[18px] leading-snug">{body}</p>
-        <button
-          type="button"
-          onClick={onConfirm}
-          className="menu-done mono-caps bg-destructive text-destructive-foreground"
-        >
+        <Button type="button" variant="destructive" onClick={onConfirm} className="menu-done">
           {confirmLabel}
-        </button>
-        <button
-          type="button"
-          onClick={onClose}
-          className="menu-done mono-caps mt-3 border border-foreground bg-transparent"
-        >
+        </Button>
+        <Button type="button" variant="secondary" onClick={onClose} className="menu-done mt-3">
           Cancel
-        </button>
+        </Button>
       </div>
     </Sheet>
   );

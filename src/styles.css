@@ -4094,10 +4094,10 @@ main [class*="rounded-\\[var(--r-"] {
   margin-inline-start: 0;
 }
 .sub-page-title {
-  font-size: 64px;
-  line-height: 0.97;
+  font-size: 28px;
+  line-height: 1.15;
   font-weight: 700;
-  letter-spacing: -2px;
+  letter-spacing: 0;
   padding-bottom: 14px;
   border-bottom: 0.5px solid var(--foreground);
 }
@@ -4112,25 +4112,26 @@ main [class*="rounded-\\[var(--r-"] {
 .menu-row {
   display: block;
   width: 100%;
-  padding: 14px 0 13px;
+  padding: 12px 0;
   text-align: start;
-  border-bottom: 0.5px solid var(--border);
+  border-bottom: 1px solid var(--border);
   background: transparent;
-  min-height: 60px;
+  min-height: 64px;
 }
 .menu-row-title {
   display: block;
-  font-family: var(--font-display);
-  font-size: 22px;
-  line-height: 26px;
-  letter-spacing: -0.2px;
+  font-family: var(--font-sans);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 22px;
+  letter-spacing: 0;
 }
 .menu-row-note {
   display: block;
   margin-top: 2px;
-  font-family: var(--font-display);
-  font-size: 16px;
-  line-height: 22px;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 20px;
   color: var(--muted-foreground);
 }
 .menu-footer {
@@ -4144,6 +4145,12 @@ main [class*="rounded-\\[var(--r-"] {
   margin-top: 18px;
   align-items: center;
   justify-content: center;
+  border-radius: var(--r-button);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 /* Pins: readable on each theme's own paper and tints. */
@@ -4516,6 +4523,7 @@ main [class*="rounded-2xl"] {
 }
 .menu-done.border {
   color: var(--foreground);
+  border-color: var(--field-border);
 }
 .menu-done.bg-destructive { color: var(--destructive-foreground); }
 .sub-page [class*="rounded"]:not(.rounded-full):not(.rounded-none) {

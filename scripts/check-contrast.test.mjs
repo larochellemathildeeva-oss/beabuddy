@@ -132,3 +132,11 @@ test("type scale: the minimalist sizes are set and labels are sentence case", ()
     [],
   );
 });
+
+test("sheet actions: .menu-done buttons take the button corner and a 16px sans label", () => {
+  const rules = topLevelRules(css).filter((r) => r.selector.trim() === ".menu-done");
+  const body = rules.map((r) => r.body).join("\n");
+  assert.match(body, /border-radius:\s*var\(--r-button\)/);
+  assert.match(body, /font-size:\s*16px/);
+  assert.match(body, /font-weight:\s*600/);
+});

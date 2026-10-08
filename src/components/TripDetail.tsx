@@ -2570,7 +2570,7 @@ export function TripDetail({
               <button
                 type="button"
                 onClick={() => setTimelineMenuOpen(false)}
-                className="menu-done bg-primary mono-caps"
+                className="menu-done bg-primary"
               >
                 Done
               </button>

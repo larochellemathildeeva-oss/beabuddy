@@ -14,12 +14,6 @@ import { BrandMark } from "@/components/PageHeader";
 /** How far the sheet must be pulled down before letting go closes it. */
 const PULL_CLOSE_PX = 90;
 
-/** A page title's size in px: the Figma's 64, smaller when one word would not fit the line. */
-function titleSize(heading: string): number {
-  const longest = Math.max(...heading.split(/\s+/).map((word) => word.length));
-  return longest >= 12 ? 40 : longest >= 10 ? 48 : longest >= 8 ? 56 : 64;
-}
-
 const FOCUSABLE =
   'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
@@ -231,12 +225,7 @@ export function Sheet({
             <span className="truncate">{crumb ?? (onBack ? "Back" : "Close")}</span>
           </button>
           {hint ? <p className="label-caps mt-2 max-w-[34ch]">{hint}</p> : null}
-          <h1
-            style={{ fontSize: `calc(${titleSize(heading)}px * var(--text-scale, 1))` }}
-            className="sub-page-title mt-1 break-words font-display text-[38px] leading-[1.05] tracking-[-0.02em]"
-          >
-            {heading}
-          </h1>
+          <h1 className="sub-page-title mt-1 break-words font-display">{heading}</h1>
         </header>
         <div className="flex-1 overflow-y-auto overscroll-contain px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-2">
           <div className="mx-auto w-full max-w-xl">{children}</div>
@@ -261,7 +250,7 @@ export function Sheet({
         tabIndex={-1}
         onClick={(e) => e.stopPropagation()}
         style={pull ? { transform: `translateY(${pull}px)`, transition: "none" } : undefined}
-        className={`sheet-panel rise card-raised transition-transform flex ${tall ? "max-h-[94dvh]" : "max-h-[88dvh]"} w-full flex-col overflow-hidden outline-none rounded-t-2xl sm:rounded-2xl ${
+        className={`sheet-panel rise card-raised transition-transform flex ${tall ? "max-h-[94dvh]" : "max-h-[88dvh]"} w-full flex-col overflow-hidden outline-none rounded-t-[var(--r-sheet)] sm:rounded-[var(--r-sheet)] ${
           width === "sm" ? "max-w-sm" : width === "lg" ? "max-w-xl" : "max-w-md"
         }`}
       >

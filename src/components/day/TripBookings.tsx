@@ -163,7 +163,7 @@ export function TripBookings({
         </section>
       )}
 
-      <Link to="/profile/documents" className="menu-done bg-primary mono-caps gap-2">
+      <Link to="/profile/documents" className="menu-done bg-primary gap-2">
         <Plus className="size-4" aria-hidden />
         Add a booking document
       </Link>

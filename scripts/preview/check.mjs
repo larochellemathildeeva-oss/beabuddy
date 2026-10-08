@@ -955,6 +955,26 @@ await flow("shell: switches have a 48px target and a visible edge when off", asy
   if (!box || box.width < 48 || box.height < 48) throw new Error(`switch is ${box?.width}x${box?.height}`);
 }, "buttons");
 
+await flow("shell: the Menu lists rows with a 16px title, a 14px muted note and a hairline", async (page) => {
+  await page.getByRole("button", { name: "Menu", exact: true }).click();
+  const row = page.locator(".menu-row").first();
+  await row.waitFor();
+  const m = await row.evaluate((el) => {
+    const title = getComputedStyle(el.querySelector(".menu-row-title"));
+    const note = getComputedStyle(el.querySelector(".menu-row-note"));
+    return { titleSize: title.fontSize, noteSize: note.fontSize, titleColor: title.color, noteColor: note.color, height: el.getBoundingClientRect().height, rule: getComputedStyle(el).borderBottomWidth };
+  });
+  if (m.titleSize !== "16px") throw new Error(`row title is ${m.titleSize}`);
+  if (m.noteSize !== "14px") throw new Error(`row note is ${m.noteSize}`);
+  if (m.noteColor === m.titleColor) throw new Error("the note is not muted");
+  if (m.height < 56) throw new Error(`row is ${m.height}px tall`);
+  if (m.rule !== "1px") throw new Error(`row rule is ${m.rule}`);
+  const titleSize = await page.locator(".sub-page-title").first().evaluate((el) => getComputedStyle(el).fontSize);
+  if (titleSize !== "28px") throw new Error(`page title is ${titleSize}`);
+  await page.keyboard.press("Escape");
+  if (await page.locator(".menu-row").count()) throw new Error("Escape did not close the Menu");
+}, "shell");
+
 await flow("shell: compressed long titles stay on one line in both header layouts", async (page) => {
   const title = "Places worth remembering on a long journey through several cities.";
   for (const beside of [false, true]) {
