@@ -27,6 +27,7 @@ import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { rememberedProfileName, rememberProfileName, shownName } from "@/lib/profile-name";
 import { Sheet } from "@/components/Sheet";
+import { ConfirmSheet } from "@/components/ConfirmSheet";
 import { resumeOrReplayTour } from "@/components/Tour";
 import { PackingLists } from "@/components/PackingLists";
 import { CustomizeHome } from "@/components/CustomizeHome";
@@ -119,6 +120,7 @@ function ProfilePage() {
   const [placeCount, setPlaceCount] = useState<number | null>(null);
   const [saved, setSaved] = useState(false);
   const [seeding, setSeeding] = useState(false);
+  const [confirmSample, setConfirmSample] = useState(false);
   const [seedMsg, setSeedMsg] = useState("");
   const [sampleCtaDismissed, setSampleCtaDismissed] = useState(false);
   const [panel, setPanel] = useState<Panel | null>(null);
@@ -595,23 +597,32 @@ function ProfilePage() {
                 <button
                   type="button"
                   disabled={seeding}
-                  onClick={async () => {
-                    setSeeding(true);
-                    setSeedMsg("");
-                    const result = await clearDemoSeed();
-                    setSeeding(false);
-                    // Remove (or empty) opts out of sample prompts — hide this card.
-                    if (result.ok || result.reason === "empty") {
-                      setSampleCtaDismissed(true);
-                      return;
-                    }
-                    setSeedMsg(result.message);
-                  }}
+                  onClick={() => setConfirmSample(true)}
                   className="flex-1 rounded-full border border-border px-4 py-2 text-[14.5px] font-semibold disabled:opacity-60"
                 >
                   Remove sample
                 </button>
               </div>
+              <ConfirmSheet
+                open={confirmSample}
+                onClose={() => setConfirmSample(false)}
+                title="Remove the sample?"
+                body="The sample trips and places are deleted. Places you added yourself stay."
+                confirmLabel="Remove sample"
+                onConfirm={async () => {
+                  setConfirmSample(false);
+                  setSeeding(true);
+                  setSeedMsg("");
+                  const result = await clearDemoSeed();
+                  setSeeding(false);
+                  // Remove (or empty) opts out of sample prompts — hide this card.
+                  if (result.ok || result.reason === "empty") {
+                    setSampleCtaDismissed(true);
+                    return;
+                  }
+                  setSeedMsg(result.message);
+                }}
+              />
               {seedMsg && <p className="mt-2 text-[13px] text-muted-foreground">{seedMsg}</p>}
             </div>
           )}

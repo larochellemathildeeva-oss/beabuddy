@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
+import { LoadError } from "@/components/LoadError";
 import { Globe } from "@/components/Globe";
 import { supabase } from "@/integrations/supabase/client";
 import { usePhotoMemories, derivePhotoPins, type PhotoRow } from "@/hooks/usePhotoMemories";
@@ -86,7 +87,7 @@ function pretty(iso: string | null) {
 const STEP_MS = 3800;
 
 function StoryPage() {
-  const { rows, loading } = usePhotoMemories();
+  const { rows, loading, loadError, reload } = usePhotoMemories();
   const stops = useMemo(() => buildStory(rows), [rows]);
   const pins = useMemo(() => derivePhotoPins(rows), [rows]);
 
@@ -134,7 +135,9 @@ function StoryPage() {
           <p className="card-soft p-5 text-[16px] text-muted-foreground">Opening your story…</p>
         )}
 
-        {!loading && stops.length === 0 && (
+        {!loading && loadError && <LoadError what="your story" onRetry={() => void reload()} />}
+
+        {!loading && !loadError && stops.length === 0 && (
           <div data-guide="story-empty" className="card-soft p-5">
             <p className="font-display text-[19px] leading-snug">No story to play yet.</p>
             <p className="mt-1 text-[16px] text-muted-foreground">

@@ -73,6 +73,7 @@ export function derivePhotoPins(rows: PhotoRow[]): Pin[] {
 export function usePhotoMemories() {
   const [rows, setRows] = useState<PhotoRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
 
   const reload = async () => {
     // A failed read is not an empty library. Blanking here would also empty
@@ -90,6 +91,7 @@ export function usePhotoMemories() {
       .eq("user_id", uid)
       .order("taken_at", { ascending: false });
     if (!error) setRows((data ?? []) as PhotoRow[]);
+    setLoadError(!!error);
     setLoading(false);
   };
 
@@ -97,5 +99,12 @@ export function usePhotoMemories() {
     void reload();
   }, []);
 
-  return { rows, loading, reload, stats: derivePhotoStats(rows), pins: derivePhotoPins(rows) };
+  return {
+    rows,
+    loading,
+    loadError,
+    reload,
+    stats: derivePhotoStats(rows),
+    pins: derivePhotoPins(rows),
+  };
 }

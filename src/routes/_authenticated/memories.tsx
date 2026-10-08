@@ -2,6 +2,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { ContentCardSkeleton } from "@/components/Skeletons";
 import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
+import { ConfirmSheet } from "@/components/ConfirmSheet";
+import { LoadError } from "@/components/LoadError";
 import { supabase } from "@/integrations/supabase/client";
 import { usePhotoMemories, type PhotoRow } from "@/hooks/usePhotoMemories";
 import { useFutureNotes, cityKey } from "@/hooks/useFutureNotes";
@@ -109,7 +111,10 @@ function groupByCity(rows: PhotoRow[]): CityGroup[] {
 }
 
 function MemoriesPage() {
-  const { rows, loading } = usePhotoMemories();
+  const { rows, loading, loadError, reload } = usePhotoMemories();
+  // A note is deleted for good, so it asks first; a failed delete is said.
+  const [deletingNote, setDeletingNote] = useState<string | null>(null);
+  const [noteError, setNoteError] = useState("");
   const notes = useFutureNotes();
   const vault = useRecommendations();
   const [urls, setUrls] = useState<Record<string, string>>({});
@@ -185,7 +190,30 @@ function MemoriesPage() {
 
         {loading && groups.length === 0 && <ContentCardSkeleton media />}
 
-        {!loading && groups.length === 0 && (
+        {!loading && loadError && <LoadError what="your photos" onRetry={() => void reload()} />}
+
+        {noteError && (
+          <p role="alert" className="text-[16px] text-destructive">
+            {noteError}
+          </p>
+        )}
+
+        <ConfirmSheet
+          open={deletingNote !== null}
+          onClose={() => setDeletingNote(null)}
+          title="Delete this note?"
+          body="Your note for next time is deleted for good."
+          confirmLabel="Delete note"
+          onConfirm={() => {
+            const id = deletingNote;
+            setDeletingNote(null);
+            if (!id) return;
+            setNoteError("");
+            notes.remove(id).catch(() => setNoteError("Couldn't delete that note. Try again."));
+          }}
+        />
+
+        {!loading && !loadError && groups.length === 0 && (
           <p className="card-soft p-5 text-[16px] text-muted-foreground">
             Nothing here yet. Import a few photos and Béa will sort them into city pages using the
             location saved inside each picture.
@@ -279,7 +307,8 @@ function MemoriesPage() {
                               {prettyDate(n.created_at)}
                             </span>
                             <button
-                              onClick={() => void notes.remove(n.id)}
+                              type="button"
+                              onClick={() => setDeletingNote(n.id)}
                               className="text-[13px] font-semibold text-muted-foreground"
                             >
                               Delete

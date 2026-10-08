@@ -56,7 +56,8 @@ export function useFutureNotes() {
 
   const remove = useCallback(
     async (id: string) => {
-      await supabase.from("future_notes").delete().eq("id", id);
+      const { error } = await supabase.from("future_notes").delete().eq("id", id);
+      if (error) throw error;
       await reload();
     },
     [reload],

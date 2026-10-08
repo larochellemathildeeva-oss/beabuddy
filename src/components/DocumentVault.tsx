@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { friendlyError } from "@/lib/friendly-error";
 import { Link } from "@tanstack/react-router";
+import { ConfirmSheet } from "@/components/ConfirmSheet";
 import { Fingerprint, Lock, LockOpen, ShieldCheck } from "@/components/icons";
 import { useVault, type DocSecret, type VaultDocRow } from "@/hooks/useVault";
 import { passkeysPossible } from "@/lib/vault-passkey";
@@ -468,6 +469,8 @@ export function ProtectedPanel({ v }: { v: Vault }) {
   const [adding, setAdding] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
   const [secret, setSecret] = useState<DocSecret | null>(null);
+  // Protected documents are encrypted here and cannot be brought back.
+  const [deleting, setDeleting] = useState<VaultDocRow | null>(null);
   const [form, setForm] = useState({
     kind: "Passport",
     label: "",
@@ -562,7 +565,7 @@ export function ProtectedPanel({ v }: { v: Vault }) {
                   )}
                   <button
                     type="button"
-                    onClick={() => void run(() => v.removeDoc(row.id))}
+                    onClick={() => setDeleting(row)}
                     className="mt-3 block text-[13px] text-destructive underline"
                   >
                     Delete this document
@@ -571,6 +574,18 @@ export function ProtectedPanel({ v }: { v: Vault }) {
               )}
             </div>
           ))}
+          <ConfirmSheet
+            open={deleting !== null}
+            onClose={() => setDeleting(null)}
+            title="Delete this document?"
+            body={`“${deleting?.label ?? ""}” is deleted for good. Protected documents are encrypted on your device, so nobody can bring it back.`}
+            confirmLabel="Delete document"
+            onConfirm={() => {
+              const row = deleting;
+              setDeleting(null);
+              if (row) void run(() => v.removeDoc(row.id));
+            }}
+          />
           {v.rows.length === 0 && (
             <p className="py-4 text-center text-[13px] text-muted-foreground">
               Nothing in Protected yet. Add a passport, card or other private file.

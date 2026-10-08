@@ -31,6 +31,8 @@ export function useExpenses() {
   const [rows, setRows] = useState<ExpenseRow[]>([]);
   const [urls, setUrls] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
+  // A read that failed, said on the page rather than shown as no receipts.
+  const [loadError, setLoadError] = useState(false);
   const [uid, setUid] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -54,9 +56,11 @@ export function useExpenses() {
     // Stop here on a failed read: carrying on would rebuild the signed
     // receipt URLs from an empty list and blank those too.
     if (error) {
+      setLoadError(true);
       setLoading(false);
       return;
     }
+    setLoadError(false);
     const list = ((data ?? []) as unknown as ExpenseRow[]).map((r) => ({
       ...r,
       amount: Number(r.amount),
@@ -116,16 +120,27 @@ export function useExpenses() {
 
   const removeExpense = useCallback(
     async (row: ExpenseRow) => {
+      // The row first: if that fails, the receipt and its photo both stay.
+      const { error } = await supabase.from("expenses").delete().eq("id", row.id);
+      if (error) throw error;
       if (row.storage_path) {
         await supabase.storage.from("receipts").remove([row.storage_path]);
       }
-      await supabase.from("expenses").delete().eq("id", row.id);
       await load();
     },
     [load],
   );
 
-  return { rows, urls, loading, signedIn: !!uid, reload: load, addExpense, removeExpense };
+  return {
+    rows,
+    urls,
+    loading,
+    loadError,
+    signedIn: !!uid,
+    reload: load,
+    addExpense,
+    removeExpense,
+  };
 }
 
 export function toCsv(

@@ -4,6 +4,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useRef, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { Sheet } from "@/components/Sheet";
+import { ConfirmSheet } from "@/components/ConfirmSheet";
+import { LoadError } from "@/components/LoadError";
 import { expenseCategories, toCsv, useExpenses } from "@/hooks/useExpenses";
 import { homeCurrencies, useRates } from "@/hooks/useRates";
 import { useTrips } from "@/hooks/useTrips";
@@ -35,7 +37,10 @@ export const Route = createFileRoute("/_authenticated/expenses")({
 const currencies = ["CAD", "USD", "EUR", "GBP", "AUD", "CHF", "JPY", "MXN", "SEK", "NOK"];
 
 function ExpensesPage() {
-  const { rows, urls, loading, addExpense, removeExpense } = useExpenses();
+  const { rows, urls, loading, loadError, reload, addExpense, removeExpense } = useExpenses();
+  // Deleting removes the receipt and its photo for good, so it asks first.
+  const [deleting, setDeleting] = useState<(typeof rows)[number] | null>(null);
+  const [deleteError, setDeleteError] = useState("");
   const rates = useRates();
   const t = useTrips();
   const camera = useRef<HTMLInputElement>(null);
@@ -416,8 +421,20 @@ function ExpensesPage() {
         )}
 
         <div className="space-y-3">
-          {loading && <p className="text-[16px] text-muted-foreground">Loading…</p>}
-          {!loading && rows.length === 0 && (
+          {loading && (
+            <p role="status" className="text-[16px] text-muted-foreground">
+              Loading…
+            </p>
+          )}
+          {!loading && loadError && (
+            <LoadError what="your receipts" onRetry={() => void reload()} />
+          )}
+          {deleteError && (
+            <p role="alert" className="text-[16px] text-destructive">
+              {deleteError}
+            </p>
+          )}
+          {!loading && !loadError && rows.length === 0 && (
             <div className="card-soft p-5 text-center">
               <p className="text-[16px] font-semibold">No receipts yet</p>
               <p className="mt-1 text-[16px] text-muted-foreground">
@@ -459,7 +476,8 @@ function ExpensesPage() {
                 </div>
 
                 <button
-                  onClick={() => void removeExpense(r)}
+                  type="button"
+                  onClick={() => setDeleting(r)}
                   className="text-[13px] text-muted-foreground underline"
                 >
                   Delete
@@ -468,6 +486,23 @@ function ExpensesPage() {
             </div>
           ))}
         </div>
+
+        <ConfirmSheet
+          open={deleting !== null}
+          onClose={() => setDeleting(null)}
+          title="Delete this receipt?"
+          body={`${deleting?.merchant || deleting?.category || "This receipt"} and its photo are deleted for good.`}
+          confirmLabel="Delete receipt"
+          onConfirm={() => {
+            const row = deleting;
+            setDeleting(null);
+            if (!row) return;
+            setDeleteError("");
+            removeExpense(row).catch((err) =>
+              setDeleteError(friendlyError(err, "Couldn't delete that receipt. Try again.")),
+            );
+          }}
+        />
 
         <Link
           to="/profile"
