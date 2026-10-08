@@ -209,10 +209,25 @@ Direction for its own spec (not built in the redesign):
 - Nav: five tabs stay (Home, Friends, Trips, Recs, You). This also resolves the
   first-time-user finding that World and Recs looked interchangeable.
 
-## 12. Companion card regression (functional, before the redesign)
+## 12. Companion = the live map and the companion card, as one view (owner)
 
-The Map/Companion view lost the Current-stop card with its full detail and the
-Next-stop card. "Current stop" and "Next stop" still exist in `NowPanel.tsx`
-and `DayMapView.tsx`. First step: read git history to list exactly what the
-old card showed. Then restore it in the Companion view, keep the Next stop,
-and add a regression test. Separate PR; no visual restyle in it.
+Today, under the Trips "Map" tab, `Map | Companion` switches between two
+separate things: the day map (`DayMapView`, with its own small stop card) and
+the Companion card list (`NowPanel`: no map). Earlier drafts of this spec wrongly
+called that a regression. The owner's intent is different:
+
+- **Companion is the "live" map view.** One view, not two: the day map with the
+  traveller's live position on top, and below it the full **Current stop** card
+  (art, stay-time and "Here now" chips, address, leave-by, Leaving / Directions /
+  photo / "Not here yet" / "Running late?" / "Ask Béa") and the **Next stop**
+  card, plus Follow along and the day picker.
+- **Map is the plain day map** for planning and reading the route, without the
+  live panel. The separate live map behaviour in `DayMapView` is absorbed into
+  Companion rather than kept twice.
+- The Figma Companion and Map frames (`116:988`, `116:1060`) show a stripped
+  card and a line drawing; they must be redrawn to this, not implemented as they
+  are.
+
+Built in Phase 4 (trip views), as its own PR with tests: the Current-stop card
+contents, the Next-stop card, and that Companion shows the day map. No app code
+changes in Phase 0 or Phase 1.
