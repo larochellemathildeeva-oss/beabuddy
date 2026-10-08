@@ -26,12 +26,14 @@ export const useRouterState = ({ select }: any) => select({
 // `?tab=` is the one search key a route reads here (World's views); navigating
 // rewrites it in place, so the sample and its state stay.
 const searchListeners = new Set<() => void>();
-const searchSnapshot = () => new URLSearchParams(location.search).get("tab") ?? "";
+const searchSnapshot = () => location.search;
+window.addEventListener("popstate", () => searchListeners.forEach((cb) => cb()));
 export const createFileRoute = () => (options: any) => ({
   options,
   useSearch: () => {
-    const tab = useSyncExternalStore((cb) => (searchListeners.add(cb), () => searchListeners.delete(cb)), searchSnapshot);
-    return tab ? { tab } : {};
+    const query = useSyncExternalStore((cb) => (searchListeners.add(cb), () => searchListeners.delete(cb)), searchSnapshot);
+    const params = Object.fromEntries(new URLSearchParams(query));
+    return options.validateSearch ? options.validateSearch(params) : params;
   },
   useNavigate: () => ({ search }: any) => {
     const url = new URL(location.href);

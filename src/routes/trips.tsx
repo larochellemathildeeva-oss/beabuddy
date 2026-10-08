@@ -1,3 +1,11 @@
+import {
+  readTripDraft,
+  writeTripDraft,
+  forgetTripDraft,
+  hasTripDraftInput,
+  tripDraftFingerprint,
+  type TripDraft,
+} from "@/lib/trip-draft";
 import { tripsView, type TripsView } from "@/lib/trips-view";
 import { SaveAttempt } from "@/lib/save-attempt";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
@@ -69,7 +77,7 @@ export const Route = createFileRoute("/trips")({
     ...(tripsView(search["view"]) ? { view: tripsView(search["view"]) } : {}),
     ...(search["new"] === true || search["new"] === "true" ? { new: true } : {}),
     ...(PLAN_AFTER_CREATE.includes(search["plan"] as PlannerTab)
-      ? { plan: search["plan"] as PlannerTab }
+      ? { plan: search["plan"] as "build" | "import" }
       : {}),
     ...(typeof search["ask"] === "string" && search["ask"].trim()
       ? { ask: search["ask"].slice(0, 2000) }
@@ -114,7 +122,7 @@ function TripsPage() {
    */
   const [view, setView] = useState<TripsView>(search.view ?? "upcoming");
   useEffect(() => {
-    if (search.view) setView(search.view);
+    setView(search.view ?? "upcoming");
   }, [search.view]);
   const [layout, setLayout] = useTripsLayout();
   const {
@@ -164,6 +172,109 @@ function TripsPage() {
   const createAttempt = useRef<SaveAttempt | null>(null);
   const [saveBusy, setSaveBusy] = useState(false);
   const [createLocked, setCreateLocked] = useState(false);
+  const [draftOwner, setDraftOwner] = useState<string | null>(null);
+  const [draftNotice, setDraftNotice] = useState("");
+  const [draftContext, setDraftContext] = useState<Pick<TripDraft, "plan" | "ask">>({});
+  const activePlan =
+    search.plan === "build" || search.plan === "import" ? search.plan : draftContext.plan;
+  const activeAsk = search.ask ?? draftContext.ask;
+  const recoveryDraft = useRef<TripDraft | null>(null);
+  const lastSavedDraft = useRef<string | null>(null);
+  const activeAccount = useRef(user?.id);
+  activeAccount.current = user?.id;
+  useEffect(() => {
+    createAttempt.current = null;
+    recoveryDraft.current = null;
+    saving.current = false;
+    setSaveBusy(false);
+    setCreateLocked(false);
+    setError("");
+    const uid = user?.id;
+    let draft: TripDraft | null = null;
+    if (uid) {
+      try {
+        draft = readTripDraft(window.localStorage, uid);
+      } catch {
+        /* blocked storage */
+      }
+    }
+    lastSavedDraft.current = draft ? tripDraftFingerprint(draft) : null;
+    setForm(
+      draft?.form ?? {
+        title: "",
+        city: "",
+        country: "",
+        start_date: "",
+        end_date: "",
+        dates_status: "tentative",
+      },
+    );
+    setMultiCity(draft?.multiCity ?? false);
+    setCities(draft?.cities ?? [EMPTY_CITY, EMPTY_CITY]);
+    setDayTrips(draft?.dayTrips ?? []);
+    setWithBudget(draft?.withBudget ?? false);
+    setPackTemplateId(draft?.packTemplateId ?? "");
+    setDraftContext({
+      ...(draft?.plan ? { plan: draft.plan } : {}),
+      ...(draft?.ask ? { ask: draft.ask } : {}),
+    });
+    if (draft?.attempt) {
+      recoveryDraft.current = draft;
+      setCreateLocked(true);
+    }
+    setDraftNotice(
+      draft
+        ? draft.attempt
+          ? "Trip creation was interrupted. Retry checks what is already saved and finishes the same trip."
+          : "Béa restored your new-trip draft from this browser."
+        : "",
+    );
+    setDraftOwner(uid ?? null);
+  }, [user?.id]);
+  useEffect(() => {
+    const uid = user?.id;
+    if (!uid || draftOwner !== uid || createLocked || saveBusy) return;
+    const draft: TripDraft = {
+      form,
+      multiCity,
+      cities,
+      dayTrips,
+      withBudget,
+      packTemplateId,
+      ...(activePlan ? { plan: activePlan } : {}),
+      ...(activeAsk ? { ask: activeAsk } : {}),
+    };
+    const fingerprint = tripDraftFingerprint(draft);
+    if (fingerprint === lastSavedDraft.current) return;
+    try {
+      if (hasTripDraftInput(draft)) {
+        if (!writeTripDraft(window.localStorage, uid, draft)) {
+          setDraftNotice(
+            "This browser cannot keep the draft. Keep this page open until the trip is saved.",
+          );
+          return;
+        }
+      } else forgetTripDraft(window.localStorage, uid);
+      lastSavedDraft.current = fingerprint;
+    } catch {
+      setDraftNotice(
+        "This browser cannot keep the draft. Keep this page open until the trip is saved.",
+      );
+    }
+  }, [
+    user?.id,
+    draftOwner,
+    form,
+    multiCity,
+    cities,
+    dayTrips,
+    withBudget,
+    packTemplateId,
+    activePlan,
+    activeAsk,
+    createLocked,
+    saveBusy,
+  ]);
   const [code, setCode] = useState("");
   const joiningNow = useRef(false);
   const [joinBusy, setJoinBusy] = useState(false);
@@ -181,6 +292,35 @@ function TripsPage() {
   // Picked once per visit, in the traveller's mix.
   const [emptyTrips] = useState(() => emptyLine({ kind: "noTrips", settings: beaSettings }));
 
+  const clearNewDraft = () => {
+    if (saving.current) return;
+    recoveryDraft.current = null;
+    createAttempt.current = null;
+    setCreateLocked(false);
+    if (user?.id) {
+      try {
+        forgetTripDraft(window.localStorage, user.id);
+      } catch {
+        /* blocked storage */
+      }
+    }
+    setForm({
+      title: "",
+      city: "",
+      country: "",
+      start_date: "",
+      end_date: "",
+      dates_status: "tentative",
+    });
+    setMultiCity(false);
+    setCities([EMPTY_CITY, EMPTY_CITY]);
+    setDayTrips([]);
+    setWithBudget(false);
+    setPackTemplateId("");
+    setDraftContext({});
+    setDraftNotice("");
+    setError("");
+  };
   const openNew = () => {
     setError("");
     setCreating(true);
@@ -494,6 +634,24 @@ function TripsPage() {
         hint="Where, when, and who. All of it can change later."
       >
         <div className="space-y-2">
+          <p className="text-[12px] text-muted-foreground">
+            New-trip drafts are saved in this browser for this account and available for 7 days.
+            They do not sync between devices.
+          </p>
+          {draftNotice && (
+            <p role="status" className="text-[14px]">
+              {draftNotice}
+            </p>
+          )}
+          {!createLocked && !saveBusy && (
+            <button
+              type="button"
+              className="min-h-12 px-3 text-[14px] font-semibold text-primary"
+              onClick={clearNewDraft}
+            >
+              Clear draft
+            </button>
+          )}
           <fieldset disabled={saveBusy || createLocked} className="space-y-2">
             <input
               value={form.title}
@@ -582,7 +740,7 @@ function TripsPage() {
                 <button
                   type="button"
                   onClick={() => setDayTrips((list) => [...list, EMPTY_DAY_TRIP])}
-                  className="flex w-full items-center justify-center gap-1 rounded-xl border border-dashed border-border px-3 py-2 text-[13.5px] font-semibold text-primary"
+                  className="flex min-h-12 w-full items-center justify-center gap-1 rounded-xl border border-dashed border-border px-3 py-2 text-[13.5px] font-semibold text-primary"
                 >
                   <Plus className="size-4" aria-hidden />
                   Add a day trip from {shortCity(form.city)}
@@ -647,7 +805,7 @@ function TripsPage() {
                                 return list.filter((_, i) => i < index || i >= end);
                               })
                             }
-                            className="grid size-8 shrink-0 place-items-center rounded-full text-muted-foreground"
+                            className="grid size-12 shrink-0 place-items-center rounded-full text-muted-foreground"
                           >
                             <X className="size-4" aria-hidden />
                           </button>
@@ -679,7 +837,7 @@ function TripsPage() {
                               return [...list.slice(0, at), EMPTY_DAY_TRIP, ...list.slice(at)];
                             })
                           }
-                          className="flex items-center gap-1 px-1 text-[12.5px] font-semibold text-primary"
+                          className="flex min-h-12 min-w-12 items-center gap-1 px-1 text-[12.5px] font-semibold text-primary"
                         >
                           <Plus className="size-3.5" aria-hidden />
                           Day trip from {shortCity(city.city)}
@@ -691,7 +849,7 @@ function TripsPage() {
                 <button
                   type="button"
                   onClick={() => setCities((list) => [...list, EMPTY_CITY])}
-                  className="flex w-full items-center justify-center gap-1 rounded-xl border border-dashed border-border px-3 py-2 text-[13.5px] font-semibold text-primary"
+                  className="flex min-h-12 w-full items-center justify-center gap-1 rounded-xl border border-dashed border-border px-3 py-2 text-[13.5px] font-semibold text-primary"
                 >
                   <Plus className="size-4" aria-hidden />
                   Add another city
@@ -739,10 +897,40 @@ function TripsPage() {
               Finish creating this trip before changing its details. Retry continues the same trip.
             </p>
           )}
+          {createLocked && !saveBusy && (
+            <details className="text-[13px]">
+              <summary className="flex min-h-12 cursor-pointer items-center font-semibold text-primary">
+                Recovery options
+              </summary>
+              {recoveryDraft.current?.attempt &&
+                t.trips.some((trip) => trip.id === recoveryDraft.current?.attempt?.tripId) && (
+                  <Link
+                    to="/trips/$tripId"
+                    params={{ tripId: recoveryDraft.current.attempt.tripId }}
+                    className="flex min-h-12 items-center font-semibold text-primary"
+                  >
+                    Open the saved trip
+                  </Link>
+                )}
+              <p>
+                Some parts may already be saved in Trips. Discarding local recovery details does not
+                delete those parts. Retry finishes the original trip; starting again creates a
+                separate trip.
+              </p>
+              <button
+                type="button"
+                className="min-h-12 px-3 font-semibold text-destructive"
+                onClick={clearNewDraft}
+              >
+                Discard local recovery details
+              </button>
+            </details>
+          )}
           <button
             aria-busy={saveBusy}
             disabled={
               saveBusy ||
+              draftOwner !== user?.id ||
               (!form.title.trim() && !suggestedName) ||
               !!(form.start_date && form.end_date && form.end_date < form.start_date)
             }
@@ -752,48 +940,147 @@ function TripsPage() {
               setSaveBusy(true);
               setCreateLocked(true);
               setError("");
+              const uid = user?.id;
+              if (!uid || draftOwner !== uid) {
+                saving.current = false;
+                setSaveBusy(false);
+                setCreateLocked(false);
+                setError("Sign in again before creating the trip.");
+                return;
+              }
+              if (!recoveryDraft.current) {
+                const stops = multiCity
+                  ? citiesToStops(cities)
+                  : onePlaceStops(
+                      { city: form.city, country: form.country, start: tripStart, end: tripEnd },
+                      dayTrips,
+                    );
+                const source = packing.packs.find((pack) => pack.id === packTemplateId);
+                if (packTemplateId && (!source || packing.loading)) {
+                  saving.current = false;
+                  setSaveBusy(false);
+                  setCreateLocked(false);
+                  setError("Wait for the packing list to load, or choose No packing list.");
+                  return;
+                }
+                const snapshot: TripDraft = {
+                  form: {
+                    ...form,
+                    start_date: tripStart,
+                    end_date: tripEnd,
+                    title: form.title.trim() || suggestedName,
+                  },
+                  multiCity,
+                  cities,
+                  dayTrips,
+                  withBudget,
+                  packTemplateId,
+                  ...(activePlan ? { plan: activePlan } : {}),
+                  ...(activeAsk ? { ask: activeAsk } : {}),
+                  attempt: {
+                    ownerId: uid,
+                    tripId: crypto.randomUUID(),
+                    stopIds: stops.map(() => crypto.randomUUID()),
+                    ...(source
+                      ? {
+                          packing: {
+                            ownerId: uid,
+                            id: crypto.randomUUID(),
+                            name: source.name,
+                            emoji: source.emoji,
+                            items: packing.items
+                              .filter((item) => item.list_id === source.id)
+                              .sort((a, b) => a.position - b.position)
+                              .map((item) => ({
+                                id: crypto.randomUUID(),
+                                label: item.label,
+                                section: item.section,
+                                quantity: item.quantity,
+                              })),
+                          },
+                        }
+                      : {}),
+                  },
+                };
+                let stored = false;
+                try {
+                  stored = writeTripDraft(window.localStorage, uid, snapshot);
+                } catch {
+                  /* blocked storage */
+                }
+                if (!stored) {
+                  recoveryDraft.current = null;
+                  saving.current = false;
+                  setSaveBusy(false);
+                  setCreateLocked(false);
+                  setError(
+                    "Béa has not started creating this trip because this browser could not save its recovery details. Free some browser storage and try again.",
+                  );
+                  return;
+                }
+                recoveryDraft.current = snapshot;
+              }
+              const snapshot = recoveryDraft.current;
               const attempt = (createAttempt.current ??= new SaveAttempt());
               try {
                 await attempt.run(async () => {
                   const id = await attempt.step("trip", () =>
                     t.createTrip({
-                      ...form,
-                      ...(multiCity
+                      ...snapshot.form,
+                      ...(snapshot.attempt ? { recovery: snapshot.attempt } : {}),
+                      ...(snapshot.multiCity
                         ? {
-                            city: firstCity?.city ?? "",
-                            country: firstCity?.country ?? "",
-                            stops: citiesToStops(cities),
+                            city: snapshot.cities.find((city) => city.city.trim())?.city ?? "",
+                            country:
+                              snapshot.cities.find((city) => city.city.trim())?.country ?? "",
+                            stops: citiesToStops(snapshot.cities),
                           }
                         : {
                             stops: onePlaceStops(
                               {
-                                city: form.city,
-                                country: form.country,
-                                start: tripStart,
-                                end: tripEnd,
+                                city: snapshot.form.city,
+                                country: snapshot.form.country,
+                                start: snapshot.form.start_date,
+                                end: snapshot.form.end_date,
                               },
-                              dayTrips,
+                              snapshot.dayTrips,
                             ),
                           }),
-                      start_date: tripStart,
-                      end_date: tripEnd,
-                      title: form.title.trim() || suggestedName,
-                      budget_enabled: withBudget,
+                      start_date: snapshot.form.start_date,
+                      end_date: snapshot.form.end_date,
+                      title: snapshot.form.title.trim() || suggestedName,
+                      budget_enabled: snapshot.withBudget,
                     }),
                   );
-                  if (packTemplateId)
-                    await attempt.step("packing", () => packing.attachToTrip(packTemplateId, id));
+                  if (activeAccount.current !== uid)
+                    throw new Error(
+                      "The signed-in account changed. Return to the original account to finish this trip.",
+                    );
+                  if (snapshot.attempt?.packing)
+                    await attempt.step("packing", () =>
+                      packing.attachToTrip(snapshot.packTemplateId, id, snapshot.attempt?.packing),
+                    );
+                  if (activeAccount.current !== uid) return;
+                  try {
+                    forgetTripDraft(window.localStorage, uid);
+                  } catch {
+                    /* blocked storage */
+                  }
+                  recoveryDraft.current = null;
+                  setDraftNotice("");
+                  setDraftContext({});
                   setPackTemplateId("");
                   await navigate({
                     to: "/trips/$tripId",
                     params: { tripId: id },
                     // Started from Plan with Béa: its planner opens on
                     // the new trip, with anything already typed.
-                    search: search.plan
-                      ? { plan: search.plan, ...(search.ask ? { ask: search.ask } : {}) }
+                    search: snapshot.plan
+                      ? { plan: snapshot.plan, ...(snapshot.ask ? { ask: snapshot.ask } : {}) }
                       : {},
                     viewTransition: true,
                   });
+                  if (activeAccount.current !== uid) return;
                   setForm({
                     title: "",
                     city: "",
@@ -808,19 +1095,20 @@ function TripsPage() {
                   setWithBudget(false);
                   setCreating(false);
                 });
+                if (activeAccount.current !== uid) return;
                 createAttempt.current = null;
                 setCreateLocked(false);
               } catch (e) {
-                if (!attempt.hasConfirmedWrites) {
-                  createAttempt.current = null;
-                  setCreateLocked(false);
-                }
+                if (activeAccount.current !== uid) return;
+                // Keep the original IDs and payload even when the server response is lost.
                 setError(
                   friendlyError(e, "Could not finish creating the trip. Retry to continue."),
                 );
               } finally {
-                saving.current = false;
-                setSaveBusy(false);
+                if (activeAccount.current === uid) {
+                  saving.current = false;
+                  setSaveBusy(false);
+                }
               }
             }}
             className="w-full rounded-xl bg-primary px-4 py-2 text-[14.5px] font-semibold text-primary-foreground disabled:opacity-50"
@@ -965,7 +1253,7 @@ function DayTripRow({
           type="button"
           aria-label="Remove this day trip"
           onClick={onRemove}
-          className="grid size-8 shrink-0 place-items-center rounded-full text-muted-foreground"
+          className="grid size-12 shrink-0 place-items-center rounded-full text-muted-foreground"
         >
           <X className="size-4" aria-hidden />
         </button>

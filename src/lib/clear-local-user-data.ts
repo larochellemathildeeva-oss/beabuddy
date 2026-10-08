@@ -1,3 +1,4 @@
+import { tripDraftKey } from "./trip-draft.ts";
 import { sampleCtaDismissKey } from "./auto-seed.ts";
 import { clearAllOfflineMaps, OFFLINE_MAP_KEY_PREFIX } from "./offline-map.ts";
 import { OFFLINE_TRIP_KEY_PREFIX } from "./offline-trip.ts";
@@ -21,6 +22,7 @@ export function clearLocalUserData(uid: string) {
   clearStoredVaultKeys(uid);
 
   const exact = [
+    tripDraftKey(uid),
     `bea-home-layout-${uid}`,
     `bea-stats-layout-${uid}`,
     `bea-world-layout-${uid}`,

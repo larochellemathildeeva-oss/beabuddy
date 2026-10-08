@@ -1,3 +1,5 @@
+import { recoverableInsert } from "@/lib/recoverable-insert";
+import type { PackingRecovery } from "@/lib/trip-draft";
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -80,11 +82,13 @@ async function insertDrafts(
   listId: string,
   drafts: PackDraftItem[],
   startPosition = 0,
+  identities?: { id: string; position: number }[],
 ): Promise<ItemQueryRow[]> {
   const rowsFor = (withSection: boolean) =>
     itemInsertRows(uid, listId, drafts, withSection).map((row, i) => ({
       ...row,
-      position: startPosition + i,
+      position: identities?.[i]?.position ?? startPosition + i,
+      ...(identities?.[i] ? { id: identities[i]!.id } : {}),
     }));
 
   if (sectionColumnAvailable !== false) {
@@ -314,10 +318,48 @@ export function usePacking(tripId?: string | null) {
   );
 
   const attachToTrip = useCallback(
-    async (templateId: string, targetTripId: string) => {
+    async (templateId: string, targetTripId: string, recovery?: PackingRecovery) => {
       const { data: session } = await supabase.auth.getSession();
       const me = session.session?.user?.id ?? uid;
       if (!me) throw new Error("Sign in first");
+      if (recovery) {
+        if (recovery.ownerId !== me)
+          throw new Error("Sign in to the account that started this trip.");
+        const row = {
+          id: recovery.id,
+          user_id: me,
+          name: recovery.name,
+          emoji: recovery.emoji,
+          trip_id: targetTripId,
+        };
+        await recoverableInsert(
+          [row],
+          async () => {
+            const result = await supabase
+              .from("packing_lists")
+              .select("id")
+              .eq("id", row.id)
+              .eq("user_id", me)
+              .eq("trip_id", targetTripId);
+            if (result.error) throw result.error;
+            return result.data;
+          },
+          async (missing) => {
+            const result = await supabase.from("packing_lists").insert(missing);
+            if (result.error) throw result.error;
+          },
+        );
+        const rows = recovery.items.map((item, position) => ({ ...item, position }));
+        await recoverableInsert(
+          rows,
+          async () => await selectItems(row.id),
+          async (missing) => {
+            await insertDrafts(me, row.id, missing, 0, missing);
+          },
+        );
+        await load();
+        return row.id;
+      }
       const { data: src } = await supabase
         .from("packing_lists")
         .select("id, name, emoji")

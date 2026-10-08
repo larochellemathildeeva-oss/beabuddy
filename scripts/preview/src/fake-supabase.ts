@@ -6,7 +6,7 @@
  * `window.__writes`, which the checker counts as "the click did something".
  */
 type Row = Record<string, unknown>;
-const w = window as unknown as { __writes: unknown[]; __sample: string };
+const w = window as unknown as { __writes: unknown[]; __sample: string; __failNextWrite?: {table: string; afterCommit: boolean} };
 w.__writes = [];
 const sample = new URLSearchParams(location.search).get("sample") ?? "default";
 // The documents lock is a per-account setting kept on the phone: off here.
@@ -298,13 +298,22 @@ function q(table: string) {
   b.upsert = (p: unknown) => ((op = "insert"), (payload = p), b);
   b.update = (p: unknown) => ((op = "update"), (payload = p), b);
   b.delete = () => ((op = "delete"), b);
-  b.single = () => Promise.resolve({ data: run()[0] ?? null, error: null });
-  b.maybeSingle = () => Promise.resolve({ data: run()[0] ?? null, error: null });
+  const reply = () => {
+    const fault = op !== "select" && w.__failNextWrite?.table === table ? w.__failNextWrite : undefined;
+    if (fault) {
+      delete w.__failNextWrite;
+      if (fault.afterCommit) run();
+      return {data: null, error: {message: "Simulated interrupted write"}, count: 0};
+    }
+    const data = run();
+    return {data, error: null, count: data.length};
+  };
+  b.single = () => Promise.resolve().then(() => {
+    const result = reply(); return {...result, data: result.data?.[0] ?? null};
+  });
+  b.maybeSingle = b.single;
   b.then = (res: (v: unknown) => unknown, rej: (e: unknown) => unknown) =>
-    Promise.resolve().then(() => {
-      const data = run();
-      return { data, error: null, count: data.length };
-    }).then(res, rej);
+    Promise.resolve().then(reply).then(res, rej);
   return b;
 }
 

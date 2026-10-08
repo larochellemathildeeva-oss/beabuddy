@@ -1,3 +1,4 @@
+import { recoverableInsert } from "@/lib/recoverable-insert";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { toast } from "sonner";
@@ -79,6 +80,7 @@ async function selectTrips(): Promise<TripRow[]> {
 }
 
 async function insertTrip(row: {
+  id?: string;
   owner_id: string;
   title: string;
   city: string | null;
@@ -386,6 +388,7 @@ export function useTrips() {
   const createTrip = useCallback(
     async (t: {
       title: string;
+      recovery?: { ownerId: string; tripId: string; stopIds: string[] };
       city?: string;
       country?: string;
       start_date?: string;
@@ -395,8 +398,13 @@ export function useTrips() {
       /** A trip to several cities: each one, in order, as a trip stop. */
       stops?: NewStop[];
     }) => {
+      if (t.recovery && t.recovery.stopIds.length !== (t.stops?.length ?? 0))
+        throw new Error("The saved trip needs its original cities.");
       const ownerId = await liveUserId(uid);
+      if (t.recovery && t.recovery.ownerId !== ownerId)
+        throw new Error("Sign in to the account that started this trip.");
       const row = {
+        ...(t.recovery ? { id: t.recovery.tripId } : {}),
         owner_id: ownerId,
         title: t.title,
         city: t.city || null,
@@ -406,30 +414,101 @@ export function useTrips() {
         dates_status: t.dates_status ?? "tentative",
         budget_enabled: t.budget_enabled ?? false,
       };
-      const created = await insertTrip(row);
+      let created: { id: string };
+      if (t.recovery) {
+        const stableRow = { ...row, id: t.recovery.tripId };
+        await recoverableInsert(
+          [stableRow],
+          async () => {
+            const result = await supabase
+              .from("trips")
+              .select("id")
+              .eq("id", stableRow.id)
+              .eq("owner_id", ownerId);
+            if (result.error) throw result.error;
+            return result.data;
+          },
+          async () => {
+            await insertTrip(stableRow);
+          },
+        );
+        created = { id: stableRow.id };
+      } else {
+        created = await insertTrip(row);
+      }
       if (t.stops?.length) {
-        const { data: saved, error } = await supabase
-          .from("trip_stops")
-          .insert(
-            t.stops.map((stop, position) => ({
-              trip_id: created.id,
-              kind: stop.kind ?? "destination",
-              city: stop.city,
-              country: stop.country || null,
-              lat: stop.lat ?? null,
-              lon: stop.lon ?? null,
-              arrive_on: stop.arrive_on || null,
-              depart_on: stop.depart_on || null,
-              position,
-              created_by: ownerId,
-            })),
-          )
-          .select("id, city, country, lat, lon");
+        const stopRows = t.stops.map((stop, position) => ({
+          trip_id: created.id,
+          kind: stop.kind ?? "destination",
+          city: stop.city,
+          country: stop.country || null,
+          lat: stop.lat ?? null,
+          lon: stop.lon ?? null,
+          arrive_on: stop.arrive_on || null,
+          depart_on: stop.depart_on || null,
+          position,
+          created_by: ownerId,
+        }));
+        let saved:
+          | {
+              id: string;
+              city: string;
+              country: string | null;
+              lat: number | null;
+              lon: number | null;
+            }[]
+          | null = null;
+        let error: { message: string } | null = null;
+        if (t.recovery) {
+          const ids = t.recovery.stopIds;
+          if (ids.length !== stopRows.length)
+            throw new Error("The saved trip needs its original cities.");
+          try {
+            await recoverableInsert(
+              stopRows.map((row, i) => ({ ...row, id: ids[i]! })),
+              async () => {
+                const result = await supabase
+                  .from("trip_stops")
+                  .select("id")
+                  .eq("trip_id", created.id)
+                  .in("id", ids);
+                if (result.error) throw result.error;
+                return result.data;
+              },
+              async (missing) => {
+                const result = await supabase
+                  .from("trip_stops")
+                  .insert(missing)
+                  .select("id, city, country, lat, lon");
+                if (result.error) throw result.error;
+                saved = result.data;
+              },
+            );
+            const recovered = await supabase
+              .from("trip_stops")
+              .select("id, city, country, lat, lon")
+              .eq("trip_id", created.id)
+              .in("id", ids);
+            if (recovered.error) throw recovered.error;
+            saved = recovered.data.filter((stop) => stop.lat === null || stop.lon === null);
+          } catch (failure) {
+            // The trip itself is confirmed: expose it even when cities failed.
+            await load();
+            throw failure;
+          }
+        } else {
+          const result = await supabase
+            .from("trip_stops")
+            .insert(stopRows)
+            .select("id, city, country, lat, lon");
+          saved = result.data;
+          error = result.error;
+        }
         // A city typed rather than picked is found on the map by its name,
         // in the background: the trip opens without waiting for it.
-        if (saved?.length) void pinCityStops(saved);
-        // The trip is made either way, so open it and say what is missing
-        // rather than report the whole trip as failed.
+        if (saved) void pinCityStops(saved);
+        // Legacy callers without recovery keep the soft failure. The new-trip
+        // sheet keeps its recovery record and offers retry or Open the saved trip.
         if (error)
           toast.error(
             "The trip is made, but its cities didn't save. Add them in Settings → Cities on this trip.",
