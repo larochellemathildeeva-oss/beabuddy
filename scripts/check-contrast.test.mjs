@@ -115,7 +115,8 @@ test("contrastReport: the real stylesheet skips no pair in any theme or accent",
 });
 
 test("type scale: the minimalist sizes are set and labels are sentence case", () => {
-  const size = (name) => css.match(new RegExp(`${name}:\\s*calc\\((\\d+)px \\* var\\(--text-scale, 1\\)\\)`))?.[1];
+  const size = (name) =>
+    css.match(new RegExp(`${name}:\\s*calc\\((\\d+)px \\* var\\(--text-scale, 1\\)\\)`))?.[1];
   assert.equal(size("--text-display"), "28");
   assert.equal(size("--text-title"), "20");
   assert.equal(size("--text-heading"), "20");
