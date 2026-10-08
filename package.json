@@ -19,6 +19,7 @@
     "db:check": "node scripts/migration-check.mjs",
     "db:check:ci": "node scripts/migration-check.mjs --ci",
     "check:public-secrets": "node scripts/check-public-secrets.mjs",
+    "check:contrast": "node scripts/check-contrast.mjs",
     "audit:ci": "node scripts/itinerary-audit/ci.mjs && node scripts/itinerary-audit/pins-japan.mjs",
     "map:check": "node --experimental-strip-types scripts/check-vector-map.ts",
     "test": "node --experimental-strip-types --test src/lib/*.test.ts scripts/*.test.mjs",

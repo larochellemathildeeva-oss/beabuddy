@@ -54,6 +54,11 @@ jobs:
       - name: No server secrets in the client bundle
         run: npm run check:public-secrets
 
+      # Text 4.5:1 and control edges 3:1 in Calm, Colorful and Dark, under
+      # both accents, read from src/styles.css. Blocking.
+      - name: Contrast in every theme
+        run: npm run check:contrast
+
   # The frozen import checks: every sample plan through the list reader and
   # every frozen Gemini answer through today's clean-up, then a real 127-stop
   # Japan plan placed from frozen map answers and scored against a reviewed
