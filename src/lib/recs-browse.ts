@@ -163,11 +163,11 @@ export function recentlySaved<T extends { created_at: string }>(
 /** How many saves each list holds; a row with no list is a recommendation. */
 export function listCounts(
   rows: readonly { pin_type: string | null }[],
-): Record<"reco" | "wishlist" | "nexttime" | "visited", number> {
-  const out = { reco: 0, wishlist: 0, nexttime: 0, visited: 0 };
+): Record<"reco" | "bucket" | "visited", number> {
+  const out = { reco: 0, bucket: 0, visited: 0 };
   for (const r of rows) {
-    const t = (r.pin_type ?? "reco") as keyof typeof out;
-    if (t in out) out[t] += 1;
+    if (r.pin_type === "visited") out.visited += 1;
+    else if (r.pin_type === "wishlist" || r.pin_type === "nexttime") out.bucket += 1;
     else out.reco += 1;
   }
   return out;

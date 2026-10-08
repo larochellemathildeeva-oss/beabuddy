@@ -5,10 +5,10 @@ import { groupCountLabel, groupRecosByType, RECO_GROUP_ORDER } from "./reco-grou
 const row = (id: string, type: "reco" | "wishlist" | "nexttime" | "visited") => ({ id, type });
 
 test("groupRecosByType keeps the fixed order regardless of input order", () => {
-  const rows = [row("a", "visited"), row("b", "reco"), row("c", "nexttime"), row("d", "wishlist")];
+  const rows = [row("a", "visited"), row("b", "reco"), row("d", "wishlist")];
   assert.deepEqual(
     groupRecosByType(rows).map((g) => g.type),
-    ["reco", "wishlist", "nexttime", "visited"],
+    ["reco", "wishlist", "visited"],
   );
 });
 
@@ -50,10 +50,16 @@ test("every row lands in exactly one group", () => {
   assert.deepEqual(ids, ["a", "b", "c", "d", "e"]);
 });
 
-test("the order covers every pin type, so nothing can be silently dropped", () => {
-  const all = ["visited", "nexttime", "wishlist", "reco"] as const;
-  for (const type of all) assert.ok(RECO_GROUP_ORDER.includes(type), `${type} missing`);
-  assert.equal(RECO_GROUP_ORDER.length, all.length);
+test("the order covers every shown list, so nothing can be silently dropped", () => {
+  assert.deepEqual(RECO_GROUP_ORDER, ["reco", "wishlist", "visited"]);
+});
+
+test("Next time rows join the Bucket list group", () => {
+  const groups = groupRecosByType([row("a", "nexttime"), row("b", "wishlist")]);
+  assert.deepEqual(
+    groups.map((g) => [g.type, g.rows.map((r) => r.id)]),
+    [["wishlist", ["a", "b"]]],
+  );
 });
 
 test("groupCountLabel says the count once", () => {

@@ -46,6 +46,7 @@ import { beaCheer, useBeaSettings } from "@/hooks/useBeaSettings";
 import { useTrips } from "@/hooks/useTrips";
 import { pinColorClass, pinLabel, type Pin, type PinType } from "@/data/atlas";
 import { groupCountLabel, groupRecosByType } from "@/lib/reco-groups";
+import { listOf } from "@/lib/place-lists";
 import { useRecommendations, type RecoRowDB } from "@/hooks/useRecommendations";
 import {
   PLACE_TRAVEL_TAGS,
@@ -679,7 +680,7 @@ function RecommendationsPage() {
         .join(" – ")
     : undefined;
 
-  const [homeList, setHomeList] = useState<"all" | PinType>("all");
+  const [homeList, setHomeList] = useState<"all" | "reco" | "wishlist" | "visited">("all");
   const nextTrip = pickActiveTrip(trips.trips, today);
   const visibleRows = vault.rows.filter((r) => !hiddenFromRecs(r, r.pin_type, r.visited));
   const savedForTrip = nextTrip?.city
@@ -1416,9 +1417,8 @@ function RecommendationsPage() {
                   [
                     ["all", "All", visibleRows.length],
                     ["reco", "Recs", counts.reco],
-                    ["wishlist", "Wishlist", counts.wishlist],
-                    ["nexttime", "Next time", counts.nexttime],
-                    ["visited", "Visited", counts.visited],
+                    ["wishlist", pinLabel.wishlist, counts.bucket],
+                    ["visited", pinLabel.visited, counts.visited],
                   ] as const
                 ).map(([k, label, n]) => (
                   <button
@@ -1429,7 +1429,7 @@ function RecommendationsPage() {
                     className={`recs-chip h-11 shrink-0 whitespace-nowrap rounded-full border px-4 font-display text-[18px] ${
                       homeList === k
                         ? "border-primary bg-primary text-primary-foreground"
-                        : `tile-fill-${(["all", "reco", "wishlist", "nexttime", "visited"].indexOf(k) % 5) + 1} border-border text-foreground`
+                        : `tile-fill-${(["all", "reco", "wishlist", "visited"].indexOf(k) % 5) + 1} border-border text-foreground`
                     }`}
                   >
                     {label}
@@ -1498,14 +1498,22 @@ function RecommendationsPage() {
                     title={homeList === "reco" ? "Recommendations" : pinLabel[homeList]}
                     onSeeAll={() => setScreen({ kind: "saved", list: homeList })}
                   />
-                  {counts[homeList] === 0 ? (
+                  {counts[homeList === "wishlist" ? "bucket" : homeList] === 0 ? (
                     <p className="py-6 text-center text-[15px] text-muted-foreground">
                       Nothing in this list yet.
                     </p>
                   ) : (
                     <ul className="space-y-3">
                       {recentlySaved(
-                        visibleRows.filter((r) => (r.pin_type ?? "reco") === homeList),
+                        visibleRows.filter(
+                          (r) =>
+                            listOf(r) ===
+                            (homeList === "wishlist"
+                              ? "bucket"
+                              : homeList === "visited"
+                                ? "been"
+                                : "recommendation"),
+                        ),
                         8,
                       ).map((r) => (
                         <li key={r.id}>{recCard(r)}</li>
