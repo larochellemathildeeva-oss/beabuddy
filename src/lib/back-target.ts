@@ -6,6 +6,11 @@ const PARENTS: ReadonlyArray<readonly [RegExp, string]> = [
   [/^\/trips\/(next|plan)(\/|$)/, "/trips"],
   [/^\/world\/next(\/|$)/, "/world"],
   [/^\/profile\/(bea|documents)(\/|$)/, "/profile"],
+  // Opened from You (Calendar from Trips); Memories from Photos, Story from Memories.
+  [/^\/(preferences|photos|expenses)(\/|$)/, "/profile"],
+  [/^\/calendar(\/|$)/, "/trips"],
+  [/^\/memories(\/|$)/, "/photos"],
+  [/^\/story(\/|$)/, "/memories"],
 ];
 
 export function backFallback(pathname: string): string {
