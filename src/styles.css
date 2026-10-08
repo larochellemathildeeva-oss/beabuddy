@@ -3982,6 +3982,7 @@ main [class*="rounded-\\[var(--r-"] {
   min-height: 52px;
   align-items: center;
   justify-content: center;
+  border-radius: var(--r-button);
   background: var(--foreground);
   color: var(--background);
   font-family: var(--font-mono);
@@ -4385,4 +4386,49 @@ main [class*="rounded-2xl"] {
   border: 0;
   border-top: 0.5px solid var(--border);
   padding-inline: 0;
+}
+
+/* Trips' tabs, as the minimalist design draws them: four words, each over
+   its own short rule, the chosen one darker. */
+.trips-tabs--minimal {
+  display: flex;
+  gap: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
+.trips-tabs--minimal button {
+  display: block;
+  flex: 1 1 0;
+  min-height: 44px;
+  padding: 14px 0 0;
+  border: 0;
+  border-radius: 0;
+  background: none !important;
+  box-shadow: none !important;
+  color: var(--foreground);
+  font-size: 12px;
+  line-height: 17px;
+  font-weight: 400;
+  text-align: center;
+}
+.trips-tabs--minimal button::after {
+  content: "";
+  display: block;
+  width: 80%;
+  height: 0.5px;
+  margin-top: 12px;
+  background: var(--muted-foreground);
+}
+.trips-tabs--minimal button[aria-selected="true"] {
+  font-weight: 500;
+}
+.trips-tabs--minimal button:not([aria-selected="true"]) {
+  color: var(--muted-foreground);
+}
+.trips-tabs--minimal button[aria-selected="true"]::after {
+  height: 1px;
+  background: var(--foreground);
 }

@@ -3,15 +3,21 @@ import type { ReactNode, Ref } from "react";
 /** Shared identity row; the shell keeps the Home link and header actions. */
 export function BrandMark({ version, large = false }: { version?: string; large?: boolean }) {
   return (
-    <span className="flex min-h-11 items-center gap-2">
+    <span className="flex min-h-11 items-center gap-2.5">
+      <img
+        src="/icon-192.png"
+        alt=""
+        aria-hidden
+        width={32}
+        height={32}
+        className="size-8 shrink-0 rounded-[var(--r-card)] object-contain"
+      />
       <span className="leading-none">
-        <span
-          className={`block font-display tracking-[-0.01em] ${large ? "text-[28px]" : "text-[26px]"}`}
-        >
+        <span className={`block font-bold ${large ? "text-[22px]" : "text-[20px]"} leading-[1.2]`}>
           Béa
         </span>
         {version && (
-          <span className="mt-1 hidden text-[10px] font-semibold tracking-[0.12em] text-muted-foreground min-[390px]:block">
+          <span className="mt-0.5 hidden text-[10px] text-muted-foreground min-[390px]:block">
             v{version}
           </span>
         )}

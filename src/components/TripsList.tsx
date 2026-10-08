@@ -1,78 +1,18 @@
-import { useEffect, useMemo, useRef, useState, type ComponentType, type ReactNode } from "react";
+import { type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
-import {
-  ArrowRight,
-  Bed,
-  ChevronRight,
-  ImageIcon,
-  ListChecks,
-  Luggage,
-  MapIcon,
-  MapPin,
-  MoreHorizontal,
-  Plane,
-  Users,
-} from "@/components/icons";
-import { TripBannerMap, TripsWorldMap } from "@/components/TripRouteMap";
+import { ImageIcon, MapIcon } from "@/components/icons";
 import { TownPhotoCredit } from "@/components/TownPhotoCredit";
-import { supabase } from "@/integrations/supabase/client";
 import { useSignedPhoto, type TripPhotoRow } from "@/hooks/useTripPhotos";
 import { useTownPicture } from "@/hooks/useTownPicture";
 import { useTripStops } from "@/hooks/useTripStops";
-import { useCityPositions } from "@/hooks/useCityPositions";
 import type { TripRow } from "@/hooks/useTrips";
-import type { TripGlance } from "@/hooks/useTripGlances";
 import { bannerArtUrl, bannerSceneFor } from "@/lib/banner-art";
-import { knownCityPosition } from "@/lib/city-locate";
-import {
-  cityKey,
-  hasPosition,
-  tripCityStop,
-  withCityPositions,
-  type CityStop,
-  type Position,
-} from "@/lib/city-position";
-import { currentLeg, isPastTrip } from "@/lib/home-trip";
-import { routeStops, type RouteStop } from "@/lib/home-route-map";
-import { liveSummary } from "@/lib/companion";
 import { pickTripPhoto, tripDateLine } from "@/lib/trip-card";
 import { routeLine } from "@/lib/trip-glance";
-import { beaTripNote } from "@/lib/trip-note";
-import { timeForRail } from "@/lib/timeline-kind";
-import { toLocalISODate } from "@/lib/trip-dates";
 import type { TripPicture } from "@/lib/trip-picture";
-import {
-  groupByPlace,
-  placeTags,
-  tripCountdown,
-  tripMonth,
-  tripRowTag,
-  type RowTag,
-  type TripsLayout,
-} from "@/lib/trips-page";
+import { type TripsLayout } from "@/lib/trips-page";
 
 const short = (city: string) => (city.split(",")[0] ?? "").trim();
-
-/** "Sep 7": the day a flight leaves, when it has one. */
-function dayLabel(day: string | null | undefined): string {
-  if (!day) return "";
-  return new Date(`${day}T00:00:00`).toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-  });
-}
-
-/** The trip's own description, first line only, or Béa's line about it. */
-function quoteFor(trip: TripRow, stopCount: number, planned: number | null): string {
-  const own = (trip.notes ?? "").split("\n")[0]?.trim();
-  if (own) return own.length > 140 ? `${own.slice(0, 139)}…` : own;
-  return (
-    beaTripNote(
-      { startDate: trip.start_date, endDate: trip.end_date, stopCount, plannedCount: planned },
-      toLocalISODate(new Date()),
-    ) ?? ""
-  );
-}
 
 /** The trip's picture: a photo of the traveller's own, of the town, else Béa's illustration. */
 function TripPictureFill({
@@ -134,25 +74,20 @@ export function TripsHero({ section }: { section?: string | undefined }) {
 /* Section heads and the two device switches                           */
 /* ------------------------------------------------------------------ */
 
-export function TripsSection({
-  title,
-  aside,
-  children,
-}: {
-  title: string;
-  aside?: ReactNode;
-  children: ReactNode;
-}) {
+export function TripsSection({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section className="rise">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
-        <h2 className="trips-section-title">{title}</h2>
-        {aside}
-      </div>
+      <h2 className="border-t border-border pt-2 text-[12px] font-normal leading-[17px]">
+        {title}
+      </h2>
       {children}
     </section>
   );
 }
+
+/* ------------------------------------------------------------------ */
+/* The next trip, as a big banner                                      */
+/* ------------------------------------------------------------------ */
 
 /** Big banner or List, for the trips ahead. */
 export function LayoutSwitch({
@@ -239,113 +174,23 @@ export function PictureSwitch({
   );
 }
 
-/* ------------------------------------------------------------------ */
-/* The next trip, as a big banner                                      */
-/* ------------------------------------------------------------------ */
-
-function Chip({
-  icon: Icon,
-  value,
-  label,
-  tone,
-  to,
-}: {
-  icon: ComponentType<{ className?: string }>;
-  value: string;
-  label: string;
-  tone: 1 | 2 | 4;
-  to: { tripId: string; prep?: "todo" | "packing" };
-}) {
-  return (
-    <Link
-      to="/trips/$tripId"
-      params={{ tripId: to.tripId }}
-      search={to.prep ? { prep: to.prep } : {}}
-      className={`trips-chip tile-fill-${tone} flex min-h-[56px] min-w-0 flex-1 items-center gap-1.5 px-2 py-2`}
-    >
-      <span className="grid size-7 shrink-0 place-items-center rounded-full bg-card text-primary">
-        <Icon className="size-4" aria-hidden />
-      </span>
-      <span className="min-w-0 leading-tight">
-        <span className="block truncate text-[14px] font-bold">{value}</span>
-        <span className="block truncate text-[13px] text-muted-foreground">{label}</span>
-      </span>
-    </Link>
-  );
-}
-
 /**
- * The next trip (mockup `nextUpHTML`): its picture with how many are going or
- * the live stop, a glass panel with its name, places and the countdown, then
- * its cities in order with their dates, the flight, to-dos and packing (each
- * opening its part of the trip), and Béa's line with "View itinerary".
+ * The next trip, as the minimalist design draws it: its name, its places, its
+ * dates, its picture and one black "View trip". Flights, to-dos, packing and
+ * bookings are inside the trip.
  */
-export function TripFeature({
-  trip,
-  photos,
-  glance,
-  peopleCount,
-}: {
-  trip: TripRow;
-  photos: TripPhotoRow[];
-  glance: TripGlance | undefined;
-  peopleCount: number;
-}) {
+export function TripFeature({ trip, photos }: { trip: TripRow; photos: TripPhotoRow[] }) {
   const { stops } = useTripStops(trip.id, null);
   const cityNames = stops.map((s) => s.city);
-  const today = toLocalISODate(new Date());
-  const leg = glance ? currentLeg(stops, glance.items, today) : null;
-  const live = glance ? liveSummary(glance.items, today) : null;
-  const started = !!(trip.start_date && trip.start_date <= today);
-  const flight = leg ? leg.flight : glance?.flight;
-  const lodging = (leg ? leg.lodging : glance?.lodging) ?? glance?.booked.lodging ?? null;
-  const bookedFlight = flight ? null : (glance?.booked.flight ?? null);
-  const packing = glance?.packing;
-  const openTodos = glance?.todos.open ?? 0;
-  const count = tripCountdown(trip.start_date, trip.end_date);
-  const quote = quoteFor(trip, stops.length, glance ? glance.items.length : null);
-
-  const names = [...new Set(cityNames.map(short).filter(Boolean))];
-  const places =
-    names.length > 1
-      ? names.slice(0, 3).join(" · ")
-      : routeLine(cityNames) || short(trip.city ?? "") || trip.country || "";
-  // The ribbon: each city once, in order, with the day you get there.
-  const ribbon = useMemo(() => {
-    const seen = new Set<string>();
-    return stops.filter((s) => {
-      const k = short(s.city).toLowerCase();
-      if (!k || seen.has(k)) return false;
-      seen.add(k);
-      return true;
-    });
-  }, [stops]);
-
-  const flightValue = flight
-    ? dayLabel(flight.day_date) || timeForRail(flight.time_label) || "Saved"
-    : bookedFlight
-      ? "Booked"
-      : started
-        ? "—"
-        : "None yet";
-  const stayFirst = started && lodging;
-
-  const kicker = live ? "Happening now" : started ? "On this trip" : "Upcoming trip";
-  const when = count ? (count.unit ? `${count.value} ${count.unit}` : count.value) : "";
-  const headline = trip.title;
-
+  const places = placesLine(trip, cityNames);
   return (
-    <article className="trips-feature editorial-feature overflow-hidden">
-      <div className="px-4 pb-3 pt-3">
-        <p className="label-caps">
-          {[kicker, live ? `Stop ${live.step} of ${live.total}` : when].filter(Boolean).join(" · ")}
-          {peopleCount > 1 ? ` · ${peopleCount} travellers` : ""}
-        </p>
-        <h3 className="mt-2 line-clamp-2 break-words font-display text-[28px] font-bold leading-[1.2]">
-          {headline}
+    <article className="trips-feature overflow-hidden rounded-[var(--r-card)] border border-border bg-card">
+      <div className="space-y-1 px-4 pt-4">
+        <h3 className="line-clamp-2 break-words text-[28px] font-bold leading-[1.2]">
+          {trip.title}
         </h3>
-        {places ? <p className="mt-1 font-display text-[20px] leading-[28px]">{places}</p> : null}
-        <p className="label-caps mt-2.5">
+        {places ? <p className="text-[20px] leading-[28px]">{places}</p> : null}
+        <p className="text-[12px] leading-[17px]">
           {tripDateLine(trip.start_date, trip.end_date)}
           {trip.dates_status === "tentative" ? " · tentative" : ""}
         </p>
@@ -354,304 +199,64 @@ export function TripFeature({
         to="/trips/$tripId"
         params={{ tripId: trip.id }}
         viewTransition
-        aria-label={`Open ${trip.title}`}
-        className="relative block h-[150px] overflow-hidden bg-muted"
+        aria-hidden
+        tabIndex={-1}
+        className="relative mt-2 block h-[145px] overflow-hidden rounded-[var(--r-card)] bg-muted"
         style={{ viewTransitionName: `trip-photo-${trip.id}` }}
       >
         <TripPictureFill trip={trip} photos={photos} cityNames={cityNames} />
       </Link>
-
-      {ribbon.length > 1 ? (
-        <ol className="trips-ribbon" aria-label="Cities on this trip">
-          {ribbon.slice(0, 4).map((stop, i) => {
-            return (
-              <li key={stop.id ?? i}>
-                <i aria-hidden />
-                <b className="block truncate text-[14px] font-semibold">{short(stop.city)}</b>
-                <span className="block truncate text-[13px] text-muted-foreground">
-                  {dayLabel(stop.arrive_on) || " "}
-                </span>
-              </li>
-            );
-          })}
-        </ol>
-      ) : leg ? (
-        <p className="px-4 pt-3 text-[14px] font-medium text-foreground/80">
-          {leg.label} · <span>{short(leg.city)}</span>
-        </p>
-      ) : null}
-
-      <div className="trips-chips flex pt-0">
-        {stayFirst ? (
-          <Chip
-            icon={Bed}
-            value={short(lodging.title)}
-            label="Stay"
-            tone={2}
-            to={{ tripId: trip.id }}
-          />
-        ) : (
-          <Chip
-            icon={Plane}
-            value={flightValue}
-            label={started ? "Next flight" : "Flight"}
-            tone={2}
-            to={{ tripId: trip.id }}
-          />
-        )}
-        <Chip
-          icon={ListChecks}
-          value={openTodos ? `${openTodos} left` : "All done"}
-          label="To-dos"
-          tone={1}
-          to={{ tripId: trip.id, prep: "todo" }}
-        />
-        <Chip
-          icon={Luggage}
-          value={packing ? `${packing.packed}/${packing.total}` : "—"}
-          label="Packed"
-          tone={4}
-          to={{ tripId: trip.id, prep: "packing" }}
-        />
-      </div>
-      {!stayFirst && lodging ? (
-        <p className="flex items-center gap-1.5 px-4 pt-2.5 text-[14px] text-muted-foreground">
-          <Bed className="size-4 shrink-0" aria-hidden />
-          <span className="truncate">{lodging.title}</span>
-        </p>
-      ) : null}
-
-      <div className="mt-3 flex items-end gap-3 border-t border-border px-4 py-3">
-        {quote ? (
-          <p className="min-w-0 flex-1 font-display text-[17px] italic leading-snug text-muted-foreground">
-            “{quote}”
-          </p>
-        ) : (
-          <span className="flex-1" />
-        )}
-        <Link
-          to="/trips/$tripId"
-          params={{ tripId: trip.id }}
-          viewTransition
-          className="flex min-h-11 shrink-0 items-center gap-1 text-[15px] font-semibold text-foreground underline-offset-4 hover:underline"
-        >
-          View itinerary
-          <ArrowRight className="size-4 text-primary" aria-hidden />
-        </Link>
-      </div>
+      <Link
+        to="/trips/$tripId"
+        params={{ tripId: trip.id }}
+        viewTransition
+        aria-label={`View trip ${trip.title}`}
+        className="mt-2 flex min-h-[52px] items-center justify-center rounded-[var(--r-button)] bg-foreground text-[14px] font-medium text-background"
+      >
+        View trip
+      </Link>
     </article>
   );
+}
+
+/** "Tokyo & Kyoto": the trip's places, or its city or country. */
+function placesLine(trip: TripRow, cityNames: string[]): string {
+  const names = [...new Set(cityNames.map(short).filter(Boolean))];
+  if (names.length === 2) return `${names[0]} & ${names[1]}`;
+  if (names.length > 2) return names.slice(0, 3).join(", ");
+  return routeLine(cityNames) || short(trip.city ?? "") || trip.country || "";
 }
 
 /* ------------------------------------------------------------------ */
 /* A trip as a row                                                     */
 /* ------------------------------------------------------------------ */
 
-function Tag({ tag }: { tag: RowTag }) {
-  return (
-    <span className={`trips-row-tag`} data-tone={tag.tone}>
-      {tag.tone === "live" ? (
-        <span className="size-1.5 rounded-full bg-current" aria-hidden />
-      ) : null}
-      {tag.text}
-    </span>
-  );
-}
-
-/** The ⋯ menu on a row: the trip's parts one tap away. */
-function RowMenu({ trip }: { trip: TripRow }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement | null>(null);
-  useEffect(() => {
-    if (!open) return;
-    const away = (e: Event) => {
-      if (!ref.current?.contains(e.target as Node)) setOpen(false);
-    };
-    const esc = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
-    document.addEventListener("pointerdown", away);
-    document.addEventListener("keydown", esc);
-    return () => {
-      document.removeEventListener("pointerdown", away);
-      document.removeEventListener("keydown", esc);
-    };
-  }, [open]);
-  const item =
-    "flex min-h-11 items-center rounded-xl px-3 py-2.5 text-[15px] font-medium hover:bg-accent";
-  return (
-    <div ref={ref} className="absolute right-1.5 top-1.5 z-10">
-      <button
-        type="button"
-        aria-label={`More for ${trip.title}`}
-        aria-expanded={open}
-        aria-haspopup="menu"
-        onClick={() => setOpen(!open)}
-        className="grid size-11 place-items-center rounded-full text-muted-foreground"
-      >
-        <MoreHorizontal className="size-5" aria-hidden />
-      </button>
-      {open ? (
-        <div
-          role="menu"
-          className="absolute right-1 top-11 w-52 rounded-2xl border border-border bg-card p-1.5 shadow-lg"
-        >
-          <Link
-            role="menuitem"
-            to="/trips/$tripId"
-            params={{ tripId: trip.id }}
-            viewTransition
-            className={item}
-          >
-            Open trip
-          </Link>
-          <Link
-            role="menuitem"
-            to="/trips/$tripId"
-            params={{ tripId: trip.id }}
-            search={{ prep: "todo" }}
-            className={item}
-          >
-            To-dos
-          </Link>
-          <Link
-            role="menuitem"
-            to="/trips/$tripId"
-            params={{ tripId: trip.id }}
-            search={{ prep: "packing" }}
-            className={item}
-          >
-            Packing
-          </Link>
-          <Link
-            role="menuitem"
-            to="/trips/$tripId"
-            params={{ tripId: trip.id }}
-            search={{ view: "bookings" }}
-            className={item}
-          >
-            Bookings
-          </Link>
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
 /**
- * A trip as a row (mockup `t4Row`): its little map or photo, the name, the
- * dates and places, who is going, and a tag for how soon (or live, or draft).
- * The whole row opens the trip; ⋯ opens its parts.
+ * A trip as a row, as the design draws "Later": its name, then its places
+ * and dates, on a hairline. The whole row opens the trip.
  */
-export function TripListRow({
-  trip,
-  photos,
-  glance,
-  peopleCount,
-}: {
-  trip: TripRow;
-  photos: TripPhotoRow[];
-  glance: TripGlance | undefined;
-  peopleCount: number;
-}) {
+export function TripListRow({ trip }: { trip: TripRow }) {
   const { stops } = useTripStops(trip.id, null);
-  const cityNames = stops.map((s) => s.city);
-  const today = toLocalISODate(new Date());
-  const live = glance ? liveSummary(glance.items, today) : null;
-  const leg = glance ? currentLeg(stops, glance.items, today) : null;
-  const tag: RowTag | null = live
-    ? { text: `Live · Stop ${live.step} of ${live.total}`, tone: "live" }
-    : isPastTrip(trip, today)
-      ? null
-      : tripRowTag(trip);
-  const names = [...new Set(cityNames.map(short).filter(Boolean))];
-  const places =
-    names.length > 1
-      ? names.slice(0, 3).join(" · ")
-      : routeLine(cityNames) || short(trip.city ?? "") || trip.country || "";
+  const places = placesLine(
+    trip,
+    stops.map((s) => s.city),
+  );
   const dates =
     trip.start_date || trip.end_date
       ? tripDateLine(trip.start_date, trip.end_date)
       : "No dates yet";
-
-  return (
-    <div className="trips-row relative flex min-h-[116px] overflow-hidden">
-      <div className="relative w-[34%] max-w-[150px] shrink-0 overflow-hidden bg-muted">
-        <TripPictureFill trip={trip} photos={photos} cityNames={cityNames} />
-      </div>
-      <div className="flex min-w-0 flex-1 flex-col gap-0.5 py-3 pl-3 pr-12">
-        <p className="line-clamp-2 break-words font-display text-[20px] leading-tight">
-          {trip.title}
-        </p>
-        <p className="truncate text-[14px] text-muted-foreground">
-          {dates}
-          {trip.dates_status === "tentative" && trip.start_date ? " · tentative" : ""}
-        </p>
-        {places ? <p className="truncate text-[13px] text-muted-foreground">{places}</p> : null}
-        {leg && !live ? (
-          <p className="truncate text-[13px] font-semibold text-foreground/80">
-            {leg.label} · {short(leg.city)}
-          </p>
-        ) : null}
-        <div className="mt-auto flex flex-wrap items-center gap-2 pt-1">
-          {peopleCount > 1 ? (
-            <span className="flex items-center gap-1 text-[13px] text-muted-foreground">
-              <Users className="size-4" aria-hidden />
-              {peopleCount} travellers
-            </span>
-          ) : null}
-          {tag ? <Tag tag={tag} /> : null}
-        </div>
-      </div>
-      <Link
-        to="/trips/$tripId"
-        params={{ tripId: trip.id }}
-        viewTransition
-        aria-label={`Open ${trip.title}`}
-        className="absolute inset-0"
-        style={{ viewTransitionName: `trip-photo-${trip.id}` }}
-      />
-      <RowMenu trip={trip} />
-    </div>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/* Past trips as three tiles                                           */
-/* ------------------------------------------------------------------ */
-
-function PastTile({ trip, photos }: { trip: TripRow; photos: TripPhotoRow[] }) {
-  const { stops } = useTripStops(trip.id, null);
-  const month = tripMonth(trip.start_date, trip.end_date);
   return (
     <Link
       to="/trips/$tripId"
       params={{ tripId: trip.id }}
       viewTransition
-      className="relative block h-[132px] overflow-hidden rounded-[var(--r-image)] bg-[#2a2026] text-white shadow-sm"
+      className="block border-b border-border py-3"
     >
-      <TripPictureFill trip={trip} photos={photos} cityNames={stops.map((s) => s.city)} />
-      <span
-        aria-hidden
-        className="absolute inset-0"
-        style={{
-          backgroundImage: "linear-gradient(to top, rgba(18,12,10,0.78), rgba(18,12,10,0) 62%)",
-        }}
-      />
-      <span className="absolute inset-x-0 bottom-0 p-2">
-        <span className="line-clamp-2 break-words font-display text-[17px] leading-[1.05]">
-          {trip.title}
-        </span>
-        {month ? <span className="block text-[13px] text-white/90">{month}</span> : null}
+      <span className="block text-[16px] leading-[22px]">{trip.title}</span>
+      <span className="mt-1 block text-[14px] leading-[20px] text-muted-foreground">
+        {[places, dates].filter(Boolean).join(" / ")}
+        {trip.dates_status === "tentative" && trip.start_date ? " · tentative" : ""}
       </span>
     </Link>
-  );
-}
-
-export function PastTiles({ trips, photos }: { trips: TripRow[]; photos: TripPhotoRow[] }) {
-  return (
-    <div className="grid grid-cols-3 gap-2.5">
-      {trips.map((trip) => (
-        <PastTile key={trip.id} trip={trip} photos={photos} />
-      ))}
-    </div>
   );
 }

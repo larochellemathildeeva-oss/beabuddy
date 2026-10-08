@@ -314,13 +314,13 @@ export const guides: Record<string, Guide> = {
     features: [
       "Edit your name, photo, home city and travel tags",
       "Set travel preferences: style, pace, budget, interests and diet",
-      "Keep reusable packing lists",
+      "Profile settings: your name and home city, packing lists, Data & imports, Privacy & legal, About Béa and Sign out",
       "Work travel: receipts and an expense spreadsheet",
       "Trip documents: bookings, confirmations and private files",
       "Choose Béa's personality and how much she suggests",
       "Change the theme and what Home shows (Appearance)",
-      "Import photos (Photos & memories), open the calendar (Data & imports)",
-      "Privacy & legal, Help & FAQ, Feedback, and replay the tour under About Béa",
+      "Import photos (Photos & memories)",
+      "Help & FAQ, Feedback and Sign out are in the Menu too",
     ],
     steps: [
       {
@@ -332,11 +332,6 @@ export const guides: Record<string, Guide> = {
         title: "Travel preferences",
         body: "Your style, pace, budget, interests and diet — what Béa plans and ranks with.",
         selector: "[data-guide='travel-preferences']",
-      },
-      {
-        title: "Packing lists",
-        body: "Reusable templates — weekend, beach, ski, work. Attach a copy to a trip; ticking things off stays on that trip only.",
-        selector: "[data-guide='packing-lists']",
       },
       {
         title: "Work travel",
@@ -352,26 +347,6 @@ export const guides: Record<string, Guide> = {
         title: "Your Béa",
         body: "Her personality, and how much she suggests and helps. The line under it names the preset you picked.",
         selector: "[data-guide='your-bea']",
-      },
-      {
-        title: "Data & imports",
-        body: "Open the trip calendar, and see what is kept on this phone. Appearance, higher up the list, sets the theme and what Home shows.",
-        selector: "[data-guide='offline-options']",
-      },
-      {
-        title: "Privacy & legal",
-        body: "Privacy policy, terms, and a note that Béa is Mathilde E. Larochelle's work. You keep what you save in it.",
-        selector: "[data-guide='legal']",
-      },
-      {
-        title: "Feedback",
-        body: "Always yours. Pick a category — it broke, a missing stat, a wish, the map has opinions — then write it. If Béa dropped the ball, throw it back.",
-        selector: "[data-guide='feedback']",
-      },
-      {
-        title: "Replay the tour",
-        body: "About Béa holds How Béa works and the step-by-step walks — planning, importing, saving places, the trip itself and your map.",
-        selector: "[data-guide='replay-tour']",
       },
     ],
   },

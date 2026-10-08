@@ -3,7 +3,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { friendlyError } from "@/lib/friendly-error";
 import { formatTripLocation } from "@/lib/place-label";
 import { useQueryClient } from "@tanstack/react-query";
-import { useEffect, useRef, useState, type ComponentType } from "react";
+import { useEffect, useState, type ComponentType } from "react";
 import { BookOpen, CalendarDays, ChevronRight, type LucideProps } from "@/components/icons";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
@@ -11,6 +11,7 @@ import { rememberedProfileName, rememberProfileName, shownName } from "@/lib/pro
 import { Sheet } from "@/components/Sheet";
 import { ConfirmSheet } from "@/components/ConfirmSheet";
 import { resumeOrReplayTour } from "@/components/Tour";
+import { useSignOut } from "@/hooks/useSignOut";
 import { PackingLists } from "@/components/PackingLists";
 import { CustomizeHome } from "@/components/CustomizeHome";
 import { FeedbackForm } from "@/components/FeedbackForm";
@@ -41,7 +42,6 @@ import { useBeaSettings } from "@/hooks/useBeaSettings";
 import { modeName } from "@/lib/bea-personality";
 import { deleteMyAccount, eraseMyData } from "@/lib/account.functions";
 import { clearLocalUserData } from "@/lib/clear-local-user-data";
-import { clearKeptOfflineOnSignOut } from "@/lib/directions-account";
 import { safeStorage } from "@/lib/tour-state";
 import { clearStoredVaultKeys } from "@/lib/vaultCrypto";
 
@@ -62,8 +62,16 @@ export const Route = createFileRoute("/profile")({
       },
     ],
   }),
+  validateSearch: (search: Record<string, unknown>): { panel?: MenuPanel } =>
+    MENU_PANELS.includes(search["panel"] as MenuPanel)
+      ? { panel: search["panel"] as MenuPanel }
+      : {},
   component: ProfilePage,
 });
+
+/** The You panels the Menu opens: /profile?panel=appearance and so on. */
+const MENU_PANELS = ["appearance", "feedback", "legal", "about", "settings"] as const;
+type MenuPanel = (typeof MENU_PANELS)[number];
 
 /** The panels the You page opens over itself. One at a time. */
 type Panel = "settings" | "packing" | "appearance" | "data" | "legal" | "feedback" | "about";
@@ -102,6 +110,14 @@ function ProfilePage() {
   const [sampleCtaDismissed, setSampleCtaDismissed] = useState(false);
   const [panel, setPanel] = useState<Panel | null>(null);
   const close = () => setPanel(null);
+  // Opened from the Menu: show that panel, then drop it from the address so
+  // going back does not open it again.
+  const asked = Route.useSearch().panel;
+  useEffect(() => {
+    if (!asked) return;
+    setPanel(asked);
+    void navigate({ to: "/profile", search: {}, replace: true });
+  }, [asked, navigate]);
 
   useEffect(() => {
     if (!user) {
@@ -160,31 +176,7 @@ function ProfilePage() {
   // The same figure as World: places been there and trips started.
   const countryCount = useCountriesVisited(t.trips);
 
-  const signingOut = useRef(false);
-  const signOut = async () => {
-    if (signingOut.current) return;
-    signingOut.current = true;
-    // Trips kept offline leave this phone with the traveller, but only those
-    // the account holds a copy of, so signing in brings them back. With no
-    // signal, or after a few seconds, everything stays on the phone.
-    const left = user
-      ? await Promise.race([
-          clearKeptOfflineOnSignOut(user.id),
-          new Promise<null>((resolve) => setTimeout(() => resolve(null), 8_000)),
-        ]).catch(() => null)
-      : null;
-    await supabase.auth.signOut();
-    if (left?.kept) {
-      toast(
-        left.kept === 1
-          ? "One trip kept offline stays on this phone: it couldn't be copied to your account just now."
-          : `${left.kept} trips kept offline stay on this phone: they couldn't be copied to your account just now.`,
-      );
-    } else if (left?.cleared) {
-      toast("Trips kept offline were removed from this phone. They come back when you sign in.");
-    }
-    navigate({ to: "/auth" });
-  };
+  const signOut = useSignOut();
 
   const replayTour = () => {
     resumeOrReplayTour();
@@ -266,46 +258,24 @@ function ProfilePage() {
             href="/profile/documents"
             guide="trip-documents"
           />
-          <YouRow
-            title="Packing lists"
-            note="Your reusable lists"
-            onClick={() => setPanel("packing")}
-            guide="packing-lists"
-          />
-          <YouRow
-            title="Data & imports"
-            note="Calendar, offline trips on this phone"
-            onClick={() => setPanel("data")}
-            guide="offline-options"
-          />
-          <YouRow
-            title="Privacy & legal"
-            note="How your data is kept"
-            onClick={() => setPanel("legal")}
-            guide="legal"
-          />
-          <YouRow title="Help & FAQ" note="Questions and answers" to="/help" />
-          <YouRow
-            title="Feedback"
-            note="Tell Béa something"
-            onClick={() => setPanel("feedback")}
-            guide="feedback"
-          />
-          <YouRow
-            title="About Béa"
-            note="How Béa works and the tour"
-            onClick={() => setPanel("about")}
-            guide="replay-tour"
-          />
+          {!user ? (
+            <YouRow
+              title="Privacy & legal"
+              note="How your data is kept"
+              onClick={() => setPanel("legal")}
+            />
+          ) : null}
         </div>
 
         {user && (
           <div className="space-y-3">
-            <button type="button" onClick={() => setPanel("settings")} className={SECONDARY}>
+            <button
+              type="button"
+              data-guide="profile-settings"
+              onClick={() => setPanel("settings")}
+              className={SECONDARY}
+            >
               Profile settings
-            </button>
-            <button type="button" onClick={() => void signOut()} className={SECONDARY}>
-              Sign out
             </button>
           </div>
         )}
@@ -343,7 +313,38 @@ function ProfilePage() {
               </p>
             )}
           </div>
-          {/* Theme, Home and the tour live in Appearance and About; sign out is below. */}
+          {/* Help, Privacy & legal, Feedback, About and Sign out are in the Menu too. */}
+          <div className="border-t border-border">
+            <YouRow
+              title="Packing lists"
+              note="Your reusable lists"
+              onClick={() => setPanel("packing")}
+              guide="packing-lists"
+            />
+            <YouRow
+              title="Data & imports"
+              note="Calendar, offline trips on this phone"
+              onClick={() => setPanel("data")}
+              guide="offline-options"
+            />
+            <YouRow
+              title="Privacy & legal"
+              note="How your data is kept"
+              onClick={() => setPanel("legal")}
+              guide="legal"
+            />
+            <YouRow
+              title="About Béa"
+              note="How Béa works and the tour"
+              onClick={() => setPanel("about")}
+              guide="replay-tour"
+            />
+          </div>
+          {user ? (
+            <button type="button" onClick={() => void signOut()} className={SECONDARY}>
+              Sign out
+            </button>
+          ) : null}
         </div>
       </Sheet>
 

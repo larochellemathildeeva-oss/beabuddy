@@ -1,3 +1,4 @@
+import { useSignOut } from "@/hooks/useSignOut";
 import { backFallback, isLandingPage } from "@/lib/back-target";
 import { Link, useCanGoBack, useNavigate, useRouter, useRouterState } from "@tanstack/react-router";
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
@@ -14,16 +15,7 @@ import { COMPRESS_AT, measureHeaderHeights, nextCompressed } from "../lib/page-h
 import { planeFromMatches, planeIsUndeclared, travelDirection } from "../lib/route-plane";
 import { BrandMark, PageHeader } from "./PageHeader";
 
-import {
-  ArrowLeft,
-  Bookmark,
-  Globe2,
-  Home,
-  MapPinned,
-  Menu,
-  Search,
-  User,
-} from "@/components/icons";
+import { ArrowLeft, Bookmark, Globe2, Home, MapPinned, User } from "@/components/icons";
 import logo from "../assets/bea-logo.png";
 
 const APP_VERSION = typeof __APP_VERSION__ === "string" ? __APP_VERSION__ : "1.0.0";
@@ -119,6 +111,7 @@ export function AppShell({
   useRestoreKeptOffline(user?.id);
   const online = useOnline();
   const [menuOpen, setMenuOpen] = useState(false);
+  const signOut = useSignOut();
 
   // The shell owns the only scroll container in the app, so header compression
   // is one listener here rather than one per screen. Passive, and it only sets
@@ -239,9 +232,9 @@ export function AppShell({
                 to="/recommendations"
                 search={{ find: true }}
                 aria-label="Search your places"
-                className="grid size-12 place-items-center rounded-[var(--r-button)] text-foreground"
+                className="flex min-h-12 min-w-12 items-center justify-center px-2 text-[12px] text-foreground"
               >
-                <Search className="size-6" aria-hidden />
+                Search
               </Link>
               {user && <PageGuide round hideToggle />}
               {user && (
@@ -250,9 +243,9 @@ export function AppShell({
                   onClick={() => setMenuOpen(true)}
                   aria-haspopup="dialog"
                   aria-label="Menu"
-                  className="grid size-12 place-items-center rounded-[var(--r-button)] text-foreground"
+                  className="flex min-h-12 min-w-12 items-center justify-center px-2 text-[12px] text-foreground"
                 >
-                  <Menu className="size-6" aria-hidden />
+                  Menu
                 </button>
               )}
             </div>
@@ -299,9 +292,9 @@ export function AppShell({
                   search={{ find: true }}
                   aria-label="Search your places"
                   // A trip's own actions take this row; Search stays on every other page.
-                  className="grid size-12 place-items-center rounded-[var(--r-button)] text-foreground group-has-[#app-header-slot:not(:empty)]/hdr:hidden"
+                  className="flex min-h-12 min-w-12 items-center justify-center px-2 text-[12px] text-foreground group-has-[#app-header-slot:not(:empty)]/hdr:hidden"
                 >
-                  <Search className="size-6" aria-hidden />
+                  Search
                 </Link>
               )}
               {user && (
@@ -310,9 +303,9 @@ export function AppShell({
                   onClick={() => setMenuOpen(true)}
                   aria-haspopup="dialog"
                   aria-label="Menu"
-                  className="grid size-12 place-items-center rounded-[var(--r-button)] text-foreground"
+                  className="flex min-h-12 min-w-12 items-center justify-center px-2 text-[12px] text-foreground"
                 >
-                  <Menu className="size-6" aria-hidden />
+                  Menu
                 </button>
               )}
               {!user && (
@@ -363,14 +356,21 @@ export function AppShell({
               <span className="menu-row-title">Help for this page</span>
               <span className="menu-row-note">What you can do here</span>
             </button>
-            {[
-              ["/profile", "Profile settings", "Your details and how Béa works"],
-              ["/help", "Help & FAQ", "Questions and answers"],
-              ["/privacy", "Privacy & legal", "How your data is kept"],
-            ].map(([to, title, note]) => (
+            <Link to="/help" className="menu-row block" onClick={() => setMenuOpen(false)}>
+              <span className="menu-row-title">Help & FAQ</span>
+              <span className="menu-row-note">Questions and answers</span>
+            </Link>
+            {(
+              [
+                ["appearance", "Appearance", "Your look and reading options"],
+                ["feedback", "Feedback", "Tell Béa something"],
+                ["legal", "Privacy & legal", "How your data is kept"],
+              ] as const
+            ).map(([panel, title, note]) => (
               <Link
-                key={to}
-                to={to as "/profile"}
+                key={panel}
+                to="/profile"
+                search={{ panel }}
                 className="menu-row block"
                 onClick={() => setMenuOpen(false)}
               >
@@ -378,6 +378,19 @@ export function AppShell({
                 <span className="menu-row-note">{note}</span>
               </Link>
             ))}
+            {user ? (
+              <button
+                type="button"
+                className="menu-row"
+                onClick={() => {
+                  setMenuOpen(false);
+                  void signOut();
+                }}
+              >
+                <span className="menu-row-title">Sign out</span>
+                <span className="menu-row-note">Your trips stay in your account</span>
+              </button>
+            ) : null}
             <p role="img" aria-label={online ? "Online" : "Offline"} className="menu-row-note pt-4">
               {online ? "Online" : "Offline · changes sync when you are back"}
             </p>
