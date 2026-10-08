@@ -64,6 +64,9 @@ import {
 import { countryWorldShare } from "@/lib/travel-stats";
 import { continentOf, visitedContinents } from "@/lib/continents";
 import { isCityLevelPlace } from "@/lib/reco-place";
+import { isLocation, listOf, recsForLocation } from "@/lib/place-lists";
+import { LocationSheet, type SheetLocation } from "@/components/world/LocationSheet";
+import { ConfirmSheet } from "@/components/ConfirmSheet";
 import { beaLine } from "@/lib/bea-voice";
 import { emptyLine } from "@/lib/bea-personality";
 import { bannerArtUrl, bannerSceneFor } from "@/lib/banner-art";
@@ -112,38 +115,6 @@ export const Route = createFileRoute("/world")({
   component: WorldPage,
 });
 
-/** Saved places grouped by country: one bucket-list row per destination. */
-type Destination = {
-  key: string;
-  name: string;
-  /** Cities or place names inside it, most mentioned first. */
-  within: string[];
-  rows: RecoRowDB[];
-};
-
-function destinationsOf(rows: RecoRowDB[]): Destination[] {
-  const groups = new Map<string, Destination>();
-  for (const row of rows) {
-    const country = row.country?.trim();
-    const name = country
-      ? countryDisplayName(country)
-      : row.city?.trim() || row.name.trim() || "Somewhere";
-    const key = country ? `c:${countryKey(country)}` : `n:${foldAccents(name).toLowerCase()}`;
-    const group = groups.get(key) ?? { key, name, within: [], rows: [] };
-    group.rows.push(row);
-    const inner = (row.city?.trim() || row.name.trim()) ?? "";
-    if (
-      inner &&
-      foldAccents(inner).toLowerCase() !== foldAccents(name).toLowerCase() &&
-      !group.within.some((w) => foldAccents(w).toLowerCase() === foldAccents(inner).toLowerCase())
-    ) {
-      group.within.push(inner);
-    }
-    groups.set(key, group);
-  }
-  return [...groups.values()];
-}
-
 function WorldPage() {
   const search = Route.useSearch();
   const navigateWorld = Route.useNavigate();
@@ -186,7 +157,6 @@ function WorldPage() {
   const [statsNote, setStatsNote] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const [menuFor, setMenuFor] = useState<string | null>(null);
   const [rowBusy, setRowBusy] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const statsLayout = useStatsLayout();
@@ -243,16 +213,22 @@ function WorldPage() {
   };
   const cityOf = (pin: Pin) => cities.find((c) => `city:${c.key}` === pin.id);
 
-  // The saved lists, from the same recommendations Recs keeps.
-  const wishlistRows = useMemo(
-    () => vault.rows.filter((r) => r.pin_type === "wishlist" && !r.visited),
+  // The saved lists, from the same recommendations Recs keeps. World shows the
+  // locations (cities, countries); every other save is a rec, counted under the
+  // location it is in (place-lists.ts).
+  const bucketLocations = useMemo(
+    () => vault.rows.filter((r) => listOf(r) === "bucket" && isLocation(r)),
     [vault.rows],
   );
-  const nextTimeRows = useMemo(
-    () => vault.rows.filter((r) => r.pin_type === "nexttime" && !r.visited),
-    [vault.rows],
+  const recRows = useMemo(() => vault.rows.filter((r) => !isLocation(r)), [vault.rows]);
+  const locationRows = useMemo(() => vault.rows.filter((r) => isLocation(r)), [vault.rows]);
+  const recsFor = (where: { city: string | null; country: string | null }) =>
+    recsForLocation(where, recRows, locationRows);
+  const recsLine = (n: number) => (n > 0 ? plural(n, "rec", "recs") : "");
+  const [openLocation, setOpenLocation] = useState<(SheetLocation & { row?: RecoRowDB }) | null>(
+    null,
   );
-  const bucket = useMemo(() => destinationsOf(wishlistRows), [wishlistRows]);
+  const [confirmBeen, setConfirmBeen] = useState(false);
 
   const [counts, setCounts] = useState<ItineraryCounts>({ flights: 0, hotels: 0, restaurants: 0 });
 
@@ -365,13 +341,13 @@ function WorldPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query, byCountry]);
 
-  const markBeen = async (dest: Destination) => {
-    setRowBusy(dest.key);
+  const markBeen = async (row: RecoRowDB) => {
+    setRowBusy(row.id);
     try {
-      for (const row of dest.rows) await vault.update(row.id, { pin_type: "visited" });
+      await vault.update(row.id, { pin_type: "visited" });
     } finally {
       setRowBusy(null);
-      setMenuFor(null);
+      setOpenLocation(null);
     }
   };
 
@@ -421,11 +397,11 @@ function WorldPage() {
   );
 
   const listTiles = (
-    <div className="grid grid-cols-3 gap-2">
+    <div className="grid grid-cols-2 gap-2">
       {[
         {
           label: "Bucket list",
-          n: wishlistRows.length,
+          n: bucketLocations.length,
           scene: "coastal" as const,
           go: () => setTab("bucket"),
         },
@@ -434,12 +410,6 @@ function WorldPage() {
           n: cities.length,
           scene: "oldtown" as const,
           go: () => setTab("been"),
-        },
-        {
-          label: "Next time",
-          n: nextTimeRows.length,
-          scene: "temple" as const,
-          to: "/recommendations" as const,
         },
       ].map((list) => {
         const body = (
@@ -463,11 +433,7 @@ function WorldPage() {
         );
         const cls =
           "relative block h-[132px] overflow-hidden rounded-2xl text-left transition-transform active:scale-[0.98]";
-        return "to" in list && list.to ? (
-          <Link key={list.label} to={list.to} className={cls}>
-            {body}
-          </Link>
-        ) : (
+        return (
           <button key={list.label} type="button" onClick={list.go} className={cls}>
             {body}
           </button>
@@ -535,8 +501,20 @@ function WorldPage() {
               bannerArtUrl(bannerSceneFor([selected.city, selectedCity.country], selected.city)),
             imageAlt: cityPhoto ? `Your photo of ${selected.city}` : undefined,
             visits: selectedCity.places,
-            detail: plural(selectedCity.places, "place", "places"),
+            detail: [
+              plural(selectedCity.places, "place", "places"),
+              recsLine(recsFor({ city: selected.city, country: selectedCity.country }).length),
+            ]
+              .filter(Boolean)
+              .join(" · "),
           }}
+          onOpen={() =>
+            setOpenLocation({
+              name: selected.city,
+              city: selected.city,
+              country: selectedCity.country,
+            })
+          }
           caption="You've been here"
           onClose={() => setSelected(null)}
         />
@@ -545,7 +523,7 @@ function WorldPage() {
 
   // "Right now there": the first bucket-list place Béa can put on the map.
   const nowPlace = useMemo(() => {
-    for (const row of wishlistRows) {
+    for (const row of bucketLocations) {
       if (typeof row.lat === "number" && typeof row.lon === "number")
         return {
           name: row.city?.trim() || row.name,
@@ -555,7 +533,7 @@ function WorldPage() {
         };
     }
     return null;
-  }, [wishlistRows]);
+  }, [bucketLocations]);
 
   /** One module under the globe, as the traveller arranged them (Customize world). */
   const worldModule = (key: WorldSectionKey): ReactNode => {
@@ -583,7 +561,7 @@ function WorldPage() {
           <ModuleCard
             guide="world-module-bucket"
             title="Bucket list"
-            sub={plural(wishlistRows.length, "place", "places")}
+            sub={plural(bucketLocations.length, "place", "places")}
             art={bannerArtUrl("coastal")}
             action={{
               label: "Open the bucket list",
@@ -631,7 +609,7 @@ function WorldPage() {
                 cities: cities.length,
                 countries: countryCount,
                 continents: continents.length,
-                bucket: wishlistRows.length,
+                bucket: bucketLocations.length,
               })}
             </span>
           </ModuleCard>
@@ -857,6 +835,40 @@ function WorldPage() {
           </>
         )}
 
+        {openLocation && (
+          <LocationSheet
+            open
+            location={openLocation}
+            recs={recsFor(openLocation)}
+            onClose={() => setOpenLocation(null)}
+            signedIn={vault.signedIn}
+            onAddMany={vault.addMany}
+            actions={
+              openLocation.row && listOf(openLocation.row) === "bucket" ? (
+                <button
+                  type="button"
+                  disabled={rowBusy === openLocation.row.id}
+                  onClick={() => setConfirmBeen(true)}
+                  className="min-h-12 w-full rounded-[var(--r-button)] border border-[var(--field-border)] px-4 text-[16px] font-semibold disabled:opacity-50"
+                >
+                  {rowBusy === openLocation.row.id ? "Moving…" : "Been there — put it on my globe"}
+                </button>
+              ) : null
+            }
+          />
+        )}
+        <ConfirmSheet
+          open={confirmBeen}
+          onClose={() => setConfirmBeen(false)}
+          title={`Been to ${openLocation?.name ?? "this place"}?`}
+          body="It moves from your Bucket list to Been there and onto your globe."
+          confirmLabel="Move to Been there"
+          onConfirm={() => {
+            setConfirmBeen(false);
+            if (openLocation?.row) void markBeen(openLocation.row);
+          }}
+        />
+
         {tab === "bucket" && (
           <>
             <div className="relative overflow-hidden rounded-[var(--r-card)]">
@@ -892,7 +904,7 @@ function WorldPage() {
               </div>
               {vault.loading ? (
                 <div className="plain-card h-40 animate-pulse" />
-              ) : bucket.length === 0 ? (
+              ) : bucketLocations.length === 0 ? (
                 <div className="plain-card flex items-center gap-3 p-4">
                   <img
                     src="/bea/bea-think-static.png"
@@ -903,44 +915,31 @@ function WorldPage() {
                 </div>
               ) : (
                 <ul className="plain-card divide-y divide-border overflow-visible">
-                  {bucket.map((dest, i) => (
-                    <PlaceRow
-                      key={dest.key}
-                      picture={bannerArtUrl(bannerSceneFor([dest.name, ...dest.within], dest.name))}
-                      title={dest.name}
-                      sub={dest.within.slice(0, 3).join(" · ")}
-                      count={plural(dest.rows.length, "place", "places")}
-                      pin={
-                        <MapPin
-                          className={`seq-text-${(i % 5) + 1} size-6`}
-                          weight="fill"
-                          aria-hidden
-                        />
-                      }
-                      menu={
-                        <RowMenu
-                          open={menuFor === dest.key}
-                          onToggle={() => setMenuFor(menuFor === dest.key ? null : dest.key)}
-                          label={`More for ${dest.name}`}
-                        >
-                          <Link
-                            to="/recommendations"
-                            className="block px-4 py-2.5 text-[14px] hover:bg-elevated"
-                          >
-                            Open in Recs
-                          </Link>
-                          <button
-                            type="button"
-                            disabled={rowBusy === dest.key}
-                            onClick={() => void markBeen(dest)}
-                            className="block w-full px-4 py-2.5 text-left text-[14px] hover:bg-elevated disabled:opacity-50"
-                          >
-                            {rowBusy === dest.key ? "Moving…" : "Been there — put it on my globe"}
-                          </button>
-                        </RowMenu>
-                      }
-                    />
-                  ))}
+                  {bucketLocations.map((row, i) => {
+                    const isCountry = !row.city?.trim() || row.name === row.country;
+                    const name = isCountry
+                      ? countryDisplayName(row.country ?? row.name) || row.name
+                      : row.city?.split(",")[0]?.trim() || row.name;
+                    const where = { city: isCountry ? null : name, country: row.country };
+                    const recs = recsFor(where);
+                    return (
+                      <PlaceRow
+                        key={row.id}
+                        picture={bannerArtUrl(bannerSceneFor([name, row.country ?? ""], name))}
+                        title={name}
+                        sub={isCountry ? "" : countryDisplayName(row.country) || ""}
+                        count={recsLine(recs.length)}
+                        onOpen={() => setOpenLocation({ name, ...where, row })}
+                        pin={
+                          <MapPin
+                            className={`seq-text-${(i % 5) + 1} size-6`}
+                            weight="fill"
+                            aria-hidden
+                          />
+                        }
+                      />
+                    );
+                  })}
                 </ul>
               )}
               <button
@@ -1033,10 +1032,20 @@ function WorldPage() {
                             )}
                             title={visit.country}
                             sub={sub}
-                            count={
+                            count={[
                               visit.cities.length > 0
                                 ? `${plural(visit.cities.length, "city", "cities")} · ${plural(placeCount, "place", "places")}`
-                                : "The whole country"
+                                : "The whole country",
+                              recsLine(recsFor({ city: null, country: visit.country }).length),
+                            ]
+                              .filter(Boolean)
+                              .join(" · ")}
+                            onOpen={() =>
+                              setOpenLocation({
+                                name: visit.country,
+                                city: null,
+                                country: visit.country,
+                              })
                             }
                             pin={
                               <button
@@ -1317,6 +1326,7 @@ function PlaceRow({
   pin,
   menu,
   extra,
+  onOpen,
 }: {
   picture: string;
   title: string;
@@ -1325,12 +1335,14 @@ function PlaceRow({
   pin: ReactNode;
   menu?: ReactNode;
   extra?: ReactNode;
+  /** Opens the place's sheet: its recs and what to do with it. */
+  onOpen?: () => void;
 }) {
   const text = (
     <span className="min-w-0 flex-1">
       <span className="block truncate font-display text-[21px] leading-tight">{title}</span>
       {sub && <span className="block truncate text-[14px] text-muted-foreground">{sub}</span>}
-      <span className="block text-[14px] text-muted-foreground">{count}</span>
+      {count && <span className="block text-[14px] text-muted-foreground">{count}</span>}
     </span>
   );
   return (
@@ -1341,43 +1353,18 @@ function PlaceRow({
           alt=""
           className="art-dim h-[60px] w-[84px] shrink-0 rounded-xl object-cover"
         />
-        {text}
+        {onOpen ? (
+          <button type="button" onClick={onOpen} className="flex min-w-0 flex-1 text-left">
+            {text}
+          </button>
+        ) : (
+          text
+        )}
         {pin}
         {menu}
       </div>
       {extra}
     </li>
-  );
-}
-
-function RowMenu({
-  open,
-  onToggle,
-  label,
-  children,
-}: {
-  open: boolean;
-  onToggle: () => void;
-  label: string;
-  children: ReactNode;
-}) {
-  return (
-    <div className="relative">
-      <button
-        type="button"
-        onClick={onToggle}
-        aria-label={label}
-        aria-expanded={open}
-        className="grid size-10 place-items-center rounded-full text-muted-foreground"
-      >
-        <MoreHorizontal className="size-5" aria-hidden />
-      </button>
-      {open && (
-        <div className="absolute right-0 top-10 z-20 w-60 overflow-hidden rounded-2xl border border-border bg-card py-1 shadow-lg">
-          {children}
-        </div>
-      )}
-    </div>
   );
 }
 

@@ -692,7 +692,7 @@ await flow("world: four views, filters, search, add sheet, bucket menu, stats op
   await page.keyboard.press("Escape");
   await page.waitForTimeout(400);
   if ((await page.getByRole("group", { name: "Show on the map" }).count()) !== 0) throw new Error("Globe filters did not hide");
-  if ((await text()).toLowerCase().includes("next time") === false) throw new Error("Your travel lists did not show on the Map");
+  if ((await page.getByRole("button", { name: /^Bucket list\s*\d+ places?$/ }).count()) === 0) throw new Error("Your travel lists did not show on the Map");
   const order = await page.evaluate(() => [...document.querySelectorAll("[data-guide^=world-module-]")].map((e) => e.getAttribute("data-guide")));
   if (order.join() !== "world-module-notes,world-module-bucket") throw new Error(`modules out of order: ${order.join()}`);
   if (!(await text()).includes("so far.")) throw new Error("Notes from Béa says nothing");
@@ -722,9 +722,12 @@ await flow("world: four views, filters, search, add sheet, bucket menu, stats op
   await view("Bucket list");
   for (const word of ["Dream now, pin later.", "New Zealand", "Morocco", "Help me choose"])
     if (!(await text()).includes(word)) throw new Error(`Bucket list lost "${word}"`);
-  await page.getByRole("button", { name: "More for New Zealand" }).click();
-  for (const word of ["Open in Recs", "Been there"])
-    if (!(await text()).includes(word)) throw new Error(`the bucket row menu lost "${word}"`);
+  await page.getByRole("button", { name: /^Queenstown/ }).first().click();
+  await page.waitForTimeout(300);
+  if ((await page.getByRole("dialog", { name: /Queenstown/ }).getByRole("button", { name: /Been there/ }).count()) === 0)
+    throw new Error("the location sheet lost Been there");
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(300);
   await page.getByRole("button", { name: "Compare places" }).click();
   if (!(await text()).toLowerCase().includes("what matters to you")) throw new Error("Help me choose did not open");
   // Been there: city chips are on the page and spin the globe.
@@ -748,6 +751,33 @@ await flow("world: four views, filters, search, add sheet, bucket menu, stats op
   if ((await text()).includes("Choose stats")) throw new Error("Travel statistics did not collapse");
   await page.getByRole("button", { name: "Travel statistics" }).click();
   if ((await page.getByRole("button", { name: /^Bucket list/ }).count()) !== 1) throw new Error("the Bucket list tile is gone");
+}, "world");
+
+await flow("world: the Bucket list holds cities and countries only, each with its recs", async (page) => {
+  await page.getByRole("tab", { name: "Bucket list", exact: true }).click();
+  await page.waitForTimeout(400);
+  const list = page.locator('[data-guide="bucket-list"]');
+  const words = await list.innerText();
+  if (!words.includes("Los Angeles")) throw new Error("Los Angeles is not on the Bucket list");
+  if (words.includes("Bestia") || words.includes("Grand Central Market")) throw new Error("a business shows on World's Bucket list");
+  const la = list.getByRole("button", { name: /^Los Angeles/ }).first();
+  if (!/2 recs/.test(await la.innerText())) throw new Error(`Los Angeles does not say 2 recs: ${await la.innerText()}`);
+  await la.click();
+  await page.waitForTimeout(400);
+  const sheet = page.getByRole("dialog", { name: /Los Angeles/ });
+  for (const name of ["Bestia", "Grand Central Market"]) if ((await sheet.getByText(name).count()) === 0) throw new Error(`the LA sheet lacks ${name}`);
+  await sheet.getByRole("button", { name: "Paste an article link" }).click();
+  await page.waitForTimeout(300);
+  if ((await sheet.getByPlaceholder(/https:\/\//).count()) === 0) throw new Error("Paste an article link did not open the reader");
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(300);
+  if ((await page.getByRole("dialog", { name: /Los Angeles/ }).count()) !== 0) throw new Error("Escape did not close the location sheet");
+  await page.getByRole("tab", { name: "Stats", exact: true }).click();
+  await page.waitForTimeout(300);
+  if ((await page.getByText(/Next time|Wishlist/).count()) !== 0) throw new Error("Stats still names Next time or Wishlist");
+  await page.getByRole("tab", { name: "Been there", exact: true }).click();
+  await page.waitForTimeout(300);
+  if (!/\d+ recs?/.test(await page.locator('[data-guide="places-list"]').innerText())) throw new Error("no Been there place shows its recs");
 }, "world");
 
 await flow("recs: header, pills, list chips, saved-for-trip cards, More ways and Add to trip", async (page) => {
