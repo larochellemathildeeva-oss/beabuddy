@@ -4,7 +4,7 @@ import { Bed, ChevronRight, Clock, CloudRain, MapPin, Ticket } from "@/component
 import { bookingAtHand, isBooked } from "@/lib/bookings";
 import { remindersFor, type ReminderItem } from "@/lib/reminders";
 import { parseLocalDate } from "@/lib/trip-dates";
-import { KindIcon, StopArt, StopDisc } from "@/components/day/stop-bits";
+import { StopDisc } from "@/components/day/stop-bits";
 import { legWords, measured } from "@/components/day/stop-words";
 import { stayLabel } from "@/lib/planned-stay";
 import { PlaceFacts } from "@/components/PlaceFacts";
@@ -46,7 +46,7 @@ type Write = { id: string; patch: Partial<Pick<ItineraryRow, "arrived_at" | "lef
 /**
  * Where you are in the day, what is next, and when to set off for it.
  *
- * Moves only when you tap. "I'm here" on arrival, "Leaving" on the way out;
+ * Moves only when you tap. "Mark arrived" on arrival, "Leaving" on the way out;
  * nothing advances because the clock says it should have. The one number
  * worked out for you is "Leave by", and it is shown only when both halves of
  * it are real: a clock time on the next stop and a routed leg to it — from
@@ -262,10 +262,9 @@ export function NowPanel({
       href={mapsPlaceUrl(stop.title, { lat: stop.lat, lon: stop.lon }, stop.address)}
       target="_blank"
       rel="noreferrer"
-      className={softBtn}
+      className="trip-secondary"
     >
-      Navigate
-      <ChevronRight className="size-4" aria-hidden />
+      Get directions
       <span className="sr-only">: open {stop.title} in maps</span>
     </a>
   );
@@ -350,46 +349,30 @@ export function NowPanel({
       )}
       {phase === "at" && current && (
         <>
-          <section
-            className="plain-card trip-focus-card now-current p-3"
-            aria-labelledby="now-here"
-          >
-            <div className="flex items-stretch gap-3">
-              <StopArt item={current} className="h-[150px] w-[112px] rounded-[18px]" />
-              <div className="min-w-0 flex-1 py-1">
-                <p className="now-current-label">Current stop</p>
-                <h2
-                  id="now-here"
-                  className="mt-1 flex items-start gap-2 break-words font-display text-[24px] leading-[1.1]"
-                >
-                  <span className="now-live-dot" aria-hidden />
-                  <span className="min-w-0">{current.title}</span>
-                </h2>
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  {current.planned_stay_minutes ? (
-                    <span className="now-chip">
-                      <Clock className="size-3.5" aria-hidden />
-                      {stayLabel(current.planned_stay_minutes)}
-                    </span>
-                  ) : null}
-                  <span className="now-chip">Here now</span>
-                </div>
-                {current.address?.trim() && (
-                  <p className="mt-2 flex items-start gap-1 text-[13px] leading-snug text-muted-foreground">
-                    <MapPin className="mt-0.5 size-3.5 shrink-0" aria-hidden />
-                    <span className="min-w-0">{current.address}</span>
-                  </p>
-                )}
-                <StayLine stop={current} now={now} />
-              </div>
-            </div>
-            {leavePanel ? <div className="mt-3">{leavePanel}</div> : null}
+          {/* The design's "Right now" card (Figma trip-companion): a label on a
+              hairline, the place, one line, then the buttons full width. */}
+          <section className="now-card now-current" aria-labelledby="now-here">
+            <p className="trip-rule-label">Right now</p>
+            <h2 id="now-here" className="now-card-title">
+              {current.title}
+            </h2>
+            <p className="now-card-line">
+              {[
+                "Here now",
+                current.planned_stay_minutes ? stayLabel(current.planned_stay_minutes) : "",
+                current.address?.trim() ?? "",
+              ]
+                .filter(Boolean)
+                .join(" / ")}
+            </p>
+            <StayLine stop={current} now={now} />
+            {leavePanel}
             <div className="now-actions" role="group" aria-label="This stop">
               <button
                 type="button"
                 disabled={busy}
                 onClick={() => void act(() => onProgress([leavingWrite(current, new Date())]))}
-                className={primaryBtn}
+                className="trip-primary"
               >
                 Leaving
               </button>
@@ -405,10 +388,9 @@ export function NowPanel({
                 }
                 target="_blank"
                 rel="noreferrer"
-                className={softBtn}
+                className="trip-secondary"
               >
-                <MapPin className="size-4" aria-hidden />
-                Directions
+                Get directions
                 <span className="sr-only">: open {next?.title ?? current.title} in maps</span>
               </a>
               {photosFor && <QuickPhoto photos={photosFor(current)} />}
@@ -474,26 +456,16 @@ export function NowPanel({
       )}
 
       {focus && phase !== "at" && phase !== "done" && (
-        <section className="plain-card trip-focus-card space-y-3 p-4" aria-labelledby="now-next">
+        <section className="now-card" aria-labelledby="now-next">
           <StopKicker
             live={phase === "between"}
             label={phase === "between" ? "On the way to" : "First up"}
             aside={timeForRail(focus.time_label)}
           />
-          <div className="flex items-start gap-3">
-            <StopArt item={focus} className="h-[104px] w-[78px] rounded-2xl" />
-            <div className="min-w-0 flex-1">
-              <h2 id="now-next" className="break-words font-display text-[28px] leading-[1.1]">
-                {focus.title}
-              </h2>
-              {focus.address?.trim() && (
-                <p className="mt-1.5 flex items-start gap-1 text-[14px] text-muted-foreground">
-                  <MapPin className="mt-0.5 size-4 shrink-0" aria-hidden />
-                  <span className="min-w-0">{focus.address}</span>
-                </p>
-              )}
-            </div>
-          </div>
+          <h2 id="now-next" className="now-card-title">
+            {focus.title}
+          </h2>
+          {focus.address?.trim() && <p className="now-card-line">{focus.address}</p>}
           <BookingAtHandCard stop={focus} docs={bookingDocs} />
           <PlaceFacts
             name={focus.title}
@@ -504,23 +476,23 @@ export function NowPanel({
             auto
           />
           {journeyNotes}
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="now-actions" role="group" aria-label="Next stop">
             <button
               type="button"
               disabled={busy}
               onClick={() =>
                 void act(() => onProgress(arrivalWrites(dayStops, focus.id, new Date())))
               }
-              className={primaryBtn}
+              className="trip-primary"
             >
-              I'm here
+              Mark arrived
             </button>
             {navigateTo(focus)}
           </div>
           {rowNext && (
             <NextRow
               stop={rowNext}
-              kicker="Next stop"
+              kicker="Next"
               meta={timeForRail(rowNext.time_label)}
               onLook={onLook}
             />
@@ -594,26 +566,15 @@ export function NowPanel({
 
 const primaryBtn =
   "inline-flex min-h-11 items-center gap-1.5 rounded-full bg-primary px-4 text-[16px] font-semibold text-primary-foreground shadow-xs transition-all active:scale-95 disabled:opacity-60";
-const softBtn =
-  "inline-flex min-h-11 items-center gap-1.5 rounded-full border border-border bg-card px-4 text-[16px] font-semibold shadow-xs transition-all active:scale-95 disabled:opacity-60";
 const linkBtn =
   "inline-flex min-h-11 items-center px-1 text-[16px] font-medium text-muted-foreground underline underline-offset-2 disabled:opacity-60";
 
 function StopKicker({ live, label, aside }: { live?: boolean; label: string; aside?: string }) {
   return (
-    <p className="flex items-center gap-2 text-[13px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-      {live ? (
-        <span className="relative flex size-2.5" aria-hidden>
-          <span className="absolute inline-flex size-full animate-ping rounded-full bg-primary opacity-50 motion-reduce:animate-none" />
-          <span className="relative inline-flex size-2.5 rounded-full bg-primary" />
-        </span>
-      ) : null}
+    <p className="trip-rule-label flex items-center gap-2">
+      {live ? <span className="now-live-dot" aria-hidden /> : null}
       <span>{label}</span>
-      {aside ? (
-        <span className="ml-auto text-[14px] font-medium normal-case tracking-normal text-muted-foreground">
-          {aside}
-        </span>
-      ) : null}
+      {aside ? <span className="ml-auto">{aside}</span> : null}
     </p>
   );
 }
@@ -629,11 +590,9 @@ function NextTitle({
 }) {
   return (
     <>
-      <span className="block text-[13px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-        {kicker}
-      </span>
-      <span className="block break-words font-display text-[17px] leading-tight">{title}</span>
-      {meta ? <span className="mt-0.5 block text-[14px] text-muted-foreground">{meta}</span> : null}
+      <span className="trip-rule-label block">{kicker}</span>
+      <span className="trip-row-title mt-3 block break-words">{title}</span>
+      {meta ? <span className="trip-row-note mt-1 block">{meta}</span> : null}
     </>
   );
 }
@@ -652,11 +611,8 @@ function NextRow({
   children?: ReactNode;
 }) {
   return (
-    <div className="space-y-2 border-t border-border pt-3">
+    <div className="now-next space-y-2">
       <div className="flex items-center gap-2.5">
-        <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-primary-soft text-primary">
-          <KindIcon item={stop} className="size-5" />
-        </span>
         {onLook ? (
           <button
             type="button"
