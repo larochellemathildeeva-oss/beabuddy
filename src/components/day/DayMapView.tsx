@@ -77,7 +77,7 @@ function useBoxHeight(ref: RefObject<HTMLElement | null>, on: boolean): number {
 }
 
 /** A measured leg from the page, when it has one for these two stops. */
-type LegFor = (from: ItineraryRow, to: ItineraryRow) => RouteLeg | undefined;
+export type LegFor = (from: ItineraryRow, to: ItineraryRow) => RouteLeg | undefined;
 
 /**
  * The chosen day on a map.
@@ -365,7 +365,7 @@ function Legend({ model }: { model: DayMapModel }) {
   );
 }
 
-function MapFootnotes({ model, brief = false }: { model: DayMapModel; brief?: boolean }) {
+export function MapFootnotes({ model, brief = false }: { model: DayMapModel; brief?: boolean }) {
   const caption = dayMapCaption(model);
   return (
     <div className={brief ? "mt-1.5 space-y-1" : "mt-3 space-y-1"}>
@@ -477,7 +477,7 @@ function MapStage({
 }
 
 /** The journey between two stops: the measured leg, else "about" as the crow flies. */
-function between(
+export function between(
   from: ItineraryRow,
   to: ItineraryRow,
   legFor: LegFor | undefined,

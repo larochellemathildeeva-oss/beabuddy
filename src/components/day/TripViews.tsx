@@ -166,8 +166,9 @@ export function TripPictureOptions({
 }
 
 /**
- * Map | Companion, under the Map tab: the plain day map, or the live view of
- * where you are, what is next and when to leave.
+ * Live | Split, under the Map tab. Live is the companion card (where you
+ * are, what is next, when to leave) with the day's map; Split is the map with
+ * the day as a short timeline. The ids stay "companion" and "map".
  */
 export function MapModeSwitch({
   value,
@@ -177,11 +178,11 @@ export function MapModeSwitch({
   onChange: (value: TripPerspective) => void;
 }) {
   return (
-    <div role="group" aria-label="Map or Companion" className="map-mode mb-3">
+    <div role="group" aria-label="Live or Split" className="map-mode mb-3">
       {(
         [
-          ["map", "Map"],
-          ["companion", "Companion"],
+          ["companion", "Live"],
+          ["map", "Split"],
         ] as const
       ).map(([id, label]) => (
         <button key={id} type="button" aria-pressed={value === id} onClick={() => onChange(id)}>

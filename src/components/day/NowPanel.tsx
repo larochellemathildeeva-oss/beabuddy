@@ -71,6 +71,7 @@ export function NowPanel({
   progress,
   onLook,
   photosFor,
+  map,
 }: {
   /** The chosen day's stops, in order, without Walk / Drive rows. */
   dayStops: ItineraryRow[];
@@ -101,6 +102,8 @@ export function NowPanel({
   onLook?: ((id: string) => void) | undefined;
   /** A stop's photos and adding one, for "Take photo" where you are. */
   photosFor?: ((stop: ItineraryRow) => StopPhotosProps) | undefined;
+  /** Live, under the Map tab: the day's map, drawn right above the stop card. */
+  map?: ReactNode;
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -348,38 +351,7 @@ export function NowPanel({
           </a>
         </section>
       )}
-      {phase !== "done" && (
-        <RainAhead
-          stops={dayStops}
-          forecast={forecast}
-          now={now}
-          {...(onRework && thisDay
-            ? {
-                onSwap: (from: string, until: string | null) =>
-                  onRework(
-                    thisDay,
-                    `Rain is forecast ${until ? `from ${from} to ${until}` : `from ${from}`}: swap the outdoor stops in that time for indoor places nearby.`,
-                  ),
-              }
-            : {})}
-        />
-      )}
-      {clockNote && phase !== "done" && (
-        <p className="plain-card flex items-center gap-2 px-3 py-2 text-[14px]">
-          <Clock className="size-4 shrink-0 text-primary" aria-hidden />
-          {clockNote}
-        </p>
-      )}
-
-      {followable && (
-        <FollowAlong
-          dayStops={dayStops}
-          busy={busy}
-          now={now}
-          onArrive={(stop) => act(() => onProgress(arrivalWrites(dayStops, stop.id, new Date())))}
-          onLeave={(stop) => void act(() => onProgress([leavingWrite(stop, new Date())]))}
-        />
-      )}
+      {map}
 
       {phase === "at" && current && (
         <>
@@ -570,6 +542,39 @@ export function NowPanel({
               : `${state.reached} of ${state.total} stops reached — the rest were skipped along the way.`}
           </p>
         </section>
+      )}
+
+      {phase !== "done" && (
+        <RainAhead
+          stops={dayStops}
+          forecast={forecast}
+          now={now}
+          {...(onRework && thisDay
+            ? {
+                onSwap: (from: string, until: string | null) =>
+                  onRework(
+                    thisDay,
+                    `Rain is forecast ${until ? `from ${from} to ${until}` : `from ${from}`}: swap the outdoor stops in that time for indoor places nearby.`,
+                  ),
+              }
+            : {})}
+        />
+      )}
+      {clockNote && phase !== "done" && (
+        <p className="plain-card flex items-center gap-2 px-3 py-2 text-[14px]">
+          <Clock className="size-4 shrink-0 text-primary" aria-hidden />
+          {clockNote}
+        </p>
+      )}
+
+      {followable && (
+        <FollowAlong
+          dayStops={dayStops}
+          busy={busy}
+          now={now}
+          onArrive={(stop) => act(() => onProgress(arrivalWrites(dayStops, stop.id, new Date())))}
+          onLeave={(stop) => void act(() => onProgress([leavingWrite(stop, new Date())]))}
+        />
       )}
 
       {progress}

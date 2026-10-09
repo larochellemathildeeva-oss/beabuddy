@@ -154,8 +154,8 @@ async function goTab(page, name) {
     // Companion is the live side of the Map tab, reached by its switch.
     await page.getByRole("tab", { name: "Map", exact: true }).click();
     await page.waitForTimeout(300);
-    const sw = page.getByRole("button", { name: "Companion", exact: true });
-    if (!(await sw.count())) throw new Error("the Companion switch is missing under the Map tab");
+    const sw = page.getByRole("button", { name: "Live", exact: true });
+    if (!(await sw.count())) throw new Error("the Live switch is missing under the Map tab");
     await sw.first().click();
     await page.waitForTimeout(500);
     const firstDay = page.getByRole("tab", { name: /Day 1/ });
@@ -1357,22 +1357,22 @@ await flow("companion: restored All days and city changes keep following today",
   await page.clock.setFixedTime(new Date("2026-10-07T10:30:00"));
   await page.evaluate(() => localStorage.setItem("bea-trip-page-t1", JSON.stringify({perspective:"companion",day:"__all__"})));
   await page.reload({waitUntil:"domcontentloaded",timeout:30000});
-  await page.getByRole("button", {name:"Companion",exact:true,pressed:true}).waitFor();
+  await page.getByRole("button", {name:"Live",exact:true,pressed:true}).waitFor();
   if (await page.getByText("Pick a day to follow.").count()) throw new Error("Restoring All days stopped automatic today-following");
   await page.getByRole("tab", {name:"All days",exact:true}).first().click();
   await page.getByText("Pick a day to follow.").waitFor();
   await page.reload({waitUntil:"domcontentloaded",timeout:30000});
-  await page.getByRole("button", {name:"Companion",exact:true,pressed:true}).waitFor();
+  await page.getByRole("button", {name:"Live",exact:true,pressed:true}).waitFor();
   if (await page.getByText("Pick a day to follow.").count()) throw new Error("An in-session opt-out persisted across reload");
   await page.getByRole("tab",{name:"Timeline",exact:true}).click();
   const all = page.getByRole("tab",{name:"All days",exact:true});
   if (await all.count()) await all.first().click();
   await page.getByRole("tab",{name:"Map",exact:true}).click();
-  await page.getByRole("button",{name:"Companion",exact:true}).click();
+  await page.getByRole("button",{name:"Live",exact:true}).click();
   if (await page.getByText("Pick a day to follow.").count()) throw new Error("Timeline's All days stopped Companion following today");
   await page.evaluate(() => {const url = new URL(location.href);url.searchParams.set("route","1");history.replaceState(null,"",url);});
   await page.reload({waitUntil:"domcontentloaded",timeout:30000});
-  await page.getByRole("button",{name:"Companion",exact:true,pressed:true}).waitFor();
+  await page.getByRole("button",{name:"Live",exact:true,pressed:true}).waitFor();
   await page.getByRole("tab",{name:"All days",exact:true}).first().click();
   await page.getByText("Pick a day to follow.").waitFor();
   await page.locator('select:has(option[value="r1"])').selectOption("r1");

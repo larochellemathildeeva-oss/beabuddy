@@ -4596,3 +4596,69 @@ main [class*="rounded-2xl"] {
   background: var(--primary);
   color: var(--primary-foreground);
 }
+
+/* ===== The Map tab: Live and Split (Figma "trip-map", 116:1060) ===== */
+.map-split {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.map-split-map {
+  overflow: hidden;
+  border-radius: var(--r-card);
+}
+.map-split-empty {
+  padding: 16px 0;
+  font-size: 14px;
+  line-height: 1.4;
+}
+.map-split-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.map-split-list .trip-row[aria-pressed="true"] .trip-row-title {
+  font-weight: 600;
+}
+/* "Today / All days": words with a short line under each, as the trip tabs. */
+.day-tabs-ruled > div {
+  display: flex;
+  gap: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.day-tabs-ruled button {
+  display: flex;
+  flex: 1 0 25%;
+  min-width: 25%;
+  min-height: 44px;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 14px 0 0;
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  line-height: 1.4;
+}
+.day-tabs-ruled button > span:first-child {
+  width: 100%;
+  text-align: center;
+}
+.day-tabs-ruled button::after {
+  content: "";
+  display: block;
+  width: 100%;
+  height: 0.5px;
+  background: var(--muted-foreground);
+}
+.day-tabs-ruled button[aria-selected="true"]::after {
+  height: 1px;
+  background: var(--foreground);
+}
+.day-tabs-ruled .day-pill-dot {
+  display: none;
+}
+[data-theme="colorful"]:not(.dark) .day-tabs-ruled button[aria-selected="true"]::after {
+  height: 2px;
+  background: var(--acc);
+}

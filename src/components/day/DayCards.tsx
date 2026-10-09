@@ -12,12 +12,18 @@ export function DayCards({
   chips,
   value,
   onChange,
+  ruled = false,
+  allDays = true,
 }: {
   chips: DayChip[];
   value: DayChoice;
   onChange: (next: DayChoice) => void;
+  /** The map's words-only tabs (Figma "Today / All days"): "Today", "Day 2", "All days". */
+  ruled?: boolean;
+  /** Offer the whole trip as a choice. */
+  allDays?: boolean;
 }) {
-  const choices: DayChoice[] = [ALL_DAYS, ...chips.map((chip) => chip.key)];
+  const choices: DayChoice[] = [...(allDays ? [ALL_DAYS] : []), ...chips.map((chip) => chip.key)];
   const at = Math.max(0, choices.indexOf(value));
   const dots = useRef<HTMLDivElement>(null);
   // On a long trip the dots scroll; keep the chosen one in view.
@@ -49,7 +55,7 @@ export function DayCards({
     <div
       role="tablist"
       aria-label="Which day to show. Swipe sideways to change day."
-      className="day-pills touch-pan-y"
+      className={ruled ? "day-tabs-ruled touch-pan-y" : "day-pills touch-pan-y"}
       {...swipe}
     >
       <div ref={dots} className="no-scrollbar flex w-full items-stretch gap-1 overflow-x-auto">
@@ -85,13 +91,21 @@ export function DayCards({
                 dots.current?.querySelectorAll<HTMLButtonElement>('[role="tab"]')[next]?.focus();
               }}
               onClick={() => onChange(key)}
-              className="day-pill"
+              className={ruled ? undefined : "day-pill"}
             >
-              <span className="text-[13px]">{top}</span>
-              <span className={small ? "text-[13px]" : "font-display text-[22px] leading-none"}>
-                {bottom}
-              </span>
-              {today ? <span aria-hidden className="day-pill-dot" /> : null}
+              {ruled ? (
+                <span>
+                  {key === ALL_DAYS ? "All days" : today ? "Today" : chip?.ordinal || nameOf(key)}
+                </span>
+              ) : (
+                <>
+                  <span className="text-[13px]">{top}</span>
+                  <span className={small ? "text-[13px]" : "font-display text-[22px] leading-none"}>
+                    {bottom}
+                  </span>
+                  {today ? <span aria-hidden className="day-pill-dot" /> : null}
+                </>
+              )}
             </button>
           );
         })}
