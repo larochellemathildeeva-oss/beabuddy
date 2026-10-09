@@ -1724,7 +1724,7 @@ function ImportPanel({
             <p className="text-[13px] text-muted-foreground">Nothing readable in there.</p>
           )}
           {items.map((it, i) => (
-            <label key={i} className="flex items-start gap-3 border-b border-border py-3">
+            <label key={i} className="flex min-h-11 items-start gap-3 border-b border-border py-3">
               <input
                 type="checkbox"
                 checked={picked.includes(i)}
