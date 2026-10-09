@@ -44,7 +44,7 @@ export const createFileRoute = () => (options: any) => ({
   },
   useParams: () => ({ token: "preview" }),
   // The shared page's loader, with a small plan to show.
-  useLoaderData: () => ({
+  useLoaderData: () => new URLSearchParams(location.search).get("sample") === "page-shared-gone" ? null : ({
     title: "Hiroshima",
     place: "Hiroshima, Japan",
     startDate: "2026-10-07",

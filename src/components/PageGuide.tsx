@@ -142,14 +142,17 @@ export function PageGuide({
 
   const overview = (
     <>
-      <h2 className="mt-1.5 font-display text-[20px] leading-tight">{guide.name}</h2>
-      <p className="mt-1.5 text-[16px] leading-relaxed text-muted-foreground">{guide.about}</p>
-      <p className="label-caps mt-3 text-foreground">What you can do here</p>
-      <ul className="mt-1.5 max-h-[40dvh] space-y-1.5 overflow-y-auto text-[14px] leading-snug">
+      <h2 className="mt-1.5 border-b border-[var(--rule)] pb-3 text-[28px] font-bold leading-[1.2]">
+        {guide.name}
+      </h2>
+      <p className="mt-3 text-[14px] leading-[1.4] text-foreground">{guide.about}</p>
+      <ul
+        aria-label="What you can do here"
+        className="mt-2 max-h-[40dvh] overflow-y-auto text-[14px] leading-[1.4]"
+      >
         {guide.features.map((feature) => (
-          <li key={feature} className="flex gap-2">
-            <span aria-hidden className="mt-[7px] size-1.5 shrink-0 rounded-full bg-primary" />
-            <span>{feature}</span>
+          <li key={feature} className="border-b border-[var(--rule)] py-3">
+            {feature}
           </li>
         ))}
       </ul>
@@ -157,25 +160,27 @@ export function PageGuide({
         <Link
           to="/help"
           onClick={() => setOpen(false)}
-          className="mt-3 inline-block text-[13px] font-semibold text-primary underline underline-offset-2"
+          className="mt-1 flex min-h-11 items-center text-[14px] text-foreground underline underline-offset-4"
         >
           Step-by-step walks and answers: Help
         </Link>
       )}
-      <div className="mt-3 flex gap-2">
+      <div className="mt-3 grid gap-2">
         {steps.length > 0 && (
           <button
             onClick={() => setI(0)}
-            className="flex-1 whitespace-nowrap rounded-xl bg-primary px-4 py-2 text-[16px] font-semibold text-primary-foreground"
+            className="btn-primary flex w-full items-center justify-center px-4"
           >
-            Show me around
+            Start guide
           </button>
         )}
         <button
           onClick={() => setOpen(false)}
-          className={`flex-1 rounded-xl px-4 py-2 text-[16px] font-semibold ${
-            steps.length > 0 ? "border border-border" : "bg-primary text-primary-foreground"
-          }`}
+          className={
+            steps.length > 0
+              ? "flex min-h-[52px] w-full items-center justify-center rounded-[var(--r-card)] border border-border bg-card px-4 text-[16px] font-medium text-foreground"
+              : "btn-primary flex w-full items-center justify-center px-4"
+          }
         >
           Got it
         </button>
@@ -185,8 +190,8 @@ export function PageGuide({
 
   const walk = step ? (
     <>
-      <h2 className="mt-1.5 font-display text-[20px] leading-tight">{step.title}</h2>
-      <p className="mt-1.5 text-[16px] leading-relaxed text-muted-foreground">{step.body}</p>
+      <h2 className="mt-1.5 text-[20px] font-bold leading-[1.2]">{step.title}</h2>
+      <p className="mt-1.5 text-[14px] leading-[1.4] text-foreground">{step.body}</p>
       {!box && (
         <p className="mt-1.5 text-[13px] italic text-muted-foreground">
           This part isn't on screen right now.
@@ -205,13 +210,13 @@ export function PageGuide({
       <div className="mt-3 flex gap-2">
         <button
           onClick={() => setI(i - 1)}
-          className="flex-1 rounded-xl border border-border px-4 py-2 text-[16px] font-semibold"
+          className="flex min-h-[52px] flex-1 items-center justify-center rounded-[var(--r-card)] border border-border bg-card px-4 text-[16px] font-medium"
         >
           Back
         </button>
         <button
           onClick={() => (last ? setOpen(false) : setI(i + 1))}
-          className="flex-1 rounded-xl bg-primary px-4 py-2 text-[16px] font-semibold text-primary-foreground"
+          className="btn-primary flex flex-1 items-center justify-center px-4"
         >
           {last ? "Got it" : "Next"}
         </button>
@@ -226,15 +231,15 @@ export function PageGuide({
       {createPortal(
         <div role="dialog" aria-label={`Help: ${guide.name}`}>
           <SpotlightOverlay box={step ? box : null} onDismiss={() => setOpen(false)}>
-            <div className="w-full max-w-[420px] rounded-2xl border border-border bg-background p-3.5 shadow-2xl">
+            <div className="w-full max-w-[420px] rounded-[var(--r-card)] border border-border bg-background p-4 shadow-xl">
               <div className="flex items-center justify-between">
-                <p className="label-caps">
-                  {step ? `${guide.name} · ${i + 1} of ${steps.length}` : "Help"}
+                <p className="text-[12px] text-foreground">
+                  {step ? `${guide.name} · ${i + 1} of ${steps.length}` : "Page guide"}
                 </p>
                 <button
                   onClick={() => setOpen(false)}
                   aria-label="Close help"
-                  className="text-muted-foreground"
+                  className="-mr-2 grid size-11 place-items-center text-foreground"
                 >
                   <X className="size-4" />
                 </button>

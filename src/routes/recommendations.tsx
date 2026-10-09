@@ -37,7 +37,7 @@ import {
   searchWorthShowing,
 } from "@/lib/reco-ui";
 import { useAuth } from "@/hooks/useAuth";
-import { beaCheer, useBeaSettings } from "@/hooks/useBeaSettings";
+import { beaCheer } from "@/hooks/useBeaSettings";
 import { useTrips } from "@/hooks/useTrips";
 import { pinColorClass, pinLabel, type Pin, type PinType } from "@/data/atlas";
 import { groupCountLabel, groupRecosByType } from "@/lib/reco-groups";
@@ -72,7 +72,6 @@ import { draftFromTyped, recMapsUrl } from "@/lib/reco-open";
 import { PlaceFacts } from "@/components/PlaceFacts";
 import { scoreOpportunity } from "@/lib/score-opportunity";
 import { beaLine } from "@/lib/bea-voice";
-import { emptyLine } from "@/lib/bea-personality";
 import { recentlySaved, type BrowseKind } from "@/lib/recs-browse";
 import { toLocalISODate } from "@/lib/trip-dates";
 
@@ -1496,14 +1495,14 @@ function RecommendationsPage() {
 }
 
 function EmptyVault() {
-  const settings = useBeaSettings();
-  const [line] = useState(() => emptyLine({ kind: "noSavedRecommendations", settings }));
   return (
-    <div className="flex flex-col items-center py-6 text-center">
-      <img src="/bea/bea-think-static.png" alt="" className="size-28 object-contain" />
-      <p className="mt-2 font-display text-[22px] leading-snug">{beaLine("empty.recs").title}</p>
-      <p className="mt-1 max-w-[30ch] text-[15px] text-muted-foreground">
-        {line || beaLine("empty.recs").body}
+    <div className="py-2">
+      <p className="text-[12px] text-foreground">Empty collection</p>
+      <p className="mt-1.5 border-b border-[var(--rule)] pb-3 text-[20px] font-bold leading-[1.2]">
+        The first place is yours.
+      </p>
+      <p className="mt-3 text-[14px] leading-[1.4] text-foreground">
+        Save a place, start a trip or bring a list. Béa will help from there.
       </p>
     </div>
   );

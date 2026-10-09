@@ -14,7 +14,8 @@ import { Sheet } from "@/components/Sheet";
  *
  * So: one sheet, the app's voice, and the consequence written out. The
  * confirm button carries the verb rather than saying "OK", because "OK" to a
- * question you half-read is how people delete things.
+ * question you half-read is how people delete things. It is the plain primary
+ * button, as the Figma confirmation draws it: the verb does the warning.
  */
 export function ConfirmSheet({
   open,
@@ -40,15 +41,15 @@ export function ConfirmSheet({
       page
       above
       title={title}
-      hint="Before you go on"
+      hint="Confirmation"
       crumb="Cancel"
     >
       <div>
-        <p className="menu-row-note pb-5 text-[18px] leading-snug">{body}</p>
-        <Button type="button" variant="destructive" onClick={onConfirm} className="menu-done">
+        <p className="text-[14px] leading-[1.4] text-foreground">{body}</p>
+        <Button type="button" onClick={onConfirm} className="menu-done mt-4">
           {confirmLabel}
         </Button>
-        <Button type="button" variant="secondary" onClick={onClose} className="menu-done mt-3">
+        <Button type="button" variant="secondary" onClick={onClose} className="menu-done mt-2">
           Cancel
         </Button>
       </div>

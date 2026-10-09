@@ -6,25 +6,29 @@ export function renderErrorPage(): string {
     <title>This page didn't load</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <style>
-      body { font: 15px/1.5 system-ui, -apple-system, sans-serif; background: #fafafa; color: #111; display: grid; place-items: center; min-height: 100vh; margin: 0; padding: 1.5rem; }
-      .card { max-width: 28rem; width: 100%; text-align: center; padding: 2rem; }
-      h1 { font-size: 1.25rem; margin: 0 0 0.5rem; }
-      p { color: #4b5563; margin: 0 0 1.5rem; }
-      .actions { display: flex; gap: 0.5rem; justify-content: center; flex-wrap: wrap; }
-      a, button { padding: 0.5rem 1rem; border-radius: 0.375rem; font: inherit; cursor: pointer; text-decoration: none; border: 1px solid transparent; }
-      .primary { background: #111; color: #fff; }
-      .secondary { background: #fff; color: #111; border-color: #d1d5db; }
+      body { font: 14px/1.5 "DM Sans", system-ui, -apple-system, sans-serif; background: #fff; color: #111; margin: 0; }
+      header { height: 64px; display: flex; align-items: center; padding: 0 16px; }
+      header a { color: inherit; text-decoration: none; font-weight: 700; font-size: 20px; }
+      main { max-width: 480px; margin: 0 auto; padding: 12px 16px 40px; }
+      .label { font-size: 12px; margin: 0; }
+      h1 { font-size: 28px; line-height: 1.2; margin: 6px 0 0; padding-bottom: 12px; border-bottom: 1px solid #e5e5e5; }
+      p.body { margin: 16px 0; }
+      button { width: 100%; min-height: 52px; border: 0; border-radius: 8px; background: #111; color: #fff; font: inherit; font-size: 16px; font-weight: 600; cursor: pointer; }
+      @media (prefers-color-scheme: dark) {
+        body { background: #111; color: #f5f5f5; }
+        h1 { border-color: #333; }
+        button { background: #f5f5f5; color: #111; }
+      }
     </style>
   </head>
   <body>
-    <div class="card">
-      <h1>This page didn't load</h1>
-      <p>Something went wrong on our end. You can try refreshing or head back home.</p>
-      <div class="actions">
-        <button class="primary" onclick="location.reload()">Try again</button>
-        <a class="secondary" href="/">Go home</a>
-      </div>
-    </div>
+    <header><a href="/" aria-label="Béa, home">Béa</a></header>
+    <main>
+      <p class="label">Something went wrong</p>
+      <h1>This page didn't load.</h1>
+      <p class="body">Try again, or return to <a href="/">Home</a>.</p>
+      <button onclick="location.reload()">Try again</button>
+    </main>
   </body>
 </html>`;
 }
