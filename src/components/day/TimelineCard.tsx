@@ -667,6 +667,8 @@ export function TimelineEntry({
           </span>
         ) : (
           <span className="mt-1 block w-full truncate text-[14px] leading-[1.4] text-foreground">
+            {/* All entries mixes days, so each row says its own. */}
+            {showDay && item.day_date ? `${formatTimelineDayLabel(item.day_date)} · ` : ""}
             {where || glyphChipLabel(timelineGlyph(item))}
           </span>
         )}
@@ -1107,7 +1109,7 @@ export function TimelineEntry({
             <button
               type="button"
               onClick={() => setExpanded(false)}
-              className="mt-0.5 px-1 text-[12px] font-semibold text-muted-foreground"
+              className="mt-0.5 inline-flex min-h-11 min-w-11 items-center px-1 text-[12px] font-semibold text-muted-foreground"
             >
               Less
             </button>

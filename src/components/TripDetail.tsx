@@ -12,7 +12,6 @@ import {
   ChevronRight,
   Route,
   CalendarDays,
-  Signpost,
   ListChecks,
   MoreHorizontal,
   Pencil,
@@ -823,7 +822,7 @@ export function TripDetail({
    * now all appear at once, from one pencil in the section header.
    */
   const [editingTimeline, setEditingTimeline] = useState(false);
-  /** The signpost on every day's header opens the directions sheet. */
+  /** The Directions row in the Timeline's ⋯ opens the directions sheet. */
   const [directionsOpen, setDirectionsOpen] = useState(false);
   const [directionsBusy, setDirectionsBusy] = useState(false);
   const directionsButton: { onDirections?: () => void; directionsBusy?: boolean } =
@@ -3255,17 +3254,17 @@ export function TripDetail({
   );
 }
 
-/**
- * The Timeline's heading, as the master draws it: "Day 1 · Thu, Oct 1" in the
- * serif with the day's size under it, then Edit stops and Add, with the
- * directions signpost and ⋯ for the list's options at the end of the row.
- * Tapping the title folds the day away.
- */
 /** "Day 4" → "04", for the timeline's large day number; "" when there is none. */
 function dayNumber(ordinal: string): string {
   const n = /(\d+)/.exec(ordinal)?.[1];
   return n ? n.padStart(2, "0") : "";
 }
+
+/**
+ * The Timeline's day heading, as the minimalist frame draws it: DAY and the
+ * day's number large on the left, the date and city over the day's line on
+ * the right, and the Timeline's ⋯. Tapping it folds the day away.
+ */
 
 function TimelineHead({
   title,
@@ -3339,7 +3338,7 @@ function TimelineHead({
             onClick={onMore}
             aria-label="Timeline options"
             title="Timeline options"
-            className="-mr-2 -mt-2 grid size-11 shrink-0 place-items-center text-foreground"
+            className="-me-2 -mt-2 grid size-11 shrink-0 place-items-center text-foreground"
           >
             <MoreHorizontal className="size-5" aria-hidden />
           </button>
