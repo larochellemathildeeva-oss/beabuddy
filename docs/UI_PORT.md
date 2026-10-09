@@ -25,7 +25,7 @@ sits under one of them:
 | --- | --- |
 | Always visible | banner, action row (Plan with Béa: import / optimize / compare, add a stop, before you go, settings), who else is here |
 | Now | `TripToday`, `JourneyTracker`, `DayRibbon`, `NowPanel` |
-| Map | `DayMapView` (day map + cards), `TripMap` (whole trip) |
+| Map | `MapSplit` (Live map, Split map + short timeline), `NowPanel` (Live cards), `TripMap` (whole trip) |
 | Day | the whole "Your itinerary" section, unchanged: add, edit mode, reorder, day / time / stay pickers, By day / All entries, directions, nearby-stop runs, the now line, undo, keep to vault |
 | Trip | `TripStops`, To do, Packing, budget, `TripPeople`, trip details |
 | Settings sheet | unchanged, including offline directions and packing templates |

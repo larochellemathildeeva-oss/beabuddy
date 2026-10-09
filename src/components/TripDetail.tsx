@@ -140,7 +140,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { lookupCoords } from "@/lib/places.functions";
 import { planTowns, tripPlaceFromTowns } from "@/lib/plan-cities";
 import logo from "@/assets/bea-logo.png";
-import { DayMapView } from "@/components/day/DayMapView";
+import { LiveMap, MapSplit } from "@/components/day/MapSplit";
 import { JourneyTracker } from "@/components/day/JourneyTracker";
 import { StopPeek } from "@/components/day/StopPeek";
 import { DayRibbon } from "@/components/day/DayRibbon";
@@ -172,6 +172,7 @@ import {
   asPerspective,
   defaultPerspective,
   TRIP_PERSPECTIVES,
+  tabOf,
   tripIsUnderway,
   type TripPerspective,
 } from "@/lib/trip-perspective";
@@ -1513,42 +1514,27 @@ export function TripDetail({
       }}
     />
   );
-  // The Map's day switcher: the same circles, and a tap changes the map's day.
-  // Built from every day of the trip, so a chosen city never hides the way to another.
-  const mapChips = dayChips(allDayGroups, todayKey);
-  const mapDayTracker =
-    shouldOfferDays(allDayGroups) && mapChips.length > 0 ? (
-      <BannerDayTracker
-        label="Which day to show on the map"
-        onPhoto={false}
-        days={[
-          {
-            key: ALL_DAYS,
-            mark: "All",
-            title: "All days",
-            subtitle: `${mapChips.length} ${mapChips.length === 1 ? "day" : "days"}`,
-            complete: false,
-          },
-          ...mapChips.map((chip) => {
-            const group = allDayGroups.find((g) => g.key === chip.key);
-            const total = group?.items.length ?? 0;
-            return {
-              key: chip.key,
-              mark: chip.ordinal.replace("Day ", "") || "–",
-              title: chip.key ? cityOn(chip.key) : "No date",
-              subtitle: chip.key ? formatTimelineDayLabel(chip.key) : "",
-              complete: total > 0 && (group?.items.filter(isDone).length ?? 0) === total,
-            };
-          }),
-        ]}
-        value={chosenDay}
-        onPick={(day) => {
-          setDayChoice(day);
-          setCityChoice("");
-        }}
-      />
+  // Live and Split: the days as ruled words under the map ("Today / All
+  // days" in the design). In Live, "All days" asks which day to follow.
+  // Split hides the city picker, so its tabs offer every day of the trip and
+  // a pick there clears the city, as the banner's day circles did before.
+  const splitChips = dayChips(allDayGroups, todayKey);
+  const mapDayTabs =
+    perspective === "map" ? (
+      shouldOfferDays(allDayGroups) ? (
+        <DayCards
+          ruled
+          chips={splitChips}
+          value={chosenDay}
+          onChange={(day) => {
+            setCityChoice("");
+            pickDayManually(day);
+          }}
+        />
+      ) : null
+    ) : offerDays ? (
+      <DayCards ruled chips={chips} value={chosenDay} onChange={pickDayManually} />
     ) : null;
-
   // In every view the tracker sits at the foot of the banner: the trip's days
   // on Overview, the day's stops in the others.
   const bannerTracker = showDayTracker ? (
@@ -1662,16 +1648,20 @@ export function TripDetail({
           },
         }}
         viewTransitionName={`trip-photo-${trip.id}`}
-        kicker={`Trip / ${activePerspective.label.toLowerCase()}`}
+        kicker={`Trip / ${TRIP_PERSPECTIVES.find((p) => p.id === tabOf(perspective))!.label.toLowerCase()}`}
         // Overview draws no day strip (Figma "trip-overview"): its itinerary
         // rows open each stretch of days instead.
+        // Overview and the Map draw no day strip here: the overview's rows and
+        // the Map's day tabs (under its map) choose the days instead.
         tracker={
-          perspective === "map" ? mapDayTracker : perspective === "overview" ? null : bannerTracker
+          perspective === "timeline" || (perspective === "companion" && view.prefs.journey)
+            ? bannerTracker
+            : null
         }
       />
       {/* Béa's line scrolls away with the page; only the bar above stays.
           The trip's actions moved up into the banner. */}
-      {!liveCompanion && perspective !== "overview" && (
+      {perspective === "timeline" && (
         <div className="flex items-baseline justify-between gap-3 px-3 pb-1 pt-2.5 text-[13px] text-muted-foreground">
           <p>{tripNote}</p>
           <span className="shrink-0">
@@ -1747,7 +1737,8 @@ export function TripDetail({
                     </select>
                   </label>
                 )}
-                {offerDays ? (
+                {/* Live and Split show the day tabs under their map instead. */}
+                {offerDays && perspective !== "companion" ? (
                   <div className="min-w-0 flex-1">
                     <DayCards chips={chips} value={chosenDay} onChange={pickDayManually} />
                   </div>
@@ -1825,19 +1816,20 @@ export function TripDetail({
 
         {perspective === "companion" && (
           <div data-guide="trip-companion" className="space-y-3" {...(offerDays ? daySwipe : {})}>
+            {/* Live: the day's map, then its day tabs, then the companion card.
+                Kept out of the panel, which starts afresh on each day, so a
+                day picked by keyboard keeps its focus. */}
+            {nowStops.length > 0 && companionDay ? (
+              <p className="now-day-line">
+                {[companionOrdinal, companionDateLine].filter(Boolean).join(" · ")}
+              </p>
+            ) : null}
+            {nowStops.length > 0 && companionDay ? (
+              <LiveMap stops={nowStops} nesting={view.prefs.nesting} onLook={setPeekId} />
+            ) : null}
+            {mapDayTabs}
             {nowStops.length > 0 && companionDay ? (
               <>
-                <p className="now-day-line">
-                  {[companionOrdinal, companionDateLine].filter(Boolean).join(" · ")}
-                </p>
-                {view.prefs.ribbon && (
-                  <DayRibbon
-                    stops={nowStops}
-                    dayLabel={companionOrdinal}
-                    selectedId={peekStop?.id ?? null}
-                    onSelect={setPeekId}
-                  />
-                )}
                 <NowPanel
                   key={companionDay.key}
                   dayStops={nowStops}
@@ -1863,74 +1855,84 @@ export function TripDetail({
                     window.scrollTo({ top: 0, behavior: "smooth" });
                   }}
                 />
+                {view.prefs.ribbon && (
+                  <DayRibbon
+                    stops={nowStops}
+                    dayLabel={companionOrdinal}
+                    selectedId={peekStop?.id ?? null}
+                    onSelect={setPeekId}
+                  />
+                )}
               </>
             ) : (
-              <div className="plain-card space-y-2 p-4">
-                <img
-                  src="/bea/bea-think-static.png"
-                  alt=""
-                  className="size-16 rounded-full border border-border object-cover"
-                />
-                <p className="font-display text-[24px] leading-tight">
-                  {stopItems.length === 0 ? "Nothing on this trip yet." : "Pick a day to follow."}
-                </p>
-                <p className="text-[16px] leading-snug text-muted-foreground">
-                  {stopItems.length === 0
-                    ? "Add stops in the Timeline, or let Béa draft the days from a plan you already have."
-                    : "Companion walks through one day with you: where you are, what is next, and when to set off. On a travel day it opens on today by itself."}
-                </p>
-                {/* An empty trip gets its way in right here, never "go elsewhere first". */}
-                {stopItems.length === 0 && (
-                  <div className="flex flex-wrap gap-2 pt-1">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setPlannerTab("build");
-                        setPlannerOpen(true);
-                      }}
-                      className="inline-flex min-h-11 items-center gap-1.5 rounded-full bg-primary px-4 text-[16px] font-semibold text-primary-foreground"
+              <>
+                <div className="plain-card space-y-2 p-4">
+                  <img
+                    src="/bea/bea-think-static.png"
+                    alt=""
+                    className="size-16 rounded-full border border-border object-cover"
+                  />
+                  <p className="font-display text-[24px] leading-tight">
+                    {stopItems.length === 0 ? "Nothing on this trip yet." : "Pick a day to follow."}
+                  </p>
+                  <p className="text-[16px] leading-snug text-muted-foreground">
+                    {stopItems.length === 0
+                      ? "Add stops in the Timeline, or let Béa draft the days from a plan you already have."
+                      : "Companion walks through one day with you: where you are, what is next, and when to set off. On a travel day it opens on today by itself."}
+                  </p>
+                  {/* An empty trip gets its way in right here, never "go elsewhere first". */}
+                  {stopItems.length === 0 && (
+                    <div className="flex flex-wrap gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPlannerTab("build");
+                          setPlannerOpen(true);
+                        }}
+                        className="inline-flex min-h-11 items-center gap-1.5 rounded-full bg-primary px-4 text-[16px] font-semibold text-primary-foreground"
+                      >
+                        <img src={logo} alt="" className="size-5 object-contain" />
+                        Plan with Béa
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setAddOpen(true)}
+                        className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-border bg-card px-4 text-[16px] font-semibold"
+                      >
+                        <Plus className="size-4 text-primary" aria-hidden />
+                        Add a stop
+                      </button>
+                    </div>
+                  )}
+                  {/* The days right here, so the prompt is never a dead end. */}
+                  {stopItems.length > 0 && (
+                    <div
+                      role="group"
+                      aria-label="Day to follow"
+                      className="flex flex-wrap gap-1.5 pt-1"
                     >
-                      <img src={logo} alt="" className="size-5 object-contain" />
-                      Plan with Béa
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setAddOpen(true)}
-                      className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-border bg-card px-4 text-[16px] font-semibold"
-                    >
-                      <Plus className="size-4 text-primary" aria-hidden />
-                      Add a stop
-                    </button>
-                  </div>
-                )}
-                {/* The days right here, so the prompt is never a dead end. */}
-                {stopItems.length > 0 && (
-                  <div
-                    role="group"
-                    aria-label="Day to follow"
-                    className="flex flex-wrap gap-1.5 pt-1"
-                  >
-                    {chips
-                      .filter((chip) => chip.count > 0)
-                      .map((chip) => (
-                        <button
-                          key={chip.key || "undated"}
-                          type="button"
-                          onClick={() => setDayChoice(chip.key)}
-                          className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-border bg-card px-3.5 text-[16px] font-semibold"
-                        >
-                          {chip.ordinal ? (
-                            <span className="text-primary">{chip.ordinal}</span>
-                          ) : null}
-                          {chip.label}
-                          <span className="text-[13px] font-normal text-muted-foreground">
-                            {chip.count}
-                          </span>
-                        </button>
-                      ))}
-                  </div>
-                )}
-              </div>
+                      {chips
+                        .filter((chip) => chip.count > 0)
+                        .map((chip) => (
+                          <button
+                            key={chip.key || "undated"}
+                            type="button"
+                            onClick={() => setDayChoice(chip.key)}
+                            className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-border bg-card px-3.5 text-[16px] font-semibold"
+                          >
+                            {chip.ordinal ? (
+                              <span className="text-primary">{chip.ordinal}</span>
+                            ) : null}
+                            {chip.label}
+                            <span className="text-[13px] font-normal text-muted-foreground">
+                              {chip.count}
+                            </span>
+                          </button>
+                        ))}
+                    </div>
+                  )}
+                </div>
+              </>
             )}
           </div>
         )}
@@ -1939,16 +1941,15 @@ export function TripDetail({
         {perspective === "map" && (
           <div className="space-y-3">
             {stopItems.length > 0 && (
-              <DayMapView
+              <MapSplit
                 key={`${chosenDay}:${mapFocus ?? ""}`}
                 focusId={mapFocus}
                 groups={shownGroups}
                 nesting={view.prefs.nesting}
-                area={formatTripLocation(trip.city, trip.country)}
-                todayKey={todayKey}
-                ordinals={Object.fromEntries(chips.map((chip) => [chip.key, chip.ordinal]))}
+                ordinals={Object.fromEntries(splitChips.map((chip) => [chip.key, chip.ordinal]))}
                 legFor={travelInto}
-                onDayStep={offerDays ? stepDay : undefined}
+                dayTabs={mapDayTabs}
+                {...directionsButton}
               />
             )}
             {/* The whole trip, city to city — only when looking at the whole
