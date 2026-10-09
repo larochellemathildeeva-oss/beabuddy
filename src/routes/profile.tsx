@@ -118,6 +118,13 @@ function ProfilePage() {
   const [seedMsg, setSeedMsg] = useState("");
   const [sampleCtaDismissed, setSampleCtaDismissed] = useState(false);
   const [panel, setPanel] = useState<Panel | null>(null);
+  /** Where Erase and Delete go back to: the page whose row opened them. */
+  const [confirmFrom, setConfirmFrom] = useState<"data" | "legal">("legal");
+  const openConfirm = (next: "erase" | "delete", from: "data" | "legal") => {
+    setConfirmFrom(from);
+    setPanel(next);
+  };
+  const confirmCrumb = confirmFrom === "data" ? "Data & imports" : "Privacy & legal";
   const close = () => setPanel(null);
   // Opened from the Menu: show that panel, then drop it from the address so
   // going back does not open it again.
@@ -498,7 +505,7 @@ function ProfilePage() {
           <YouRow
             title="Erase account"
             note="Review before deleting"
-            onClick={() => setPanel("erase")}
+            onClick={() => openConfirm("delete", "data")}
           />
         ) : null}
         {user && !sampleCtaDismissed && (
@@ -609,12 +616,12 @@ function ProfilePage() {
             <YouRow
               title="Erase my data"
               note="Start fresh, keep your login"
-              onClick={() => setPanel("erase")}
+              onClick={() => openConfirm("erase", "legal")}
             />
             <YouRow
               title="Delete account"
               note="Erase your account and data"
-              onClick={() => setPanel("delete")}
+              onClick={() => openConfirm("delete", "legal")}
             />
           </>
         ) : null}
@@ -637,11 +644,11 @@ function ProfilePage() {
       {user && (
         <Sheet
           open={panel === "erase"}
-          onClose={() => setPanel("legal")}
+          onClose={() => setPanel(confirmFrom)}
           page
           hint="Confirmation"
           title="Erase your data?"
-          crumb="Privacy & legal"
+          crumb={confirmCrumb}
         >
           <EraseDataPanel userId={user.id} />
         </Sheet>
@@ -649,11 +656,11 @@ function ProfilePage() {
       {user && (
         <Sheet
           open={panel === "delete"}
-          onClose={() => setPanel("legal")}
+          onClose={() => setPanel(confirmFrom)}
           page
           hint="Confirmation"
           title="Erase your account?"
-          crumb="Privacy & legal"
+          crumb={confirmCrumb}
         >
           <DeleteAccountPanel userId={user.id} />
         </Sheet>
