@@ -23,7 +23,6 @@ import {
   MapPinPlus,
   MoreHorizontal,
   Pencil,
-  PawPrint,
   ExternalLink,
   Plus,
   Send,
@@ -637,43 +636,44 @@ export function TimelineEntry({
   // The compact row: time, name and kind on one line. Tapping it shows the
   // whole card; "Less" folds it back.
   const compactRow = (
+    // A row as the Figma timeline draws it: the name, one line under it, a
+    // hairline. The hour sits in the column to its left.
     <article
-      className={`flex items-center gap-1.5 rounded-xl border border-border/60 bg-card py-1.5 pl-2 pr-2 shadow-sm ${
-        current ? "ring-2 ring-primary/45" : hereNow ? "ring-2 ring-primary/25" : ""
+      className={`flex items-start gap-1.5 border-b border-[var(--rule)] py-3 ${
+        current ? "bg-primary-soft/40" : hereNow ? "bg-primary-soft/25" : ""
       }`}
     >
-      {dragHandle}
       <button
         type="button"
         onClick={() => setExpanded(true)}
         aria-expanded={false}
-        aria-label={`${number != null ? `Stop ${number}, ` : ""}${rail ? `${rail}, ` : ""}${item.title}${done ? ", done" : ""} — show the whole card`}
-        className="flex min-h-9 min-w-0 flex-1 items-center gap-2 text-left"
+        aria-label={`${number != null ? `Stop ${number}, ` : ""}${rail ? `${rail}, ` : ""}${item.title}${done ? ", done" : ""}${current ? ", you're here" : ""} — show the whole card`}
+        className="flex min-h-11 min-w-0 flex-1 flex-col items-start justify-center text-left"
       >
-        {done ? (
-          <Check className="size-4 shrink-0 text-nexttime" strokeWidth={3} aria-hidden />
-        ) : null}
         <span
-          className={`min-w-0 flex-1 truncate text-[15px] font-medium ${
+          className={`flex w-full min-w-0 items-center gap-1.5 text-[16px] leading-[1.4] ${
             done ? "text-muted-foreground" : ""
           }`}
         >
-          {item.title}
-        </span>
-        <span
-          className={`kind-chip kind-${timelineGlyph(item)} relative grid size-7 shrink-0 place-items-center rounded-full`}
-          aria-hidden
-        >
-          <KindIcon item={item} />
-          {number != null ? (
-            <StopDisc
-              number={number}
-              done={done}
-              className="absolute -right-1.5 -top-1.5 size-4 text-[10px]"
-            />
+          {done ? (
+            <Check className="size-4 shrink-0 text-nexttime" strokeWidth={3} aria-hidden />
           ) : null}
+          <span className="min-w-0 truncate">{item.title}</span>
         </span>
+        {stray ? (
+          // The one warning a row keeps: a pin far from the trip is likely the wrong place.
+          <span className="mt-1 block w-full text-[14px] leading-[1.4] text-destructive">
+            ⚠ Pinned far from the rest of this trip. Tap to check the place.
+          </span>
+        ) : (
+          <span className="mt-1 block w-full truncate text-[14px] leading-[1.4] text-foreground">
+            {/* All entries mixes days, so each row says its own. */}
+            {showDay && item.day_date ? `${formatTimelineDayLabel(item.day_date)} · ` : ""}
+            {where || glyphChipLabel(timelineGlyph(item))}
+          </span>
+        )}
       </button>
+      {dragHandle}
     </article>
   );
   const folded = compact && !expanded;
@@ -1078,7 +1078,7 @@ export function TimelineEntry({
         {!back && (
           <span
             aria-hidden
-            className={`text-[14px] font-semibold tabular-nums text-foreground ${folded ? "pt-2.5" : "pt-4"}`}
+            className={`tabular-nums text-foreground ${folded ? "pt-3.5 text-[16px] leading-[1.4]" : "pt-4 text-[14px] font-semibold"}`}
           >
             {rail}
           </span>
@@ -1109,7 +1109,7 @@ export function TimelineEntry({
             <button
               type="button"
               onClick={() => setExpanded(false)}
-              className="mt-0.5 px-1 text-[12px] font-semibold text-muted-foreground"
+              className="mt-0.5 inline-flex min-h-11 min-w-11 items-center px-1 text-[12px] font-semibold text-muted-foreground"
             >
               Less
             </button>
@@ -1562,18 +1562,14 @@ export function TravelConnector({
   const steps = leg?.steps ?? [];
   const walking = mode === "walking";
   const how = walking ? "walk" : mode === "transit" ? "transit" : "drive";
-  const LegGlyph =
-    !isMeasured || !showTime ? PawPrint : walking ? Footprints : mode === "transit" ? Bus : Car;
-  // A journey is a step between two stops, not a stop: the dashed line
-  // down from one card's kind tile to the next, with one quiet line of text
-  // on it, so the cards stay the places and the line stays the travel.
+  // A journey is a step between two stops, not a stop: one quiet 12px line
+  // between the rows, so the rows stay the places and the line the travel.
   return (
     <li className="list-none">
       <div className={`grid gap-x-2 ${TIME_COLUMN}`}>
         <span aria-hidden />
-        <div className="ms-8 min-w-0 border-s-2 border-dashed border-[var(--acc-line)] ps-3">
+        <div className="min-w-0">
           <div className="flex min-h-11 items-center gap-1.5">
-            <LegGlyph className="size-4 shrink-0 text-muted-foreground" aria-hidden />
             <div className="min-w-0 flex-1">
               {leg?.farApartKm ? (
                 // One of the two pins is wrong; a drive between them would be
@@ -1583,10 +1579,10 @@ export function TravelConnector({
                   probably in the wrong place. Tap it to check.
                 </p>
               ) : (
-                <p className="flex flex-wrap items-baseline gap-x-1.5 text-[14px] text-muted-foreground">
+                <p className="flex flex-wrap items-baseline gap-x-1.5 text-[12px] text-muted-foreground">
                   {showTime && isMeasured && leg ? (
                     <>
-                      <span className="whitespace-nowrap font-semibold text-foreground">
+                      <span className="whitespace-nowrap text-foreground">
                         {leg.estimated ? "~" : ""}
                         {prettyDuration(leg.duration)} {how}
                       </span>
@@ -1594,7 +1590,7 @@ export function TravelConnector({
                     </>
                   ) : (
                     <span className="whitespace-nowrap">
-                      {showTime ? "Journey not measured yet" : "Directions in Maps"}
+                      {showTime ? "Directions" : "Directions in Maps"}
                     </span>
                   )}
                   {leave?.kind === "time" && (

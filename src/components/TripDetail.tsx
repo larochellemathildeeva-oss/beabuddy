@@ -12,12 +12,10 @@ import {
   ChevronRight,
   Route,
   CalendarDays,
-  Signpost,
   ListChecks,
   MoreHorizontal,
   Pencil,
   Plus,
-  Hand,
   X,
 } from "@/components/icons";
 import { TripBudget } from "@/components/TripBudget";
@@ -824,10 +822,10 @@ export function TripDetail({
    * now all appear at once, from one pencil in the section header.
    */
   const [editingTimeline, setEditingTimeline] = useState(false);
-  /** The signpost on every day's header opens the directions sheet. */
+  /** The Directions row in the Timeline's ⋯ opens the directions sheet. */
   const [directionsOpen, setDirectionsOpen] = useState(false);
   const [directionsBusy, setDirectionsBusy] = useState(false);
-  const directionsButton =
+  const directionsButton: { onDirections?: () => void; directionsBusy?: boolean } =
     directionStops.length >= 2 && !editingTimeline
       ? { onDirections: () => setDirectionsOpen(true), directionsBusy }
       : {};
@@ -1194,7 +1192,7 @@ export function TripDetail({
   /** Timeline grouped by area (Neighbourhood) rather than by time. */
   const [byArea, setByArea] = useState(false);
   /** One line a stop, tap to open: for reading a long day at a glance. */
-  const [compactCards, setCompactCards] = useState(false);
+  const [compactCards, setCompactCards] = useState(true);
   /** The day a stop is being dragged in, if any. */
   const [draggingDay, setDraggingDay] = useState<string | null>(null);
   const doneCount = stopItems.filter(isDone).length;
@@ -1208,7 +1206,7 @@ export function TripDetail({
         day?: unknown;
         hideDone?: unknown;
         byArea?: unknown;
-        compact?: unknown;
+        cards?: unknown;
       } | null;
       const p = asPerspective(saved?.perspective);
       if (p) setPerspective(p);
@@ -1216,7 +1214,9 @@ export function TripDetail({
       if (typeof saved?.day === "string") setDayChoice(saved.day);
       if (saved?.hideDone === true) setHideDone(true);
       if (saved?.byArea === true) setByArea(true);
-      if (saved?.compact === true) setCompactCards(true);
+      // "cards", not the old "compact": rows are the default now, and an old
+      // saved "compact: false" was only ever the previous default.
+      if (saved?.cards === "full") setCompactCards(false);
     } catch {
       /* storage unavailable: start from the defaults */
     }
@@ -1227,7 +1227,13 @@ export function TripDetail({
     try {
       window.localStorage.setItem(
         viewKey,
-        JSON.stringify({ perspective, day: dayChoice, hideDone, byArea, compact: compactCards }),
+        JSON.stringify({
+          perspective,
+          day: dayChoice,
+          hideDone,
+          byArea,
+          cards: compactCards ? "rows" : "full",
+        }),
       );
     } catch {
       /* storage unavailable: the choice lasts for this visit */
@@ -1721,7 +1727,7 @@ export function TripDetail({
             <div ref={dayCardsRef} className="mb-2">
               <div className="flex items-center gap-2">
                 {routeCities.length > 1 && (
-                  <label className="flex min-h-11 max-w-[55%] shrink-0 items-center gap-1.5 text-[13px] text-muted-foreground">
+                  <label className="flex min-h-11 max-w-[55%] shrink-0 items-center gap-1.5 text-[12px] text-foreground">
                     City
                     <select
                       value={chosenCity?.id ?? ""}
@@ -1730,7 +1736,7 @@ export function TripDetail({
                         // The city's days, not a day from the city before.
                         setDayChoice(ALL_DAYS);
                       }}
-                      className="min-h-11 min-w-0 truncate rounded-full border border-[var(--field-border)] bg-elevated px-3 text-[14px] font-semibold text-foreground"
+                      className="min-h-11 min-w-0 truncate rounded-[var(--r-card)] border border-[var(--field-border)] bg-card px-3 text-[14px] text-foreground"
                     >
                       <option value="">All cities</option>
                       {routeCities.map((c) => (
@@ -1755,7 +1761,7 @@ export function TripDetail({
               )}
             </div>
           )}
-        {activePerspective.hint && !liveCompanion ? (
+        {activePerspective.hint && !liveCompanion && perspective !== "timeline" ? (
           <p className="mb-3 px-0.5 text-[16px] text-muted-foreground">{activePerspective.hint}</p>
         ) : null}
 
@@ -1968,8 +1974,7 @@ export function TripDetail({
               onCurrency={() => setCurrencyOpen(true)}
             />
           )}
-          <div data-guide="trip-timeline" className="px-1 pb-3 pt-2">
-            {stopItems.length > 0 && !editingTimeline && <TimelineTip />}
+          <div data-guide="trip-timeline" className="pb-3 pt-2">
             {editingTimeline && (
               <div className="mb-3 flex items-center justify-between gap-2 rounded-2xl bg-primary-soft px-3 py-2">
                 <p className="text-[13px] font-semibold text-primary">Editing every stop at once</p>
@@ -1989,16 +1994,21 @@ export function TripDetail({
                 <TimelineHead
                   title="Your itinerary"
                   line="Activities, meals, transport and notes."
-                  onAdd={() => {
-                    setAddDay(addToDay ?? "");
-                    setAddingTimeline(true);
-                  }}
-                  addLabel="Add to the timeline"
                 />
-                <p className="px-1 py-4 text-[14px] text-muted-foreground">
+                <p className="py-4 text-[14px] text-foreground">
                   Nothing planned yet. Add a stop, or let Béa draft the days from a plan you already
                   have.
                 </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAddDay(addToDay ?? "");
+                    setAddingTimeline(true);
+                  }}
+                  className="btn-primary flex w-full items-center justify-center px-4"
+                >
+                  Add stop
+                </button>
               </>
             ) : timelineByDay ? (
               <div className="space-y-6">
@@ -2023,6 +2033,10 @@ export function TripDetail({
                     >
                       <TimelineHead
                         title={dayTitle(group.key, ordinalFor(group.key), group.label)}
+                        {...(dayNumber(ordinalFor(group.key))
+                          ? { day: dayNumber(ordinalFor(group.key)) }
+                          : {})}
+                        dateLine={group.key ? `${group.label} / ${cityOn(group.key)}` : group.label}
                         line={[
                           `${group.items.length} ${group.items.length === 1 ? "stop" : "stops"}`,
                           length,
@@ -2034,15 +2048,7 @@ export function TripDetail({
                         onToggle={() =>
                           setCollapsedDays((prev) => ({ ...prev, [group.key]: !prev[group.key] }))
                         }
-                        onAdd={() => {
-                          setAddDay(group.key);
-                          setAddingTimeline(true);
-                        }}
-                        addLabel={`Add something to ${group.label}`}
-                        editing={editingTimeline}
-                        onEditToggle={() => setEditingTimeline((v) => !v)}
                         onMore={() => setTimelineMenuOpen(true)}
-                        {...directionsButton}
                       >
                         {coming && (
                           <span className="mt-1 block text-[12.5px] font-semibold text-primary">
@@ -2219,10 +2225,10 @@ export function TripDetail({
                             setAddDay(group.key);
                             setAddingTimeline(true);
                           }}
-                          className="mt-3 flex min-h-12 w-full items-center justify-center gap-1.5 rounded-[var(--r-card)] border border-dashed border-border text-[15px] font-medium text-muted-foreground"
+                          aria-label={`Add a stop to ${group.label}`}
+                          className="btn-primary mt-4 flex w-full items-center justify-center px-4"
                         >
-                          <Plus className="size-4" aria-hidden />
-                          Add a stop to this day
+                          Add stop
                         </button>
                       )}
                     </section>
@@ -2239,15 +2245,7 @@ export function TripDetail({
                   ]
                     .filter(Boolean)
                     .join(" · ")}
-                  onAdd={() => {
-                    setAddDay(addToDay ?? "");
-                    setAddingTimeline(true);
-                  }}
-                  addLabel="Add to the timeline"
-                  editing={editingTimeline}
-                  onEditToggle={() => setEditingTimeline((v) => !v)}
                   onMore={() => setTimelineMenuOpen(true)}
-                  {...directionsButton}
                 />
                 <ol className="relative min-w-0 space-y-1 overflow-x-hidden py-1">
                   {stopItems.map((item, i) =>
@@ -2298,6 +2296,18 @@ export function TripDetail({
                     ),
                   )}
                 </ol>
+                {!editingTimeline && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAddDay(addToDay ?? "");
+                      setAddingTimeline(true);
+                    }}
+                    className="btn-primary mt-4 flex w-full items-center justify-center px-4"
+                  >
+                    Add stop
+                  </button>
+                )}
               </>
             )}
 
@@ -2449,6 +2459,41 @@ export function TripDetail({
             crumb={trip.title}
           >
             <div>
+              {/* The day header's old buttons, as the design draws none there. */}
+              {stopItems.length > 0 && (
+                <button
+                  type="button"
+                  className="menu-row"
+                  aria-pressed={editingTimeline}
+                  onClick={() => {
+                    setTimelineMenuOpen(false);
+                    setEditingTimeline((v) => !v);
+                  }}
+                >
+                  <span className="menu-row-title">
+                    {editingTimeline ? "Done editing" : "Edit stops"}
+                  </span>
+                  <span className="menu-row-note">Every stop's details at once</span>
+                </button>
+              )}
+              {directionsButton.onDirections && (
+                <button
+                  type="button"
+                  className="menu-row"
+                  disabled={directionsButton.directionsBusy}
+                  onClick={() => {
+                    setTimelineMenuOpen(false);
+                    directionsButton.onDirections?.();
+                  }}
+                >
+                  <span className="menu-row-title">Directions</span>
+                  <span className="menu-row-note">
+                    {directionsButton.directionsBusy
+                      ? "Working out the walks and drives…"
+                      : "The walks and drives between the stops"}
+                  </span>
+                </button>
+              )}
               {stopItems.length > 0 && (
                 <TimeChangeBox
                   tripId={trip.id}
@@ -3209,163 +3254,97 @@ export function TripDetail({
   );
 }
 
-const TIMELINE_TIP_KEY = "bea.timelineTip";
-
-/**
- * One tip, once: where the map, directions and editing went. Dismissed for
- * good on this device. Storage may be blocked; then it simply shows again.
- */
-function TimelineTip() {
-  const [shown, setShown] = useState(false);
-  useEffect(() => {
-    try {
-      setShown(window.localStorage.getItem(TIMELINE_TIP_KEY) !== "dismissed");
-    } catch {
-      setShown(true);
-    }
-  }, []);
-  if (!shown) return null;
-  return (
-    <div className="tile-fill-2 mb-4 flex items-center gap-2.5 rounded-[var(--r-card)] px-3 py-2.5">
-      <Hand className="size-5 shrink-0 text-muted-foreground" aria-hidden />
-      <p className="min-w-0 flex-1 text-[14px] leading-snug">
-        Tap ⋯ on a stop for the map, directions and more. Tap a stop to edit it. Swipe right for
-        done, left to save or delete.
-      </p>
-      <button
-        type="button"
-        onClick={() => {
-          setShown(false);
-          try {
-            window.localStorage.setItem(TIMELINE_TIP_KEY, "dismissed");
-          } catch {
-            // Shown again next time; nothing else depends on it.
-          }
-        }}
-        aria-label="Dismiss the tip"
-        className="tap-44 grid size-9 shrink-0 place-items-center rounded-full"
-      >
-        <X className="size-4" aria-hidden />
-      </button>
-    </div>
-  );
+/** "Day 4" → "04", for the timeline's large day number; "" when there is none. */
+function dayNumber(ordinal: string): string {
+  const n = /(\d+)/.exec(ordinal)?.[1];
+  return n ? n.padStart(2, "0") : "";
 }
 
 /**
- * The Timeline's heading, as the master draws it: "Day 1 · Thu, Oct 1" in the
- * serif with the day's size under it, then Edit stops and Add, with the
- * directions signpost and ⋯ for the list's options at the end of the row.
- * Tapping the title folds the day away.
+ * The Timeline's day heading, as the minimalist frame draws it: DAY and the
+ * day's number large on the left, the date and city over the day's line on
+ * the right, and the Timeline's ⋯. Tapping it folds the day away.
  */
+
 function TimelineHead({
   title,
+  day,
+  dateLine,
   line,
   open = true,
   onToggle,
-  onAdd,
-  addLabel,
   onMore,
-  onDirections,
-  directionsBusy = false,
-  editing = false,
-  onEditToggle,
   children,
 }: {
   title: string;
+  /** The day's number, "04", drawn large under DAY as the Figma timeline does. */
+  day?: string;
+  /** Date and city over the line: "Wed, Nov 4 / Rome". */
+  dateLine?: string;
   line: string;
   open?: boolean;
   onToggle?: () => void;
-  onAdd: () => void;
-  addLabel: string;
+  /** The Timeline's ⋯: Edit stops, Directions and the list's options. */
   onMore?: () => void;
-  /** Work out the walks and drives between the stops, from the top of the list. */
-  onDirections?: () => void;
-  directionsBusy?: boolean;
-  /** Editing every stop at once: the Edit stops button turns into Done. */
-  editing?: boolean;
-  onEditToggle?: () => void;
   children?: ReactNode;
 }) {
   const heading = (
-    <>
-      <span className="flex items-center gap-1.5">
-        <span className="block font-display text-[27px] leading-none">{title}</span>
-        {onToggle ? (
-          <ChevronDown
-            className={`size-4 shrink-0 text-muted-foreground transition-transform ${open ? "" : "-rotate-90"}`}
-            aria-hidden
-          />
-        ) : null}
+    <span className="grid grid-cols-[minmax(0,2fr)_minmax(0,3fr)] items-start gap-4">
+      <span className="block">
+        {day ? (
+          <>
+            <span className="block text-[12px] uppercase leading-[1.4] text-foreground">Day</span>
+            <span className="mt-1 flex items-center gap-1.5">
+              <span className="text-[28px] font-bold leading-[1.1] tabular-nums">{day}</span>
+              {onToggle ? (
+                <ChevronDown
+                  className={`size-4 shrink-0 text-muted-foreground transition-transform ${open ? "" : "-rotate-90"}`}
+                  aria-hidden
+                />
+              ) : null}
+            </span>
+          </>
+        ) : (
+          <span className="block text-[20px] font-bold leading-[1.2]">{title}</span>
+        )}
       </span>
-      <span className="mt-1.5 block text-[14px] text-muted-foreground">{line}</span>
-      {children}
-    </>
+      <span className="block min-w-0">
+        {dateLine ? (
+          <span className="block text-[12px] leading-[1.4] text-foreground">{dateLine}</span>
+        ) : null}
+        <span className="mt-1 block text-[16px] leading-[1.4] text-foreground">{line}</span>
+      </span>
+    </span>
   );
-  const round =
-    "grid size-11 shrink-0 place-items-center rounded-full border border-border bg-card shadow-xs";
   return (
-    <div className="mb-3">
-      {onToggle ? (
-        <button
-          type="button"
-          onClick={onToggle}
-          aria-expanded={open}
-          className="block w-full text-left"
-        >
-          {heading}
-        </button>
-      ) : (
-        <div className="min-w-0">{heading}</div>
-      )}
-      <div className="mt-3 flex items-center gap-2">
-        {onEditToggle ? (
+    <div className="mb-1">
+      <div className="flex items-start gap-2">
+        {onToggle ? (
           <button
             type="button"
-            onClick={onEditToggle}
-            aria-pressed={editing}
-            className={`inline-flex min-h-11 items-center gap-1.5 rounded-full px-4 text-[15px] font-semibold ${
-              editing ? "bg-primary-soft text-primary" : "bg-elevated text-foreground"
-            }`}
+            onClick={onToggle}
+            aria-expanded={open}
+            aria-label={`${title}, ${line}`}
+            className="block min-w-0 flex-1 text-left"
           >
-            {editing ? <Check className="size-4" aria-hidden /> : null}
-            {editing ? "Done" : "Edit stops"}
+            {heading}
           </button>
-        ) : null}
-        <button
-          type="button"
-          onClick={onAdd}
-          aria-label={addLabel}
-          title={addLabel}
-          className="inline-flex min-h-11 items-center gap-1.5 rounded-full bg-primary px-4 text-[15px] font-semibold text-primary-foreground shadow-sm"
-        >
-          <Plus className="size-4" weight="bold" aria-hidden />
-          Add
-        </button>
-        <span className="flex-1" />
-        {onDirections ? (
-          <button
-            type="button"
-            onClick={onDirections}
-            disabled={directionsBusy}
-            aria-label={directionsBusy ? "Working out directions" : "Directions between stops"}
-            title="Get directions"
-            className={`${round} text-primary disabled:opacity-60`}
-          >
-            <Signpost className={`size-5 ${directionsBusy ? "animate-pulse" : ""}`} aria-hidden />
-          </button>
-        ) : null}
+        ) : (
+          <div className="min-w-0 flex-1">{heading}</div>
+        )}
         {onMore ? (
           <button
             type="button"
             onClick={onMore}
             aria-label="Timeline options"
             title="Timeline options"
-            className={round}
+            className="-me-2 -mt-2 grid size-11 shrink-0 place-items-center text-foreground"
           >
             <MoreHorizontal className="size-5" aria-hidden />
           </button>
         ) : null}
       </div>
+      {children}
     </div>
   );
 }

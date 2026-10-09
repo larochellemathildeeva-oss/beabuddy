@@ -226,7 +226,7 @@ export const guides: Record<string, Guide> = {
       },
       {
         title: "The shared timeline",
-        body: "Day by day, and live: anyone invited sees the same plan as you edit it. After Get directions you can add those legs straight to the timeline. Offline maps, in the trip menu, keeps the directions and map on this phone.",
+        body: "Day by day, and live: anyone invited sees the same plan as you edit it. Tap a stop for its whole card; swipe right for done, left to save or delete. The ⋯ beside the day has Edit stops, Directions and how the list shows. Offline maps, in the trip menu, keeps the directions and map on this phone.",
         selector: "[data-guide='trip-timeline']",
       },
       {
