@@ -14,7 +14,6 @@ import {
   MapPin,
   Pencil,
   Search,
-  Sparkles,
   Upload,
   X,
 } from "@/components/icons";
@@ -22,6 +21,7 @@ import {
   CharCount,
   PLAN_FIELD,
   PlanAction,
+  PlanError,
   PlanPanel,
   PlanTitle,
   PriorityPicker,
@@ -1538,11 +1538,7 @@ function ImportPanel({
             : "Sent to an AI to read, so leave out passport and card numbers. Calendar files stay on your device."}
       </p>
 
-      {error && (
-        <p role="alert" className="break-words text-[14px] text-destructive">
-          {error}
-        </p>
-      )}
+      {error && <PlanError message={error} />}
       {saved && (
         <p role="status" className="text-[14px] text-primary">
           {beaLine("plan.complete").title} {tripStillEditableNote()}
@@ -2146,11 +2142,7 @@ function OptimizePanel({
         </>
       )}
 
-      {error && (
-        <p role="alert" className="break-words text-[14px] text-destructive">
-          {error}
-        </p>
-      )}
+      {error && <PlanError message={error} />}
       {saved && <p className="text-[13px] text-primary">Timeline updated.</p>}
 
       {plan && (
@@ -2324,11 +2316,7 @@ function ComparePanel() {
       </PlanAction>
       {busy && <BeaRunning moment="choose.working" status="Reading both plans, then comparing" />}
 
-      {error && (
-        <p role="alert" className="break-words text-[14px] text-destructive">
-          {error}
-        </p>
-      )}
+      {error && <PlanError message={error} />}
 
       {result && <ComparisonResult result={result} />}
     </div>
@@ -2548,15 +2536,18 @@ function ComparisonResult({ result }: { result: ItineraryComparison }) {
   ];
 
   return (
-    <div className="rise space-y-4 rounded-2xl border border-border bg-elevated p-3">
-      {/* 1 — the verdict */}
-      <div>
-        <h3 className="font-display text-[18px] leading-tight">{result.headline}</h3>
-        <p className="mt-1 text-[14.5px]">
-          <span className="inline-flex items-center gap-1 font-semibold">
-            <Sparkles className="size-3.5 text-primary" />
-            Béa would pick {result.pick}.
-          </span>{" "}
+    <div className="rise space-y-4 pt-2">
+      {/* 1 — the verdict, as the "What fits you best." frame draws it */}
+      <header>
+        <p className="text-[12px] leading-[17px] text-foreground">Comparison</p>
+        <h3 className="mt-3 border-b border-[var(--rule)] pb-3 text-[28px] font-bold leading-[1.15] tracking-tight">
+          What fits you best.
+        </h3>
+      </header>
+      <div className="border-b border-border pb-3">
+        <p className="text-[16px] leading-[22px]">{result.headline}</p>
+        <p className="mt-1 text-[14px] leading-[20px] text-muted-foreground">
+          <span className="font-semibold text-foreground">Béa would pick {result.pick}.</span>{" "}
           {result.why}
         </p>
       </div>

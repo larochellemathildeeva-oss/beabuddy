@@ -208,3 +208,21 @@ export function PlanAction({
     </button>
   );
 }
+
+/**
+ * A planner step that failed, as the minimalist failure frame draws it:
+ * "Try a smaller step." over a 2px rule, then what went wrong and that the
+ * trip itself is untouched.
+ */
+export function PlanError({ message }: { message: string }) {
+  return (
+    <div role="alert" className="border-t-2 border-foreground pt-3">
+      <p className="text-[12px] leading-[17px] text-foreground">Planner / retry</p>
+      <p className="mt-1 text-[20px] font-bold leading-tight">Try a smaller step.</p>
+      <p className="mt-2 break-words text-[14px] leading-[20px] text-destructive">{message}</p>
+      <p className="mt-1 text-[14px] leading-[20px] text-muted-foreground">
+        Your existing trip is still saved.
+      </p>
+    </div>
+  );
+}

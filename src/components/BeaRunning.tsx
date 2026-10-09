@@ -41,21 +41,21 @@ export function BeaRunning({
 }) {
   const counted = typeof done === "number" && typeof total === "number" && total > 0;
   return (
-    <div className="rounded-2xl bg-elevated px-3 pb-3">
+    // The minimalist "Béa is working on it." block: a 2px rule (the real
+    // progress when it can count, else a still full rule), then the step.
+    <div className="pt-1">
+      <div className="h-0.5 w-full bg-[var(--rule)]">
+        <div
+          className="h-full bg-foreground transition-all duration-(--t-shift) ease-(--ease-standard)"
+          style={{ width: counted ? `${Math.round((done! / total!) * 100)}%` : "100%" }}
+        />
+      </div>
       <BeaLoader active action={action ?? WORK[moment] ?? "think"} status={status} compact />
       {counted && (
-        <>
-          <div className="h-1.5 w-full overflow-hidden rounded-full bg-card">
-            <div
-              className="h-full rounded-full bg-primary transition-all duration-(--t-shift) ease-(--ease-standard)"
-              style={{ width: `${Math.round((done! / total!) * 100)}%` }}
-            />
-          </div>
-          <p className="mt-1.5 text-center text-[12px] text-muted-foreground">
-            {done} of {total} placed
-            {estimate && estimate > 0 && done! < total! ? ` · about ${estimate}s in all` : ""}
-          </p>
-        </>
+        <p className="border-b border-border pb-3 text-[14px] leading-[20px] text-muted-foreground">
+          {done} of {total} placed
+          {estimate && estimate > 0 && done! < total! ? ` · about ${estimate}s in all` : ""}
+        </p>
       )}
     </div>
   );

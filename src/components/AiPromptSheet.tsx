@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Check, ChevronRight, Copy, Sparkles } from "@/components/icons";
+import { Check, Sparkles } from "@/components/icons";
 import { Sheet } from "@/components/Sheet";
 import { AI_PLAN_PROMPT } from "@/lib/ai-plan-prompt";
 
@@ -23,24 +23,28 @@ export function AiPromptCopy() {
   };
   return (
     <div className="space-y-3">
-      <p className="text-[14px] leading-relaxed text-muted-foreground">
-        Copy this into ChatGPT, Gemini, Claude or whichever you use, fill in the brackets, and paste
-        its answer into Plan with Béa → Import your plan.
-      </p>
-      <p className="text-[14px] leading-relaxed text-muted-foreground">
-        It asks for one place per line with a time and a street address, and no travel lines — the
-        shape Béa reads straight, so each stop gets its own pin.
-      </p>
-      <pre className="max-h-64 overflow-auto whitespace-pre-wrap rounded-lg bg-muted/60 p-3 text-[12.5px] leading-relaxed text-foreground">
-        {AI_PLAN_PROMPT}
-      </pre>
+      <div className="plan-panel px-4 py-3">
+        <p className="text-[12px] leading-[17px] text-foreground">Prompt</p>
+        <pre className="mt-1 max-h-64 overflow-auto whitespace-pre-wrap font-sans text-[14px] leading-[20px] text-foreground">
+          {AI_PLAN_PROMPT}
+        </pre>
+      </div>
+      <div className="plan-panel px-4 py-3">
+        <p className="text-[12px] leading-[17px] text-foreground">Use elsewhere</p>
+        <p className="mt-1 text-[16px] leading-[22px]">Copy into your preferred AI tool</p>
+        <p className="mt-1 text-[14px] leading-[20px] text-muted-foreground">
+          ChatGPT, Gemini, Claude or whichever you use: fill in the brackets, then paste its answer
+          into Plan with Béa → Import your plan. It asks for one place per line with a time and a
+          street address, the shape Béa reads straight, so each stop gets its own pin.
+        </p>
+      </div>
       <button
         type="button"
         onClick={copy}
-        className="inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-[14px] font-medium text-primary-foreground"
+        className="btn-primary flex w-full items-center justify-center gap-2 px-4"
       >
-        {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
-        {copied ? "Copied" : "Copy the prompt"}
+        {copied ? <Check className="size-4" aria-hidden /> : null}
+        {copied ? "Copied" : "Copy prompt"}
       </button>
       {error && (
         <p role="alert" className="text-[14px] text-destructive">
@@ -70,16 +74,12 @@ export function AiPromptButton({
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className={`plan-panel plan-sky flex w-full items-center gap-2.5 px-3 py-2 text-left ${className}`}
+          className={`block w-full border-b border-border py-3 text-start ${className}`}
         >
-          <span className="plan-badge grid size-7 shrink-0 place-items-center rounded-full">
-            <Sparkles className="size-4" aria-hidden />
+          <span className="block text-[16px] leading-[22px]">{label}</span>
+          <span className="mt-1 block text-[14px] leading-[20px] text-muted-foreground">
+            To use in ChatGPT or any AI
           </span>
-          <span className="min-w-0 flex-1 leading-tight">
-            <span className="text-[14px] font-semibold text-primary">{label}</span>
-            <span className="text-[12px] text-muted-foreground"> to use in ChatGPT or any AI</span>
-          </span>
-          <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
         </button>
       ) : (
         <button
@@ -94,8 +94,10 @@ export function AiPromptButton({
       <Sheet
         open={open}
         onClose={() => setOpen(false)}
-        title="A prompt for another AI"
-        hint="Its answer pastes straight into Béa"
+        page
+        hint="AI prompt"
+        title="Take the prompt"
+        crumb="Back"
         above
       >
         <AiPromptCopy />
