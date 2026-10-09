@@ -369,10 +369,13 @@ export function useTrips() {
     return () => sub.subscription.unsubscribe();
   }, [load]);
 
+  // A channel of its own: two screens using trips at once must not share one,
+  // or the second adds listeners to a channel already subscribed and throws.
+  const channelName = useRef(`trips-sync-${Math.random().toString(36).slice(2)}`);
   useEffect(() => {
     if (!uid) return;
     const channel = supabase
-      .channel("trips-sync")
+      .channel(channelName.current)
       .on("postgres_changes", { event: "*", schema: "public", table: "trips" }, () => void load())
       .on(
         "postgres_changes",

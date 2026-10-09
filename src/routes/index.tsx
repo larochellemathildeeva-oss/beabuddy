@@ -347,7 +347,7 @@ function SignedInHome() {
   const showSamplePrompt = empty && !sampleCtaDismissed;
   const { layout, modules, shown, resize, reorder } = useHomeLayout();
   // Untouched, Home with a trip ahead is the design's; with none, the no-trip modules.
-  useHomeTripMoment();
+  useHomeTripMoment(trips);
   const [editing, setEditing] = useState(false);
   const doneRef = useRef<HTMLButtonElement>(null);
   // Entering arrangement from the Customize card at the bottom: bring the
@@ -569,7 +569,7 @@ function SignedInHome() {
           </section>
         )}
 
-        <CustomizeHome variant="card" onArrange={() => setEditing(true)} />
+        <CustomizeHome variant="card" trips={trips} onArrange={() => setEditing(true)} />
 
         {((shownModules.includes("weather") && near.consent && near.state === "ok") ||
           tripWeather) && <WeatherCredit />}
