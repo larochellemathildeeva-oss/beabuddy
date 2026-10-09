@@ -71,7 +71,6 @@ export function NowPanel({
   progress,
   onLook,
   photosFor,
-  map,
 }: {
   /** The chosen day's stops, in order, without Walk / Drive rows. */
   dayStops: ItineraryRow[];
@@ -102,8 +101,6 @@ export function NowPanel({
   onLook?: ((id: string) => void) | undefined;
   /** A stop's photos and adding one, for "Take photo" where you are. */
   photosFor?: ((stop: ItineraryRow) => StopPhotosProps) | undefined;
-  /** Live, under the Map tab: the day's map, drawn right above the stop card. */
-  map?: ReactNode;
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -351,8 +348,6 @@ export function NowPanel({
           </a>
         </section>
       )}
-      {map}
-
       {phase === "at" && current && (
         <>
           <section

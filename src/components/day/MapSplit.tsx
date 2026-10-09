@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { DayMap } from "@/components/day/DayMap";
-import { MapFootnotes, between, type LegFor } from "@/components/day/DayMapView";
+import { MapFootnotes } from "@/components/day/DayMapView";
+import { between, type LegFor } from "@/components/day/stop-words";
 import type { ItineraryRow } from "@/hooks/useTrips";
 import { companionState } from "@/lib/companion";
 import { dayMapModel, toggleSelection } from "@/lib/day-map";
@@ -29,7 +30,7 @@ export function MapSplit({
   nesting?: boolean;
   /** A stop to open on, from "Locate on map" in the Timeline. */
   focusId?: string | null | undefined;
-  legFor?: LegFor | undefined;
+  legFor?: LegFor<ItineraryRow> | undefined;
   /** "Today / All days", between the map and the list. */
   dayTabs?: ReactNode;
   onDirections?: (() => void) | undefined;
@@ -46,7 +47,9 @@ export function MapSplit({
 
   const pickFromMap = (id: string) => {
     setSelectedId((current) => toggleSelection(current, id));
-    document.getElementById(`split-${id}`)?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    document
+      .getElementById(`split-${id}`)
+      ?.scrollIntoView({ block: "nearest", behavior: "smooth" });
   };
   const pickFromList = (id: string) => {
     setSelectedId((current) => toggleSelection(current, id));

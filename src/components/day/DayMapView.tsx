@@ -11,7 +11,14 @@ import {
 import { ChevronLeft, ChevronRight, Clock, MapPin, Maximize2 } from "@/components/icons";
 import { DayMap } from "@/components/day/DayMap";
 import { LegIcon, StopArt, StopChips, StopDisc } from "@/components/day/stop-bits";
-import { dayLengthLabel, dayTitle, legWords, measured } from "@/components/day/stop-words";
+import {
+  between,
+  dayLengthLabel,
+  dayTitle,
+  legWords,
+  measured,
+  type LegFor,
+} from "@/components/day/stop-words";
 import type { ItineraryRow } from "@/hooks/useTrips";
 import { dayTightnessNote } from "@/lib/day-shape";
 import {
@@ -76,9 +83,6 @@ function useBoxHeight(ref: RefObject<HTMLElement | null>, on: boolean): number {
   return height;
 }
 
-/** A measured leg from the page, when it has one for these two stops. */
-export type LegFor = (from: ItineraryRow, to: ItineraryRow) => RouteLeg | undefined;
-
 /**
  * The chosen day on a map.
  *
@@ -109,7 +113,7 @@ export function DayMapView({
   todayKey: string;
   /** "Day 3" for each day's key, counted across the whole trip. */
   ordinals: Record<string, string>;
-  legFor?: LegFor | undefined;
+  legFor?: LegFor<ItineraryRow> | undefined;
   /** The day's chips, drawn on the map rather than above it. */
   dayStrip?: ReactNode;
   /** A sideways swipe on the sheet changes the day. */
@@ -476,26 +480,6 @@ function MapStage({
   );
 }
 
-/** The journey between two stops: the measured leg, else "about" as the crow flies. */
-export function between(
-  from: ItineraryRow,
-  to: ItineraryRow,
-  legFor: LegFor | undefined,
-): { walking: boolean; mode?: LegMode; text: string } | null {
-  const leg = legFor?.(from, to);
-  if (measured(leg)) {
-    const words = legWords(leg);
-    return {
-      walking: words.walking,
-      mode: words.mode,
-      text: `${words.time}${words.mode === "driving" ? "" : ` ${words.how}`} · ${words.distance}`,
-    };
-  }
-  if (!hasPosition(from) || !hasPosition(to)) return null;
-  const guess = legEstimate(from, to);
-  return { walking: guess.walkMinutes !== null, text: guess.label };
-}
-
 /**
  * Split's list: "Day 1 · Thu, Oct 1" with its size, Béa's note when the plan
  * is tighter than the walking, and the stops on a coloured line with the walk
@@ -513,7 +497,7 @@ function SplitDay({
   ordinal: string;
   selectedId: string | null;
   onSelect: (id: string) => void;
-  legFor: LegFor | undefined;
+  legFor: LegFor<ItineraryRow> | undefined;
   /** Inside the map sheet the sheet is already the card. */
   plain?: boolean;
 }) {
@@ -697,7 +681,7 @@ function FocusStage({
   onSelect: (id: string | null) => void;
   onPick: (id: string) => void;
   mapLabel: string;
-  legFor: LegFor | undefined;
+  legFor: LegFor<ItineraryRow> | undefined;
   layout: MapLayout;
   onLayout: (layout: MapLayout) => void;
   onFit: () => void;
@@ -822,7 +806,7 @@ function LiveCard({
   at: number;
   total: number;
   onStep: (by: 1 | -1) => void;
-  legFor: LegFor | undefined;
+  legFor: LegFor<ItineraryRow> | undefined;
 }) {
   const realLeg = next ? legFor?.(stop, next) : undefined;
   const leg = measured(realLeg) ? realLeg : null;
