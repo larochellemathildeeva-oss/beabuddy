@@ -883,20 +883,20 @@ await flow("save sheet: lists are Recommendation, Bucket list, Been there; Next 
   if ((await page.getByText(/Next time|Wishlist/).count()) !== 0) throw new Error("the page still says Next time or Wishlist");
 }, "recs");
 
-await flow("you: figures, rows, Profile settings with its rows, Customize Home and theme", async (page) => {
+await flow("you: the settings rows, Profile settings, Appearance with Béa and Customize Home", async (page) => {
   const text = async () => page.locator("body").innerText();
-  for (const word of ["Travel, your way.", "Trips", "Countries", "Travel preferences", "Béa", "Photos and memories", "Work travel", "Trip documents", "Appearance", "Profile settings"])
+  for (const word of ["Your settings.", "Profile settings", "Travel preferences", "Packing lists", "Photos & memories", "Work travel", "Trip documents", "Appearance", "Data & imports", "Privacy & legal", "Help & FAQ", "Feedback", "About Béa", "Done"])
     if (!(await text()).includes(word)) throw new Error(`You lost "${word}"`);
-  if ((await page.locator("[data-guide='your-bea']").getAttribute("href")) !== "/profile/bea") throw new Error("Béa lost its route");
-  await page.getByRole("button", { name: "Profile settings", exact: true }).click();
+  await page.getByRole("button", { name: /^Profile settings/ }).click();
   const settings = page.getByRole("dialog");
   await settings.getByLabel("Home city").waitFor();
-  for (const row of ["Packing lists", "Data & imports", "Privacy & legal", "About Béa", "Sign out"])
-    if ((await settings.getByRole("button", { name: new RegExp(`^${row}`) }).count()) < 1) throw new Error(`Profile settings lost ${row}`);
+  if ((await settings.getByRole("button", { name: "Save details" }).count()) !== 1) throw new Error("Profile settings lost Save details");
+  if ((await settings.getByRole("link", { name: /^Travel tags/ }).getAttribute("href")) !== "/preferences") throw new Error("Travel tags lost its route");
   await page.keyboard.press("Escape");
   await page.waitForTimeout(300);
-  await page.getByRole("button", { name: /Appearance/ }).click();
+  await page.getByRole("button", { name: /^Appearance/ }).click();
   await page.getByRole("dialog").getByText("Theme", { exact: true }).waitFor();
+  if ((await page.getByRole("dialog").getByRole("link", { name: /^Béa's personality/ }).getAttribute("href")) !== "/profile/bea") throw new Error("Béa's personality lost its route");
   await page.getByRole("button", { name: /Customize home/ }).first().click();
   await page.waitForTimeout(300);
   if ((await page.getByRole("dialog").count()) === 0) throw new Error("Customize home opened nothing");
