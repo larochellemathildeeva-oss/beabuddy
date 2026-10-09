@@ -25,6 +25,7 @@ import {
   PlanPanel,
   PlanTitle,
   PriorityPicker,
+  plannerHead,
 } from "@/components/PlanForm";
 import {
   budgetFor,
@@ -348,16 +349,23 @@ export function ItineraryImport({
       </fieldset>
     ) : null;
 
+  const head = plannerHead(
+    tab === "import" ? start.mode : tab === "start" ? "build" : tab,
+    existingItems.length > 0,
+  );
+
   return (
     <Sheet
       open={open}
       onClose={onClose}
-      title={tab === "start" ? "Plan with Béa" : "Ask Béa"}
+      title={tab === "start" ? "Plan with Béa" : head.title}
       hint={
         tab === "start"
           ? [tripTitle, "build / import / optimize / compare"].filter(Boolean).join(" · ")
-          : (tripTitle ?? undefined)
+          : head.label
       }
+      // While a form is busy its arrow closes the planner, so it says so rather than "Plan with Béa".
+      {...(tab === "start" || panelBusy ? {} : { crumb: "Plan with Béa" })}
       page
       tone={5}
       onBack={tab === "start" || panelBusy ? undefined : () => setTab("start")}
@@ -394,6 +402,7 @@ export function ItineraryImport({
             // A new city is a new plan: nothing read or placed for the last one is kept.
             key={`${start.n}:${planCity?.id ?? ""}`}
             initialMode={start.mode}
+            onModeChange={(mode) => setStart((cur) => ({ ...cur, mode }))}
             initialText={start.text}
             existingItems={existingItems}
             cities={planRoute}
@@ -451,6 +460,7 @@ function ImportPanel({
   tripPreferences = [],
   travel,
   initialMode = "build",
+  onModeChange,
   initialText = "",
   existingItems,
   cities,
@@ -475,6 +485,8 @@ function ImportPanel({
   cityPicker?: ReactNode;
   /** Which job the panel opens on, chosen on the start screen. */
   initialMode?: "build" | "import";
+  /** Told when the panel switches itself between Build and Import, so the page title follows. */
+  onModeChange?: (mode: "build" | "import") => void;
   /** Words typed on the start screen, carried into the box. */
   initialText?: string;
   existingItems: OptimizeSourceItem[];
@@ -1282,7 +1294,7 @@ function ImportPanel({
   return (
     <div className="mt-1 space-y-2.5">
       {mode === "build" ? (
-        <PlanTitle title={addingMore ? "Build more for this trip" : "Build me a trip"}>
+        <PlanTitle>
           {tripPlace && !needsPlace
             ? `${tripPlace}${tripDates ? ` · ${tripDates}` : ""}. ${
                 addingMore
@@ -1292,7 +1304,7 @@ function ImportPanel({
             : "Tell Béa what you'd like; she drafts the days for you."}
         </PlanTitle>
       ) : (
-        <PlanTitle title="Import a plan">
+        <PlanTitle>
           Paste, upload or link your itinerary. Béa finds the places and adds it to your trip.
         </PlanTitle>
       )}
@@ -1459,6 +1471,7 @@ function ImportPanel({
             type="button"
             onClick={() => {
               setMode("import");
+              onModeChange?.("import");
               setIncludeCosts(false);
             }}
             className="mt-2 min-h-11 w-full rounded-xl bg-primary px-3 py-2 text-[14px] font-semibold text-primary-foreground"
@@ -1515,8 +1528,8 @@ function ImportPanel({
           : mode === "build"
             ? addingMore
               ? "Find and add to my trip"
-              : "Build my trip"
-            : "Import plan"}
+              : "Draft the days"
+            : "Read the plan"}
       </PlanAction>
       {busy && (
         <div className="mt-2">
@@ -2060,7 +2073,7 @@ function OptimizePanel({
 
   return (
     <div className="mt-1 space-y-2.5">
-      <PlanTitle title="Optimize my trip">
+      <PlanTitle>
         Béa keeps your {items.length} stop{items.length === 1 ? "" : "s"} and reorganizes the days
         around what matters to you. She doesn't check reservations.
       </PlanTitle>
@@ -2133,7 +2146,7 @@ function OptimizePanel({
             </p>
           </PriorityPicker>
           <PlanAction onClick={() => void rearrange()} disabled={busy || goals.length === 0}>
-            {busy && !plan ? "Béa is rearranging…" : "Optimize my trip"}
+            {busy && !plan ? "Béa is rearranging…" : "Preview a better order"}
           </PlanAction>
           {busy && !plan && <BeaRunning moment="choose.working" status="Rearranging the days" />}
         </>
@@ -2280,9 +2293,7 @@ function ComparePanel() {
 
   return (
     <div className="mt-1 space-y-2">
-      <PlanTitle title="Compare options">
-        Paste or upload two plans; Béa picks the better fit.
-      </PlanTitle>
+      <PlanTitle>Paste or upload two plans; Béa picks the better fit.</PlanTitle>
       <AiPromptButton variant="banner" label="Get the AI prompt" />
 
       <div className="grid grid-cols-2 gap-2">
@@ -2315,7 +2326,7 @@ function ComparePanel() {
       />
 
       <PlanAction onClick={() => void compare()} disabled={busy || !ready}>
-        {busy ? "Comparing…" : "Compare these plans"}
+        {busy ? "Comparing…" : "Compare options"}
       </PlanAction>
       {busy && <BeaRunning moment="choose.working" status="Reading both plans, then comparing" />}
 
