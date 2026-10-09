@@ -994,7 +994,7 @@ function RecommendationsPage() {
           <section data-guide="reco-add" className="space-y-3">
             {/* The design's search box: a small label over the words, one hairline box. */}
             <div className="recs-search rounded-[var(--r-card)] border border-border px-3 pb-2 pt-3">
-              <p className="text-[12px] leading-[1.4]" aria-hidden>
+              <p id="recs-search-label" className="text-[12px] leading-[1.4]">
                 Search or add a place
               </p>
               <div className="relative min-w-0 [&_textarea]:min-h-11 [&_textarea]:border-0 [&_textarea]:bg-transparent [&_textarea]:px-0 [&_textarea]:py-2 [&_textarea]:text-[16px] [&_textarea]:leading-[1.4] [&_textarea]:shadow-none [&_textarea+button]:size-11 [&_textarea:placeholder-shown+button]:hidden">
@@ -1004,7 +1004,7 @@ function RecommendationsPage() {
                   at={searchAt}
                   onLocate={locateForSearch}
                   onPick={openFound}
-                  ariaLabel="Search or add a place"
+                  ariaLabelledBy="recs-search-label"
                   placeholder={
                     views.length > 0 ? "Search places, cities, people…" : addPlaceholder(false)
                   }
