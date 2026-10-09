@@ -81,17 +81,22 @@ function ResetPasswordPage() {
 
   return (
     <div className="min-h-[100dvh] bg-background">
-      <div className="mx-auto flex min-h-[100dvh] w-full max-w-[520px] flex-col border-x border-border/70 px-6 py-10">
-        <div className="flex flex-1 flex-col justify-center">
-          <BrandMark large />
-          <h1 className="mt-6 font-display text-[40px] leading-[1.1]">Choose a new password</h1>
+      <div className="mx-auto flex min-h-[100dvh] w-full max-w-[520px] flex-col gap-6 p-5">
+        <header className="flex min-h-11 items-center justify-between gap-3">
+          <BrandMark />
+          <Link to="/auth" className="flex min-h-11 items-center px-1 text-[14px] text-foreground">
+            Back
+          </Link>
+        </header>
+        <div className="flex flex-1 flex-col gap-6">
+          <h1 className="text-[28px] font-bold leading-[1.4]">Choose a new password.</h1>
 
           {done ? (
-            <p className="mt-6 rounded-xl border border-border bg-card p-4 text-[16px]">
+            <p className="rounded-[var(--r-card)] border border-border bg-card p-4 text-[14px] leading-[1.4]">
               Password updated — taking you back into Béa.
             </p>
           ) : !ready ? (
-            <p className="mt-6 text-[16px] text-muted-foreground">
+            <p className="text-[14px] leading-[1.4] text-muted-foreground">
               Open this page from the link in your reset email. If you got here another way, ask for
               a new link on the{" "}
               <Link to="/forgot-password" className="underline underline-offset-4">
@@ -100,7 +105,7 @@ function ResetPasswordPage() {
               page.
             </p>
           ) : (
-            <form onSubmit={submit} className="mt-6 space-y-3">
+            <form onSubmit={submit} className="space-y-6">
               <AuthField
                 label="New password"
                 value={password}
@@ -112,8 +117,11 @@ function ResetPasswordPage() {
                 aria-describedby="password-rules"
                 enterKeyHint="next"
               />
+              <div id="password-rules">
+                <PasswordCreationRules password={password} />
+              </div>
               <AuthField
-                label="Repeat new password"
+                label="Confirm password"
                 value={confirm}
                 onChange={(e) => setConfirm(e.target.value)}
                 type="password"
@@ -123,16 +131,13 @@ function ResetPasswordPage() {
                 enterKeyHint="done"
                 error={mismatch ? error : null}
               />
-              <div id="password-rules">
-                <PasswordCreationRules password={password} />
-              </div>
               {error && !mismatch && (
                 <p role="alert" className="text-[14px] text-destructive">
                   {error}
                 </p>
               )}
               <button type="submit" disabled={busy} className={AUTH_SUBMIT}>
-                {busy ? "Saving…" : "Save new password"}
+                {busy ? "Saving…" : "Save password"}
               </button>
             </form>
           )}

@@ -3,8 +3,6 @@ import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactN
 import { browserHasStoredSession } from "@/lib/stored-session";
 import { hasPendingOAuthResultInWindow } from "@/lib/auth-redirect";
 import { AppShell } from "@/components/AppShell";
-import { ArrowRight } from "@/components/icons";
-import { Globe } from "@/components/Globe";
 import { HomeSuggested, HomeUpcoming, HomeWhereNext } from "@/components/HomeLivingMap";
 import {
   HomeNoTripHero,
@@ -38,8 +36,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useScorePrefs } from "@/hooks/useScorePrefs";
 import { rankOpportunities } from "@/lib/score-opportunity";
 import { hasDismissedSampleCta } from "@/lib/auto-seed";
-import { demoGlobePins } from "@/lib/demo-seed";
-import { beaLine, BEA_HELPS, BEA_POSITION, BEA_TAGLINES } from "@/lib/bea-voice";
+import { beaLine } from "@/lib/bea-voice";
 import { safeStorage } from "@/lib/tour-state";
 import { rememberedProfileName, rememberProfileName, shownName } from "@/lib/profile-name";
 import { isAreaPlace } from "@/lib/reco-place";
@@ -87,181 +84,140 @@ function HomePage() {
   return <SignedInHome />;
 }
 
+/** The welcome page, as the minimalist design draws it ("Minimalist / landing"). */
 function LandingPage() {
-  const pins = useMemo(() => demoGlobePins(), []);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-
+  const link = "flex min-h-11 items-center text-[14px] text-foreground";
   return (
-    <AppShell
-      publicPage
-      eyebrow="Plan · Explore · Remember"
-      title="A more meaningful way to travel."
-    >
-      <div className="space-y-6">
-        {/* The destination first, then the ways in, where a thumb reaches them. */}
-        <div
-          className="landing-art"
-          role="img"
-          aria-label="A sunlit coast with a flight path over it"
-        >
-          <span className="landing-art-pill">Amalfi Coast, Italy</span>
+    <AppShell publicPage>
+      <div className="landing space-y-6">
+        <header className="space-y-2">
+          <h1 className="text-[28px] font-bold leading-[1.4]">
+            Turn your saved places into a trip that works.
+          </h1>
+          <p className="text-[14px] leading-[1.4] text-muted-foreground">
+            Béa helps organise your places into daily plans, with directions and bookings together
+            when you travel.
+          </p>
+        </header>
+
+        <div className="space-y-2">
+          <StartFree />
+          <a href="#example-trip" className={link}>
+            See a sample trip
+          </a>
+          <p className="text-[12px] leading-[1.4] text-muted-foreground">
+            Free account · No card required
+          </p>
         </div>
-        <LandingWays />
-        <p className="text-[17px] leading-snug text-muted-foreground">
-          Save the places you care about.
-          <br />
-          Turn them into real trips.
-          <br />
-          Follow the day while you travel.
-          <br />
-          Remember it all.
-        </p>
-        <StartFree />
-        <p className="text-[15px] leading-relaxed text-muted-foreground">
-          {BEA_HELPS} She drafts the days from your saved places or reads a plan you already have,
-          puts them in a sensible order, gives directions and keeps your bookings together.
-        </p>
-        <ul className="grid gap-2 sm:grid-cols-3">
+
+        <ExampleTrip />
+
+        <ul className="space-y-3">
           {LANDING_POINTS.map((point) => (
-            <li key={point.title} className="surface border border-border/50 p-3.5">
-              <p className="font-display text-[18px] leading-snug">{point.title}</p>
-              <p className="mt-1 text-[14px] leading-relaxed text-muted-foreground">{point.body}</p>
+            <li
+              key={point.title}
+              className="space-y-2 rounded-[var(--r-card)] border border-border bg-card p-4"
+            >
+              <p className="text-[16px] font-bold leading-[1.4]">{point.title}</p>
+              <p className="text-[14px] leading-[1.4] text-muted-foreground">{point.body}</p>
             </li>
           ))}
         </ul>
-        <Globe
-          pins={pins}
-          selectedId={selectedId}
-          onSelect={(pin) => setSelectedId(pin.id)}
-          scrollFriendly
-          autoSpin
-        />
-        <p className="text-[13px] text-muted-foreground">
-          The places on this globe are examples. Yours fill it in once you start saving.
-        </p>
-        <section className="surface border border-border/50 p-5 text-center">
-          <p className="font-display text-[22px] leading-tight">{BEA_TAGLINES.recommendations}</p>
-          <div className="mt-4">
-            <StartFree />
+
+        <StartFree />
+
+        <nav aria-label="More about Béa" className="space-y-6">
+          <Link to="/auth" search={{ mode: "signup", redirect: "/trips" }} className={link}>
+            Joining friends? Enter an invite code
+          </Link>
+          <Link to="/how-it-works" className={link}>
+            How Béa works
+          </Link>
+          <div className="grid grid-cols-2 gap-2">
+            <Link to="/terms" className={link}>
+              Terms of Service
+            </Link>
+            <Link to="/privacy" className={link}>
+              Privacy Policy
+            </Link>
           </div>
-        </section>
+        </nav>
       </div>
     </AppShell>
   );
 }
 
-/** The three ways in, stacked as in the welcome design. */
-function LandingWays() {
-  const ways = [
+/** A day of an example trip, so a visitor sees what Béa makes before signing up. */
+function ExampleTrip() {
+  const stops = [
+    { time: "09:30", name: "Nishiki Market", note: "Explore the market · 45 minutes" },
+    { leg: "Walk · About 12 minutes" },
+    { time: "10:30", name: "Coffee in Kyoto", note: "A break before the next stop" },
+    { leg: "Travel estimate · About 25 minutes" },
     {
-      to: "/auth",
-      search: { mode: "signup" },
-      fill: "tile-fill-5",
-      title: "Plan with Béa",
-      hint: "Start a trip, Béa drafts the days",
-      icon: "M12 3v3m0 12v3M3 12h3m12 0h3M6 6l2 2m8 8 2 2M18 6l-2 2M8 16l-2 2",
+      time: "11:30",
+      name: "Museum visit",
+      note: "Ticket and booking details together",
+      booking: "Example booking · Museum entry",
     },
-    {
-      to: "/auth",
-      search: { mode: "signup", redirect: "/trips" },
-      fill: "tile-fill-3",
-      title: "Join with a code",
-      hint: "Plan a trip with friends",
-      icon: "M16 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM8 12a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm0 2c-3 0-5 1.5-5 4v1h10v-1c0-2.5-2-4-5-4Zm8 0c-.6 0-1.2.1-1.7.2 1.2.9 1.7 2 1.7 3.8v1h5v-1c0-2.5-2-4-5-4Z",
-    },
-    {
-      to: "/auth",
-      search: {},
-      fill: "tile-fill-1",
-      title: "Sign in or create an account",
-      hint: "Save your trips and more",
-      icon: "M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm-8 9v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1",
-    },
-  ] as const;
+  ];
   return (
-    <div className="space-y-2.5">
-      {ways.map((w) => (
-        <Link
-          key={w.title}
-          to={w.to}
-          search={w.search}
-          className={`${w.fill} flex min-h-[68px] items-center gap-3 rounded-[20px] border border-border p-2.5 pe-3 shadow-[var(--shadow-sm)]`}
-        >
-          <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-card/80 text-foreground">
-            <svg
-              viewBox="0 0 24 24"
-              className="size-6"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.7"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden
-            >
-              <path d={w.icon} />
-            </svg>
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="block font-display text-[18px] leading-tight">{w.title}</span>
-            <span className="block text-[14px] text-foreground/75">{w.hint}</span>
-          </span>
-          <span className="grid size-10 shrink-0 place-items-center rounded-full bg-card text-foreground shadow-[var(--shadow-xs)]">
-            <ArrowRight className="size-[18px]" aria-hidden />
-          </span>
-        </Link>
-      ))}
-    </div>
+    <section
+      id="example-trip"
+      aria-label="Example trip"
+      className="scroll-mt-20 space-y-3 rounded-[var(--r-card)] border border-border bg-card p-4"
+    >
+      <p className="text-[12px] font-bold leading-[1.4] text-muted-foreground">Example trip</p>
+      <p className="text-[20px] font-bold leading-[1.4]">A day in Kyoto</p>
+      <p className="text-[14px] leading-[1.4] text-muted-foreground">
+        Your places, in a useful order.
+      </p>
+      {stops.map((stop, i) =>
+        "leg" in stop ? (
+          <p key={i} className="text-[12px] leading-[1.4] text-muted-foreground">
+            {stop.leg}
+          </p>
+        ) : (
+          <div key={i} className="space-y-1">
+            <p className="flex gap-3 font-bold leading-[1.4]">
+              <span className="w-11 shrink-0 text-[12px] text-muted-foreground">{stop.time}</span>
+              <span className="text-[14px]">{stop.name}</span>
+            </p>
+            <p className="text-[12px] leading-[1.4] text-muted-foreground">{stop.note}</p>
+            {stop.booking ? <p className="text-[12px] leading-[1.4]">{stop.booking}</p> : null}
+          </div>
+        ),
+      )}
+    </section>
   );
 }
 
 /** What a visitor gets, in their words rather than the features'. */
 const LANDING_POINTS = [
   {
-    title: "Plan from what you saved",
-    body: "Paste links, friends' tips or a plan you already have. Béa turns them into days.",
+    title: "Make a plan from your saved places",
+    body: "Bring links, lists or ideas. Béa helps organise the days.",
   },
   {
-    title: "Help on the day",
-    body: "Directions, bookings and the café you saved months ago, when you're two streets away.",
+    title: "Keep directions and bookings together",
+    body: "Know what comes next, with the details close by.",
   },
   {
-    title: "Remember everywhere",
-    body: "Every trip fills in your map, so Future You knows where to go back.",
+    title: "Remember places for next time",
+    body: "Keep discoveries, notes and memories after the trip.",
   },
 ] as const;
 
-/** The sign-up button, with what it costs (nothing) right under it. */
+/** The sign-up button. */
 function StartFree() {
   return (
-    <div className="space-y-3">
-      <Link
-        to="/auth"
-        search={{ mode: "signup" }}
-        className="flex min-h-14 items-center justify-between gap-3 rounded-full bg-foreground py-1.5 ps-6 pe-1.5 text-[17px] font-semibold text-background"
-      >
-        Create your free account
-        <span className="grid size-11 place-items-center rounded-full bg-primary text-primary-foreground">
-          <ArrowRight className="size-5" aria-hidden />
-        </span>
-      </Link>
-      <Link
-        to="/how-it-works"
-        className="flex min-h-14 items-center gap-3 rounded-full bg-card py-1.5 ps-1.5 pe-6 text-[17px] font-semibold shadow-sm"
-      >
-        <span className="grid size-11 place-items-center rounded-full bg-foreground text-background">
-          <svg viewBox="0 0 24 24" className="size-4 fill-current" aria-hidden>
-            <path d="M8 5v14l11-7Z" />
-          </svg>
-        </span>
-        How Béa works
-      </Link>
-      <p className="text-center text-[14px] text-muted-foreground">
-        Free · No card · One tap with Google ·{" "}
-        <Link to="/auth" className="underline underline-offset-4">
-          Sign in
-        </Link>
-      </p>
-    </div>
+    <Link
+      to="/auth"
+      search={{ mode: "signup" }}
+      className="flex h-[52px] items-center justify-center rounded-[var(--r-card)] bg-primary text-[14px] font-medium text-primary-foreground"
+    >
+      Start planning free
+    </Link>
   );
 }
 

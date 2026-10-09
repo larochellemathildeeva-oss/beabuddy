@@ -1433,6 +1433,9 @@ await flow("stop card: one editor opens, saves and closes", async (page) => {
 });
 
 await flow("timeline: Now moves focus to the stop and respects reduced motion", async (page) => {
+  // On the sample trip's first day, whatever today is, so "Now" has a stop.
+  await page.clock.setFixedTime(new Date("2026-10-07T10:30:00"));
+  await page.reload({ waitUntil: "domcontentloaded", timeout: 30000 });
   await goTab(page, "Timeline");
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.evaluate(() => {

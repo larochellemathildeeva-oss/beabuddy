@@ -1,16 +1,5 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useEffect, useState, type ComponentType, type ReactNode } from "react";
-import {
-  ArrowLeft,
-  ArrowRight,
-  Check,
-  Eye,
-  EyeOff,
-  Lock,
-  Mail,
-  User,
-  type LucideProps,
-} from "@/components/icons";
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { BrandMark } from "@/components/PageHeader";
@@ -69,6 +58,8 @@ function AuthPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  /** Sign-up: the email form opens from "Continue with email". */
+  const [emailOpen, setEmailOpen] = useState(false);
   // Google sign-in preference: "auto" continues silently with the current
   // Google account; "ask" always shows Google's account chooser first.
   const [googleMode, setGoogleModeState] = useState<"auto" | "ask">(() =>
@@ -175,258 +166,244 @@ function AuthPage() {
     setMessage(null);
   };
 
-  return (
-    <div className="min-h-[100dvh] bg-background">
-      <div className="mx-auto flex min-h-[100dvh] w-full max-w-[520px] flex-col border-x border-border/70 px-6 pb-8 pt-10">
-        <div className="rise flex items-center justify-between">
-          <Link
-            to="/"
-            aria-label="Back to the welcome page"
-            className="-ms-2 grid size-11 place-items-center rounded-full"
-          >
-            <ArrowLeft className="size-5" aria-hidden />
-          </Link>
-        </div>
-        <div className="rise mt-2">
-          <BrandMark large />
-          <p className="mt-3 text-[13px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-            Trips · Places · Memories
-          </p>
-        </div>
+  const fieldLabel = "text-[12px] leading-[1.4] text-muted-foreground";
+  // A 3:1 edge, 52px and 16px text (so phones do not zoom), kept over the
+  // design's paler, smaller field for accessibility.
+  const field =
+    "flex min-h-[52px] items-center gap-2 rounded-[var(--r-card)] border border-[var(--field-border)] bg-card px-3 focus-within:border-foreground";
+  const input = "min-w-0 flex-1 bg-transparent py-3 text-[16px] outline-none";
+  const link = "flex min-h-11 items-center text-[14px] text-foreground";
 
-        <div className="rise mt-6">
-          <h1 className="font-display text-[40px] leading-[1.1]">
-            {signup ? "Start your vault" : "Welcome back"}
-          </h1>
-          <p className="mt-3 text-[16px] leading-snug text-muted-foreground">
-            {signup
-              ? "Free, no card. Your places, trips and photo memories follow you across devices."
-              : "Your places, trips and photo memories are saved to your account and follow you across devices."}
-          </p>
-        </div>
-
-        <div className="mt-6 space-y-3">
+  // The email form: always there to sign in; on sign-up, behind "Continue with email".
+  const emailForm = (
+    <form onSubmit={submit} className="space-y-6">
+      {signup && (
+        <label className="block space-y-1.5">
+          <span className={fieldLabel}>Your name</span>
+          <span className={field}>
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Enter your name"
+              maxLength={NAME_MAX}
+              autoComplete="name"
+              className={input}
+            />
+          </span>
+        </label>
+      )}
+      <label className="block space-y-1.5">
+        <span className={fieldLabel}>Email</span>
+        <span className={field}>
+          <input
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            type="email"
+            required
+            placeholder="Enter your email"
+            autoComplete="email"
+            className={input}
+          />
+        </span>
+      </label>
+      <label className="block space-y-1.5">
+        <span className={fieldLabel}>Password</span>
+        <span className={field}>
+          <input
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            type={showPassword ? "text" : "password"}
+            required
+            minLength={signup ? MIN_NEW_PASSWORD_LENGTH : 6}
+            placeholder={signup ? "Choose a password" : "Enter your password"}
+            autoComplete={signup ? "new-password" : "current-password"}
+            aria-describedby={signup ? "password-rules" : undefined}
+            className={input}
+          />
           <button
             type="button"
-            onClick={() => social("google")}
-            disabled={busy}
-            className="flex h-[56px] w-full items-center justify-center gap-3 rounded-2xl bg-card px-4 text-[17px] font-semibold shadow-sm disabled:opacity-60"
+            onClick={() => setShowPassword((v) => !v)}
+            aria-label={showPassword ? "Hide password" : "Show password"}
+            aria-pressed={showPassword}
+            className="grid size-11 shrink-0 place-items-center text-[12px] text-foreground"
           >
-            <GoogleG />
-            Continue with Google
+            {showPassword ? "Hide" : "Show"}
           </button>
-          {/* A sign-in preference: a newcomer has nothing to choose yet. */}
-          {!signup && (
-            <div
-              role="radiogroup"
-              aria-label="Google sign-in"
-              className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 px-1"
-            >
-              <RoundChoice
-                name="google-signin-mode"
-                checked={googleMode === "auto"}
-                onChange={() => setGoogleMode("auto")}
-                label="Sign me in automatically"
-              />
-              <RoundChoice
-                name="google-signin-mode"
-                checked={googleMode === "ask"}
-                onChange={() => setGoogleMode("ask")}
-                label="Ask me every time"
-              />
-            </div>
-          )}
+        </span>
+      </label>
+      {signup && (
+        <div id="password-rules">
+          <PasswordCreationRules password={password} />
         </div>
-
-        <Divider>{signup ? "Or sign up with email" : "Or sign in with email"}</Divider>
-
-        <form onSubmit={submit} className="space-y-3">
-          {signup && (
-            <PillField icon={User}>
-              <input
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Your name"
-                aria-label="Your name"
-                maxLength={NAME_MAX}
-                autoComplete="name"
-                className="min-w-0 flex-1 bg-transparent text-[16px] outline-none"
-              />
-            </PillField>
-          )}
-          <PillField icon={Mail}>
+      )}
+      {signup && (
+        <div className="space-y-2.5 rounded-[var(--r-card)] border border-border bg-card p-3.5">
+          <label className="flex min-h-12 cursor-pointer items-start gap-2.5 text-[14px] leading-[1.4]">
             <input
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              type="email"
-              required
-              placeholder="Email"
-              aria-label="Email"
-              autoComplete="email"
-              className="min-w-0 flex-1 bg-transparent text-[16px] outline-none"
+              type="checkbox"
+              checked={agreeTerms}
+              onChange={(e) => setAgreeTerms(e.target.checked)}
+              className="mt-1 h-4 w-4 shrink-0 accent-primary"
             />
-          </PillField>
-          <PillField icon={Lock}>
+            <span>
+              I'm at least 16 and I agree to the{" "}
+              <Link to="/terms" className="underline underline-offset-4">
+                Terms of Service
+              </Link>{" "}
+              and{" "}
+              <Link to="/privacy" className="underline underline-offset-4">
+                Privacy Policy
+              </Link>
+              .
+            </span>
+          </label>
+          <label className="flex min-h-12 cursor-pointer items-start gap-2.5 text-[14px] leading-[1.4]">
             <input
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              type={showPassword ? "text" : "password"}
-              required
-              minLength={signup ? MIN_NEW_PASSWORD_LENGTH : 6}
-              placeholder="Password"
-              aria-label="Password"
-              autoComplete={signup ? "new-password" : "current-password"}
-              aria-describedby={signup ? "password-rules" : undefined}
-              className="min-w-0 flex-1 bg-transparent text-[16px] outline-none"
+              type="checkbox"
+              checked={agreeDisclaimer}
+              onChange={(e) => setAgreeDisclaimer(e.target.checked)}
+              className="mt-1 h-4 w-4 shrink-0 accent-primary"
             />
-            <button
-              type="button"
-              onClick={() => setShowPassword((v) => !v)}
-              aria-label={showPassword ? "Hide password" : "Show password"}
-              aria-pressed={showPassword}
-              className="grid size-12 shrink-0 place-items-center rounded-full text-muted-foreground"
-            >
-              {showPassword ? (
-                <Eye className="size-5" aria-hidden />
-              ) : (
-                <EyeOff className="size-5" aria-hidden />
-              )}
-            </button>
-          </PillField>
-          {signup && (
-            <div id="password-rules">
-              <PasswordCreationRules password={password} />
-            </div>
-          )}
-          {signup && (
-            <div className="space-y-2.5 rounded-[var(--r-card)] border border-border bg-card p-3.5">
-              <label className="flex min-h-12 cursor-pointer items-start gap-2.5 text-[14.5px] leading-relaxed">
-                <input
-                  type="checkbox"
-                  checked={agreeTerms}
-                  onChange={(e) => setAgreeTerms(e.target.checked)}
-                  className="mt-1 h-4 w-4 shrink-0 accent-primary"
-                />
-                <span>
-                  I'm at least 16 and I agree to the{" "}
-                  <Link to="/terms" className="text-primary underline underline-offset-4">
-                    Terms of Service
-                  </Link>{" "}
-                  and{" "}
-                  <Link to="/privacy" className="text-primary underline underline-offset-4">
-                    Privacy Policy
-                  </Link>
-                  .
-                </span>
-              </label>
-              <label className="flex min-h-12 cursor-pointer items-start gap-2.5 text-[14.5px] leading-relaxed">
-                <input
-                  type="checkbox"
-                  checked={agreeDisclaimer}
-                  onChange={(e) => setAgreeDisclaimer(e.target.checked)}
-                  className="mt-1 h-4 w-4 shrink-0 accent-primary"
-                />
-                <span>
-                  I understand Béa is a personal organiser, not a travel adviser — suggestions,
-                  directions, exchange rates and AI picks may be wrong, my travel decisions are my
-                  own, and Béa's liability is limited as the Terms describe.
-                </span>
-              </label>
-            </div>
-          )}
-          {error && (
-            <p role="alert" className="px-1 text-[14px] text-destructive">
-              {error}
-            </p>
-          )}
-          {message && (
-            <p role="status" className="px-1 text-[13px] text-nexttime">
-              {message}
-            </p>
-          )}
-          {signup && !consented && (
-            <p id="signup-consent-help" className="text-[14px] text-muted-foreground">
-              To create an account, review and accept both agreements above.
-            </p>
-          )}
-          <button
-            aria-describedby={signup && !consented ? "signup-consent-help" : undefined}
-            aria-busy={busy}
-            type="submit"
-            disabled={busy || (signup && !consented)}
-            className="btn-primary flex w-full items-center justify-center gap-2 rounded-full px-4 text-[18px] disabled:opacity-60"
-          >
-            {signup ? "Agree & create account" : "Sign in"}
-            {!signup && <ArrowRight className="size-5" aria-hidden />}
-          </button>
-        </form>
+            <span>
+              I understand Béa is a personal organiser, not a travel adviser — suggestions,
+              directions, exchange rates and AI picks may be wrong, my travel decisions are my own,
+              and Béa's liability is limited as the Terms describe.
+            </span>
+          </label>
+        </div>
+      )}
+      {error && (
+        <p role="alert" className="text-[14px] text-destructive">
+          {error}
+        </p>
+      )}
+      {message && (
+        <p role="status" className="text-[14px] text-foreground">
+          {message}
+        </p>
+      )}
+      {signup && !consented && (
+        <p id="signup-consent-help" className="text-[12px] text-muted-foreground">
+          To create an account, review and accept both agreements above.
+        </p>
+      )}
+      <button
+        aria-describedby={signup && !consented ? "signup-consent-help" : undefined}
+        aria-busy={busy}
+        type="submit"
+        disabled={busy || (signup && !consented)}
+        className="flex h-[52px] w-full items-center justify-center rounded-[var(--r-card)] bg-primary text-[14px] font-medium text-primary-foreground disabled:opacity-60"
+      >
+        {signup ? "Agree & create account" : "Sign in"}
+      </button>
+    </form>
+  );
 
-        {!signup && (
-          <Link
-            to="/forgot-password"
-            className="mx-auto mt-4 block text-[15px] text-muted-foreground underline underline-offset-4"
-          >
-            Forgot your password?
+  const legalLinks = (
+    <div className="grid grid-cols-2 gap-2">
+      <Link to="/terms" className={link}>
+        Terms of Service
+      </Link>
+      <Link to="/privacy" className={link}>
+        Privacy Policy
+      </Link>
+    </div>
+  );
+
+  return (
+    <div className="min-h-[100dvh] bg-background">
+      <div className="mx-auto flex min-h-[100dvh] w-full max-w-[520px] flex-col gap-6 p-5">
+        <header className="flex min-h-11 items-center justify-between gap-3">
+          <BrandMark />
+          <Link to="/" className="flex min-h-11 items-center px-1 text-[14px] text-foreground">
+            Back
           </Link>
-        )}
+        </header>
 
-        <Divider>{signup ? "Have an account?" : "New here?"}</Divider>
+        <div className="space-y-2">
+          <h1 className="text-[28px] font-bold leading-[1.4]">
+            {signup ? "Start planning with Béa" : "Welcome back."}
+          </h1>
+          <p className="text-[14px] leading-[1.4] text-muted-foreground">
+            {signup
+              ? "Create your free account to save your trips and places."
+              : "Your trips and saved places, together."}
+          </p>
+        </div>
 
         <button
           type="button"
-          onClick={switchMode}
-          className="mx-auto flex h-[52px] w-full max-w-[340px] items-center justify-center rounded-full border border-primary/70 px-4 text-[17px] font-semibold text-primary"
+          onClick={() => social("google")}
+          disabled={busy}
+          className="flex h-[52px] w-full items-center justify-center gap-3 rounded-[var(--r-card)] bg-primary text-[14px] font-medium text-primary-foreground disabled:opacity-60"
         >
-          {signup ? "I already have an account" : "Create a new account"}
+          {/* Google's own G, as its brand guidelines ask, on a white round. */}
+          <span className="grid size-7 place-items-center rounded-full bg-white">
+            <GoogleG />
+          </span>
+          Continue with Google
         </button>
 
-        <p className="mt-6 text-center text-[13px] leading-relaxed text-muted-foreground">
-          By continuing you agree to our{" "}
-          <Link to="/terms" className="underline underline-offset-4">
-            Terms of Service
-          </Link>{" "}
-          and{" "}
-          <Link to="/privacy" className="underline underline-offset-4">
-            Privacy Policy
-          </Link>
-          .
-        </p>
+        <div role="radiogroup" aria-label="Google sign-in" className="space-y-2">
+          <Choice
+            name="google-signin-mode"
+            checked={googleMode === "auto"}
+            onChange={() => setGoogleMode("auto")}
+            label={signup ? "Sign me in automatically" : "Sign in automatically"}
+          />
+          <Choice
+            name="google-signin-mode"
+            checked={googleMode === "ask"}
+            onChange={() => setGoogleMode("ask")}
+            label={signup ? "Ask me every time" : "Ask every time"}
+          />
+        </div>
+
+        {signup ? (
+          <>
+            {emailOpen ? (
+              emailForm
+            ) : (
+              <button
+                type="button"
+                onClick={() => setEmailOpen(true)}
+                className="flex h-[52px] w-full items-center justify-center rounded-[var(--r-card)] border border-border bg-card text-[14px] font-medium text-foreground"
+              >
+                Continue with email
+              </button>
+            )}
+            <p className="text-[12px] leading-[1.4] text-muted-foreground">
+              Free account · No card required
+            </p>
+            <p className="text-[12px] leading-[1.4] text-muted-foreground">
+              By continuing with Google, you agree to the Terms of Service and Privacy Policy.
+            </p>
+            {legalLinks}
+            <button type="button" onClick={switchMode} className={link}>
+              Already have an account? Sign in
+            </button>
+          </>
+        ) : (
+          <>
+            <p className="text-[12px] leading-[1.4] text-muted-foreground">Or sign in with email</p>
+            {emailForm}
+            <Link to="/forgot-password" className={link}>
+              Forgot password?
+            </Link>
+            <button type="button" onClick={switchMode} className={link}>
+              New here? Create a free account
+            </button>
+            {legalLinks}
+          </>
+        )}
         <CopyrightNotice />
       </div>
     </div>
   );
 }
 
-function Divider({ children }: { children: ReactNode }) {
-  return (
-    <div className="my-6 flex items-center gap-3">
-      <span className="h-px flex-1 bg-border" />
-      <span className="text-[13px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-        {children}
-      </span>
-      <span className="h-px flex-1 bg-border" />
-    </div>
-  );
-}
-
-/** An input in a pill, with its icon in front. */
-function PillField({
-  icon: Glyph,
-  children,
-}: {
-  icon: ComponentType<LucideProps>;
-  children: ReactNode;
-}) {
-  return (
-    <div className="flex h-[56px] items-center gap-3 rounded-[var(--r-input)] border border-[var(--field-border)] bg-card ps-5 pe-2 focus-within:border-primary">
-      <Glyph className="size-5 shrink-0 text-muted-foreground" aria-hidden />
-      {children}
-    </div>
-  );
-}
-
-/** A round radio: an empty ring, or a filled one with a check. */
-function RoundChoice({
+/** A full-width choice row, as the design draws them: filled when chosen. */
+function Choice({
   name,
   checked,
   onChange,
@@ -438,21 +415,14 @@ function RoundChoice({
   label: string;
 }) {
   return (
-    <label className="flex cursor-pointer items-center gap-2 whitespace-nowrap text-[13.5px]">
-      <input
-        type="radio"
-        name={name}
-        checked={checked}
-        onChange={onChange}
-        className="peer sr-only"
-      />
-      <span
-        aria-hidden
-        className={`grid size-6 shrink-0 place-items-center rounded-full border-2 peer-focus-visible:ring-2 peer-focus-visible:ring-primary/50 ${
-          checked ? "border-primary bg-primary text-primary-foreground" : "border-border"
-        }`}
-      >
-        {checked && <Check className="size-3.5" strokeWidth={3} />}
+    <label
+      className={`flex min-h-11 cursor-pointer items-center gap-3 rounded-[var(--r-card)] border px-3 py-2.5 text-[14px] leading-[1.4] focus-within:ring-2 focus-within:ring-ring ${
+        checked ? "border-foreground bg-muted font-bold" : "border-border bg-card"
+      }`}
+    >
+      <input type="radio" name={name} checked={checked} onChange={onChange} className="sr-only" />
+      <span aria-hidden className="w-5 shrink-0">
+        {checked ? "●" : "○"}
       </span>
       {label}
     </label>
