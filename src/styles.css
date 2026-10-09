@@ -4436,3 +4436,178 @@ main [class*="rounded-2xl"] {
   height: 1px;
   background: var(--foreground);
 }
+
+/* ===== Trip overview, as Figma "trip-overview" (116:892) draws it =====
+   A 20px gutter, 12px between blocks, hairlines and 12 / 14 / 16 / 20 / 28px type. */
+.trip-head {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 8px 20px 0;
+}
+.trip-head-kicker,
+.trip-head-dates {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--foreground);
+}
+.trip-head-title {
+  font-family: var(--font-sans);
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.4;
+  letter-spacing: 0;
+}
+.trip-head-rule {
+  display: block;
+  height: 0.5px;
+  background: var(--muted-foreground);
+}
+.trip-head-where {
+  font-family: var(--font-sans);
+  font-size: 20px;
+  line-height: 1.4;
+}
+.trip-head .trip-head-photo {
+  height: 145px;
+  min-height: 145px;
+  margin: 0;
+  border-radius: var(--r-card);
+}
+
+/* The views as ruled words: a short line under each, a darker one under the chosen. */
+.trip-views.trip-views--top {
+  gap: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.trip-views.trip-views--top button {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 44px;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 0;
+  padding: 14px 0 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  line-height: 1.4;
+  font-weight: 400;
+}
+.trip-views.trip-views--top button > span {
+  width: 100%;
+  text-align: center;
+}
+.trip-views.trip-views--top button::after {
+  content: "";
+  display: block;
+  width: 75%;
+  height: 0.5px;
+  background: var(--muted-foreground);
+}
+.trip-views.trip-views--top button[aria-selected="true"] {
+  background: transparent;
+  font-weight: 400;
+}
+.trip-views.trip-views--top button[aria-selected="true"]::after {
+  height: 1px;
+  background: var(--foreground);
+}
+[data-theme="colorful"]:not(.dark) .trip-views.trip-views--top button[aria-selected="true"]::after {
+  height: 2px;
+  background: var(--acc);
+}
+
+.trip-overview {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.trip-figures {
+  display: flex;
+  overflow: hidden;
+  border: 0.5px solid var(--border);
+  border-radius: var(--r-card);
+}
+.trip-figures > div {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  padding: 12px 16px;
+  border: 0.5px solid var(--border);
+  border-radius: var(--r-card);
+}
+.trip-figure {
+  font-family: var(--font-sans);
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+.trip-figure-label,
+.trip-rule-label {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.4;
+  letter-spacing: 0;
+}
+.trip-overview .trip-rule-label {
+  font-weight: 400;
+}
+.trip-rule-label {
+  padding-top: 8px;
+  border-top: 0.5px solid var(--muted-foreground);
+}
+.trip-row {
+  display: flex;
+  width: 100%;
+  min-height: 44px;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 0;
+  border-bottom: 0.5px solid var(--border);
+  background: transparent;
+  color: var(--foreground);
+  text-align: start;
+  font-family: var(--font-sans);
+  line-height: 1.4;
+}
+.trip-row:disabled {
+  opacity: 0.6;
+}
+.trip-row-title {
+  font-size: 16px;
+  font-weight: 400;
+}
+.trip-row-note,
+.trip-row-empty {
+  font-size: 14px;
+}
+.trip-primary {
+  display: flex;
+  width: 100%;
+  height: 52px;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--r-card);
+  background: var(--foreground);
+  color: var(--background);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+[data-theme="colorful"]:not(.dark) .trip-primary {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
