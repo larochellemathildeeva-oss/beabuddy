@@ -14,7 +14,7 @@ export function Link({ children, className, to, params, ...rest }: any) {
     }
   }}>{children}</a>;
 }
-export const useNavigate = () => () => {}; export const useRouter = () => ({ history: { back: () => history.back() } });
+export const useNavigate = () => () => {}; export const useRouter = () => ({ history: { back: () => history.back() }, invalidate: async () => {} });
 
 // The shell is previewed on real route identities, without starting a server.
 export const useCanGoBack = () => new URLSearchParams(location.search).get("back") === "yes";

@@ -8,7 +8,8 @@ export function renderErrorPage(): string {
     <style>
       body { font: 14px/1.5 "DM Sans", system-ui, -apple-system, sans-serif; background: #fff; color: #111; margin: 0; }
       header { height: 64px; display: flex; align-items: center; padding: 0 16px; }
-      header a { color: inherit; text-decoration: none; font-weight: 700; font-size: 20px; }
+      header a { color: inherit; text-decoration: none; font-weight: 700; font-size: 20px; display: inline-flex; align-items: center; min-height: 44px; min-width: 44px; }
+      p.body a, p.body a:visited { color: inherit; text-decoration: underline; text-underline-offset: 3px; display: inline-flex; align-items: center; min-height: 44px; min-width: 44px; }
       main { max-width: 480px; margin: 0 auto; padding: 12px 16px 40px; }
       .label { font-size: 12px; margin: 0; }
       h1 { font-size: 28px; line-height: 1.2; margin: 6px 0 0; padding-bottom: 12px; border-bottom: 1px solid #e5e5e5; }
