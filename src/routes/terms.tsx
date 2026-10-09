@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppShell } from "@/components/AppShell";
+import { LegalSection } from "@/components/LegalSection";
 import { CopyrightNotice } from "@/components/CopyrightNotice";
 import { LEGAL_VERSION } from "@/lib/legal";
 
@@ -23,42 +24,19 @@ export const Route = createFileRoute("/terms")({
   component: TermsPage,
 });
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <section className="mt-8">
-      <h2 className="text-[20px] leading-snug">{title}</h2>
-      <div className="mt-2 space-y-3 text-[16px] leading-relaxed text-muted-foreground">
-        {children}
-      </div>
-    </section>
-  );
-}
-
 function TermsPage() {
   return (
-    <AppShell publicPage eyebrow="Legal" title="Terms of service.">
-      <p className="text-[13px] text-muted-foreground">
-        Version {LEGAL_VERSION} — effective 6 September 2026
-      </p>
-      <p className="mt-4 text-[16px] leading-relaxed text-muted-foreground">
-        These terms govern your use of Béa ("the app"). By creating an account you confirm that you
-        have read, understood and agree to them, together with our{" "}
-        <Link to="/privacy" className="text-primary underline underline-offset-4">
-          Privacy Policy
-        </Link>
-        . If you do not agree, please do not create an account or use the app.
-      </p>
-
-      <Section title="1. What Béa is">
+    <AppShell publicPage eyebrow="Terms of service" title="A few shared terms.">
+      <LegalSection title="1. What Béa is" summary="A travel planning companion">
         <p>
           Béa is a personal travel memory vault and companion: it lets you save places, trips,
           photos, receipts, documents and notes, and helps you organise and revisit them. Béa is an
           organisational tool only — it is not a travel agency, carrier, insurer, financial or legal
           adviser, and it does not make bookings or reservations on your behalf.
         </p>
-      </Section>
+      </LegalSection>
 
-      <Section title="2. Acceptance and eligibility">
+      <LegalSection title="2. Acceptance and eligibility" summary="Who can use Béa">
         <p>
           By creating an account, ticking the acceptance boxes, or otherwise using Béa, you enter
           into a binding agreement with us. If you are using Béa on behalf of an organisation, you
@@ -66,18 +44,21 @@ function TermsPage() {
           (or the age of digital consent where you live), and you must not be barred from using the
           app under any applicable law or sanctions list.
         </p>
-      </Section>
+      </LegalSection>
 
-      <Section title="3. Your account">
+      <LegalSection title="3. Your account" summary="Account responsibilities">
         <p>
           You are responsible for keeping your sign-in credentials and vault passcode confidential,
           and for everything that happens under your account. Tell us promptly if you suspect
           unauthorised access. If you lose your document-vault passcode, the encrypted contents
           cannot be recovered by anyone — including us — by design.
         </p>
-      </Section>
+      </LegalSection>
 
-      <Section title="4. Intellectual property and licence to use Béa">
+      <LegalSection
+        title="4. Intellectual property and licence to use Béa"
+        summary="Béa's licence to you"
+      >
         <p>
           Béa — the name, design, code, features, written copy and original ideas in the app — is
           owned by Mathilde E. Larochelle. All rights not expressly granted are reserved.
@@ -89,9 +70,9 @@ function TermsPage() {
           proprietary notices, or use automated systems to extract data from it, except where such
           restrictions are prohibited by law.
         </p>
-      </Section>
+      </LegalSection>
 
-      <Section title="5. Your content">
+      <LegalSection title="5. Your content" summary="Places, plans and photos">
         <p>
           You keep full ownership of everything you save in Béa — photos, notes, receipts,
           documents, pins and trips. You grant us only the limited, worldwide, royalty-free right to
@@ -104,9 +85,9 @@ function TermsPage() {
           You promise that you have the right to upload what you upload, and that it does not break
           any law or anyone else's rights.
         </p>
-      </Section>
+      </LegalSection>
 
-      <Section title="6. Acceptable use">
+      <LegalSection title="6. Acceptable use" summary="What not to do">
         <p>You agree not to:</p>
         <ul className="list-disc space-y-1.5 pl-5">
           <li>upload unlawful, harmful, infringing or abusive content;</li>
@@ -124,9 +105,9 @@ function TermsPage() {
           <li>use the app to build a competing product or to train machine-learning models.</li>
         </ul>
         <p>We may suspend or remove accounts that break these rules.</p>
-      </Section>
+      </LegalSection>
 
-      <Section title="7. AI features">
+      <LegalSection title="7. AI features" summary="Review plans and travel details">
         <p>
           Some features — itinerary building and import, place and trip comparisons, and written
           summaries — send the text or images you provide to an AI provider so it can be read and
@@ -135,9 +116,9 @@ function TermsPage() {
           include passwords, payment card numbers, health details or other sensitive information in
           what you send. See the Privacy Policy for how this processing works.
         </p>
-      </Section>
+      </LegalSection>
 
-      <Section title="8. Travel decisions are yours">
+      <LegalSection title="8. Travel decisions are yours" summary="Travel decisions remain yours">
         <p>
           Anything Béa shows you — comparisons, suggestions, opportunity rankings, directions,
           exchange-rate conversions or AI-generated summaries — is informational only and may be
@@ -145,53 +126,56 @@ function TermsPage() {
           routes and safety information with official sources before you travel. You are solely
           responsible for your travel decisions, bookings, documents, expenses and safety.
         </p>
-      </Section>
+      </LegalSection>
 
-      <Section title="9. Location, camera and device permissions">
+      <LegalSection
+        title="9. Location, camera and device permissions"
+        summary="Permissions you grant"
+      >
         <p>
           Location reminders, nearby opportunities and photo import work only if you grant the
           matching device permissions. You may withdraw any permission at any time in your device
           settings; the related features will then stop working. Battery use, background location
           behaviour and offline availability depend on your device and operating system.
         </p>
-      </Section>
+      </LegalSection>
 
-      <Section title="10. Third-party services">
+      <LegalSection title="10. Third-party services" summary="Services Béa relies on">
         <p>
           Béa relies on independent third parties for maps, geocoding, directions, exchange rates,
           web search and AI processing, and on Google for optional sign-in. We are not responsible
           for the availability, accuracy or conduct of those services, and their own terms apply to
           your use of them.
         </p>
-      </Section>
+      </LegalSection>
 
-      <Section title="11. Fees and paid features">
+      <LegalSection title="11. Fees and paid features" summary="What is free, and what may not be">
         <p>
           Béa is currently offered free of charge. If we introduce paid plans or optional paid
           features, we will show the price, billing period and renewal terms before you buy, and no
           charge will be made without your explicit consent. Statutory rights of withdrawal or
           refund that apply where you live are unaffected.
         </p>
-      </Section>
+      </LegalSection>
 
-      <Section title="12. Feedback">
+      <LegalSection title="12. Feedback" summary="Ideas you send">
         <p>
           If you send us ideas, suggestions or bug reports, you allow us to use them freely to
           improve Béa, without obligation, compensation or confidentiality, while you keep any
           rights you already had in them.
         </p>
-      </Section>
+      </LegalSection>
 
-      <Section title="13. Copyright complaints">
+      <LegalSection title="13. Copyright complaints" summary="Reporting copyright">
         <p>
           If you believe content in Béa infringes your copyright, contact us with a description of
           the work, where the content sits in the app, your contact details, and a statement that
           you hold the rights in good faith. We will review and, where appropriate, remove the
           content and may terminate repeat infringers' accounts.
         </p>
-      </Section>
+      </LegalSection>
 
-      <Section title="14. Privacy">
+      <LegalSection title="14. Privacy" summary="Read the Privacy Policy">
         <p>
           Our{" "}
           <Link to="/privacy" className="text-primary underline underline-offset-4">
@@ -200,18 +184,21 @@ function TermsPage() {
           explains what we collect, why, who processes it and how long it is kept. It forms part of
           these terms.
         </p>
-      </Section>
+      </LegalSection>
 
-      <Section title="15. Availability, changes and beta features">
+      <LegalSection
+        title="15. Availability, changes and beta features"
+        summary="Changes and beta features"
+      >
         <p>
           We may add, change, suspend or discontinue features at any time, and some features may be
           labelled beta or experimental and offered without any service commitment. We are not
           liable to you for modifying or discontinuing all or part of the app, though we will give
           reasonable notice of material changes where practical.
         </p>
-      </Section>
+      </LegalSection>
 
-      <Section title="16. No warranty">
+      <LegalSection title="16. No warranty" summary="Béa as it is">
         <p>
           Béa is provided "as is" and "as available", without warranties of any kind, express or
           implied — including merchantability, fitness for a particular purpose, accuracy,
@@ -219,9 +206,9 @@ function TermsPage() {
           depends on networks and devices we do not control. Keep your own backups of anything
           irreplaceable.
         </p>
-      </Section>
+      </LegalSection>
 
-      <Section title="17. Limitation of liability">
+      <LegalSection title="17. Limitation of liability" summary="Limits on liability">
         <p>
           To the maximum extent permitted by law, Béa and its creators are not liable for any
           indirect, incidental, special, consequential or punitive damages, or for any loss of data,
@@ -236,26 +223,26 @@ function TermsPage() {
           or personal injury caused by negligence, or anything else that cannot lawfully be limited
           — including your rights as a consumer.
         </p>
-      </Section>
+      </LegalSection>
 
-      <Section title="18. Indemnity">
+      <LegalSection title="18. Indemnity" summary="Claims from your use">
         <p>
           You agree to indemnify and hold Béa and its creators harmless from claims, losses and
           expenses (including reasonable legal fees) arising out of content you upload, your misuse
           of the app, or your breach of these terms.
         </p>
-      </Section>
+      </LegalSection>
 
-      <Section title="19. Ending things">
+      <LegalSection title="19. Ending things" summary="Closing an account">
         <p>
           You can stop using Béa and delete your account at any time; your data will be removed as
           described in the Privacy Policy. We may suspend or close accounts that breach these terms,
           or if we stop offering the app. The sections on content licences already granted,
           warranties, liability, indemnity and governing law survive termination.
         </p>
-      </Section>
+      </LegalSection>
 
-      <Section title="20. Governing law and disputes">
+      <LegalSection title="20. Governing law and disputes" summary="Which law applies">
         <p>
           These terms are governed by the laws of the Province of Quebec and the applicable laws of
           Canada, without regard to conflict-of-law rules, and the courts of Quebec have
@@ -263,36 +250,41 @@ function TermsPage() {
           mandatory laws of your country of residence and may bring proceedings there. Before
           starting a claim, please contact us so we can try to resolve it informally.
         </p>
-      </Section>
+      </LegalSection>
 
-      <Section title="21. General">
+      <LegalSection title="21. General" summary="The rest of the agreement">
         <p>
           These terms, with the Privacy Policy, are the entire agreement between us. If a provision
           is found unenforceable, the rest stays in force. Our not enforcing a right is not a waiver
           of it. You may not transfer your rights under these terms; we may transfer ours to a
           successor of the app. Notices to you may be sent by email or shown in the app.
         </p>
-      </Section>
+      </LegalSection>
 
-      <Section title="22. Changes to these terms">
+      <LegalSection title="22. Changes to these terms" summary="When these terms change">
         <p>
           If we change these terms in a way that matters, we will ask you to accept the new version
           when you next open the app. The version you accepted, and when, is recorded with your
           account.
         </p>
-      </Section>
+      </LegalSection>
 
-      <p className="mt-10 border-t border-border pt-6 text-[13px] text-muted-foreground">
-        This page is a starting point written in plain language — have a lawyer review it before you
-        rely on it commercially. Questions about these terms? Reach us via the profile page.
-      </p>
-      <CopyrightNotice className="mt-3 px-0 text-left text-[13px] text-muted-foreground" />
-      <Link
-        to="/"
-        className="mt-4 inline-block text-[16px] text-primary underline underline-offset-4"
-      >
-        Back to Béa
-      </Link>
+      <div className="mt-6 space-y-2 text-[12px] leading-[1.5] text-foreground">
+        <p>Version {LEGAL_VERSION} — effective 6 September 2026</p>
+        <p>
+          These terms govern your use of Béa ("the app"). By creating an account you confirm that
+          you have read, understood and agree to them, together with our{" "}
+          <Link to="/privacy" className="underline underline-offset-4">
+            Privacy Policy
+          </Link>
+          . If you do not agree, please do not create an account or use the app.
+        </p>
+        <p>
+          This page is a starting point written in plain language — have a lawyer review it before
+          you rely on it commercially. Questions about these terms? Reach us via the profile page.
+        </p>
+        <CopyrightNotice className="px-0 text-left text-[12px] text-foreground" />
+      </div>
     </AppShell>
   );
 }

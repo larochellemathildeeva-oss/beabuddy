@@ -296,14 +296,15 @@ export const guides: Record<string, Guide> = {
     name: "Help",
     about: "Answers about Béa, grouped by topic.",
     features: [
-      "Open any question to read the answer",
-      "Find the prompt to use when another assistant writes your plan",
+      "Open a topic, then any question, to read the answer",
+      "Plan a trip has the prompt to use when another assistant writes your plan",
+      "Show me how: walks on the real screens, and a search of every answer",
       "Replay the tour from You → About Béa",
     ],
     steps: [
       {
         title: "Welcome to Béa",
-        body: "A conversation, not a manual — start here, then open any question. The ? at the top right of any page says what that page does, and can walk you around it.",
+        body: "A conversation, not a manual — open a topic, then any question. Menu → Help for this page says what a page does, and can walk you around it.",
         selector: "[data-guide='help-faq']",
       },
     ],

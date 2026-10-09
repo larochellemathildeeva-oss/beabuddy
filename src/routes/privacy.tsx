@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppShell } from "@/components/AppShell";
+import { LegalSection } from "@/components/LegalSection";
 import {
   NASA_EARTH_ATTRIBUTION,
   NATURAL_EARTH_ATTRIBUTION,
@@ -31,27 +32,11 @@ export const Route = createFileRoute("/privacy")({
   component: PrivacyPage,
 });
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <section className="card-soft p-4">
-      <h2 className="font-display text-[19px] leading-snug">{title}</h2>
-      <div className="mt-2 space-y-2 text-[16px] leading-relaxed text-muted-foreground">
-        {children}
-      </div>
-    </section>
-  );
-}
-
 function PrivacyPage() {
   return (
-    <AppShell publicPage eyebrow="Privacy" title="What Béa keeps, and what only you can read.">
-      <div className="space-y-4 pb-4">
-        <p className="text-[16px] leading-relaxed text-muted-foreground">
-          Béa is a private vault for your travels. This page explains, in plain words, what is
-          stored, where it lives, who can see it and how to remove it. Last updated 7 October 2026.
-        </p>
-
-        <Section title="Your account">
+    <AppShell publicPage eyebrow="Privacy policy" title="What Béa keeps.">
+      <div className="pb-4">
+        <LegalSection title="Your account" summary="Identity and settings">
           <p>
             When you create an account Béa stores your email address, and anything you choose to add
             to your profile: your name, your home city and the interests you tick. Signing in with
@@ -66,9 +51,12 @@ function PrivacyPage() {
             queries as you. On this device, Béa is designed to sign you out after about 45 minutes
             with no activity, as a free substitute for stricter hosted session controls.
           </p>
-        </Section>
+        </LegalSection>
 
-        <Section title="New-trip drafts on this browser">
+        <LegalSection
+          title="New-trip drafts on this browser"
+          summary="Unfinished trips on this device"
+        >
           <p>
             Béa keeps unfinished new-trip details and interrupted creation attempts in this browser,
             under the account that started them. The copy includes the cities, dates, trip options
@@ -77,9 +65,9 @@ function PrivacyPage() {
             are removed when the draft is next checked. Clear draft removes an editable draft, and
             erasing the account removes its local draft on this device.
           </p>
-        </Section>
+        </LegalSection>
 
-        <Section title="Your photos">
+        <LegalSection title="Your photos" summary="Photos you choose to keep">
           <p>
             Your photos belong to you. If you choose to import them, Béa uses location information
             to help organize memories by city. You stay in control of what is kept and what is
@@ -103,9 +91,9 @@ function PrivacyPage() {
             never used to train anything, and never shown to another user. Delete a photo and both
             the file and its record are removed.
           </p>
-        </Section>
+        </LegalSection>
 
-        <Section title="Receipts and business expenses">
+        <LegalSection title="Receipts and business expenses" summary="Receipts you add">
           <p>
             Receipt pictures and the amounts, shops, dates and notes you type alongside them are
             stored privately in your own account. Only you can see them, and the pictures are shown
@@ -116,9 +104,9 @@ function PrivacyPage() {
             device from your own records — where you send it afterwards is entirely your choice.
             Delete a receipt and both the picture and its record are gone.
           </p>
-        </Section>
+        </LegalSection>
 
-        <Section title="The document vault">
+        <LegalSection title="The document vault" summary="Your protected documents">
           <p>
             The Vault is for trip-useful documents — reservations, tickets, booking confirmations,
             boarding passes, and similar items you may need while travelling. It is not intended for
@@ -132,9 +120,9 @@ function PrivacyPage() {
             that Béa cannot view document contents without access to your Vault credentials. If you
             forget your passcode, recovery options may be limited or unavailable.
           </p>
-        </Section>
+        </LegalSection>
 
-        <Section title="Your location">
+        <LegalSection title="Your location" summary="Used for travel features">
           <p>
             Béa only uses your location when you allow it. The purpose is simple: helping you
             discover places you've already saved nearby.
@@ -171,9 +159,9 @@ function PrivacyPage() {
             holds them; signing in brings them back. Deleting the saved directions removes both
             copies.
           </p>
-        </Section>
+        </LegalSection>
 
-        <Section title="Trips and collaboration">
+        <LegalSection title="Trips and collaboration" summary="Sharing and membership">
           <p>
             When you invite someone to a trip with a code, that person can see and edit that trip's
             itinerary and see when you are viewing it. Invite codes are designed to expire and to
@@ -189,9 +177,9 @@ function PrivacyPage() {
             link can open it, so share it like you would the plan itself. A link is designed to stop
             working after 90 days, and anyone on the trip can turn it off sooner.
           </p>
-        </Section>
+        </LegalSection>
 
-        <Section title="AI processing">
+        <LegalSection title="AI processing" summary="Planning requests">
           <p>
             When you use an AI feature — building a trip, importing a plan from a photo, a PDF, a
             link or pasted text, comparing two itineraries or places — the text, image or PDF you
@@ -231,9 +219,9 @@ function PrivacyPage() {
             the link is a calendar feed, or you import a calendar file (.ics), the events are read
             directly and are not sent to the AI provider; a calendar file is read on your device.
           </p>
-        </Section>
+        </LegalSection>
 
-        <Section title="Other services Béa uses">
+        <LegalSection title="Other services Béa uses" summary="Maps, photos and places">
           <p>
             To turn a saved link, an address or a photograph's coordinates into a point on the map,
             Béa's server sends just that text or those coordinates to one map service —
@@ -267,17 +255,9 @@ function PrivacyPage() {
             </a>
             . All credit for them goes to their photographers, whose work is shared free on Pexels.
           </p>
-          <p>{OSM_ATTRIBUTION}, available under the Open Database License.</p>
-          <p>{OPENFREEMAP_ATTRIBUTION}.</p>
-          <p>
-            {OVERTURE_ATTRIBUTION}, available under the Community Data License Agreement –
-            Permissive 2.0.
-          </p>
-          <p>{NATURAL_EARTH_ATTRIBUTION}, which is in the public domain.</p>
-          <p>{NASA_EARTH_ATTRIBUTION}, which are in the public domain.</p>
-        </Section>
+        </LegalSection>
 
-        <Section title="Your control">
+        <LegalSection title="Your control" summary="Export, delete and preferences">
           <p>
             You can edit or delete any photo, recommendation, note, trip or document at any time,
             and deletion is permanent rather than hidden. Under Profile → Legal you can erase all
@@ -291,14 +271,25 @@ function PrivacyPage() {
           <p>
             Béa does not sell data, does not run advertising and does not track you across the web.
           </p>
-        </Section>
+        </LegalSection>
 
-        <Link
-          to="/profile"
-          className="mt-4 block rounded-xl border border-border px-4 py-3 text-center text-[16px] font-semibold"
-        >
-          Back to profile
-        </Link>
+        {/* Credits stay in view, not folded away: OpenStreetMap's licence asks
+            that its attribution is visible where its data is credited. */}
+        <div className="mt-6 space-y-2 text-[12px] leading-[1.5] text-foreground">
+          <p>
+            Béa is a private vault for your travels. This page explains, in plain words, what is
+            stored, where it lives, who can see it and how to remove it. Last updated 7 October
+            2026.
+          </p>
+          <p>{OSM_ATTRIBUTION}, available under the Open Database License.</p>
+          <p>{OPENFREEMAP_ATTRIBUTION}.</p>
+          <p>
+            {OVERTURE_ATTRIBUTION}, available under the Community Data License Agreement –
+            Permissive 2.0.
+          </p>
+          <p>{NATURAL_EARTH_ATTRIBUTION}, which is in the public domain.</p>
+          <p>{NASA_EARTH_ATTRIBUTION}, which are in the public domain.</p>
+        </div>
       </div>
     </AppShell>
   );
