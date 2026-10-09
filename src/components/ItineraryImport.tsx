@@ -2287,9 +2287,7 @@ function ComparePanel() {
 
   return (
     <div className="mt-1 space-y-2">
-      <PlanTitle>
-        Paste or upload two plans; Béa picks the better fit.
-      </PlanTitle>
+      <PlanTitle>Paste or upload two plans; Béa picks the better fit.</PlanTitle>
       <AiPromptButton variant="banner" label="Get the AI prompt" />
 
       <div className="grid grid-cols-2 gap-2">

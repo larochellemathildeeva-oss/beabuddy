@@ -98,10 +98,7 @@ export function CharCount({ value, max }: { value: string; max: number }) {
 export const PLAN_FIELD =
   "min-h-11 w-full !rounded-none border-0 border-b border-[var(--rule)] bg-transparent px-0 py-2 text-[16px] outline-none placeholder:text-muted-foreground focus:border-foreground";
 
-const PRIORITY_ICON: Record<
-  PlanPriorityId,
-  { icon: ComponentType<{ className?: string }> }
-> = {
+const PRIORITY_ICON: Record<PlanPriorityId, { icon: ComponentType<{ className?: string }> }> = {
   closest: { icon: MapPin },
   hours: { icon: Clock },
   rainy: { icon: CloudRain },
