@@ -27,7 +27,7 @@ import { greetingFor, heroTags } from "@/lib/trip-glance";
 
 import { useAuth } from "@/hooks/useAuth";
 import { useFutureNotes } from "@/hooks/useFutureNotes";
-import { setHomeNoTrip, useHomeLayout, type HomeSectionKey } from "@/hooks/useHomeLayout";
+import { useHomeLayout, useHomeTripMoment, type HomeSectionKey } from "@/hooks/useHomeLayout";
 import { HomeTripModule } from "@/components/HomeModules";
 import { useHomeTripModules } from "@/hooks/useHomeTripModules";
 import { HomeWidgetGrid } from "@/components/HomeWidgetGrid";
@@ -347,8 +347,7 @@ function SignedInHome() {
   const showSamplePrompt = empty && !sampleCtaDismissed;
   const { layout, modules, shown, resize, reorder } = useHomeLayout();
   // Untouched, Home with a trip ahead is the design's; with none, the no-trip modules.
-  const noTripAhead = !trips.loading && !trip;
-  useEffect(() => setHomeNoTrip(noTripAhead), [noTripAhead]);
+  useHomeTripMoment();
   const [editing, setEditing] = useState(false);
   const doneRef = useRef<HTMLButtonElement>(null);
   // Entering arrangement from the Customize card at the bottom: bring the

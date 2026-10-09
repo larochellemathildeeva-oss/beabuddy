@@ -37,16 +37,17 @@ export function createModuleStore<K extends string>(config: {
    * without a trip). Read whenever nothing is saved, so Customize shows them
    * and the first change starts from them.
    */
-  defaultsNow?: () => readonly K[];
+  defaultsNow?: (userId: string | undefined) => readonly K[];
 }) {
   const fixed: ReadonlySet<K> = new Set(config.fixed ?? []);
   const keys = config.modules.map((m) => m.key);
   const normalize = config.normalize ?? ((layout: ModuleLayout<K>) => layout);
-  const defaultsNow = () => config.defaultsNow?.() ?? config.defaults;
+  const defaultsNow = (userId: string | undefined) =>
+    config.defaultsNow?.(userId) ?? config.defaults;
   const fallbacks = new Map<string, ModuleLayout<K>>();
   /** The default layout for now, the same object each time it is asked. */
-  const fallbackNow = (): ModuleLayout<K> => {
-    const list = defaultsNow();
+  const fallbackNow = (userId: string | undefined): ModuleLayout<K> => {
+    const list = defaultsNow(userId);
     const sig = list.join(",");
     let hit = fallbacks.get(sig);
     if (!hit) {
@@ -55,14 +56,14 @@ export function createModuleStore<K extends string>(config: {
     }
     return hit;
   };
-  const fallback = fallbackNow();
+  const fallback = normalize(defaultModules(keys, config.defaults));
   const listeners = new Set<() => void>();
   const cache = new Map<string, { raw: string | null; layout: ModuleLayout<K> }>();
 
   function current(userId: string | undefined): ModuleLayout<K> {
     const key = config.keyFor(userId);
     const raw = getStored(key);
-    if (raw === null) return fallbackNow();
+    if (raw === null) return fallbackNow(userId);
     const hit = cache.get(key);
     if (hit && hit.raw === raw) return hit.layout;
     const layout = normalize(readModules(raw, keys, config.defaults, config.newOn));
@@ -136,6 +137,12 @@ export function createModuleStore<K extends string>(config: {
       [userId],
     );
     const reset = useCallback(() => write(userId, null), [userId]);
+    // Whether this account has a layout of its own on this phone, or the defaults.
+    const saved = useSyncExternalStore(
+      subscribe,
+      () => getStored(config.keyFor(userId)) !== null,
+      () => false,
+    );
     const layout = Object.fromEntries(keys.map((k) => [k, modules.on.has(k)])) as Record<
       K,
       boolean
@@ -144,6 +151,7 @@ export function createModuleStore<K extends string>(config: {
       layout,
       modules,
       shown: shownModules(modules),
+      saved,
       fixed,
       toggle,
       move,
