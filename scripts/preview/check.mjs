@@ -1270,6 +1270,7 @@ await flow("trip shell: day tracker opens a stop from every day view", async (pa
 
 await flow("booking: mark booked with a reference", async (page) => {
   await goTab(page, "Timeline");
+  await fullCards(page);
   await page.getByRole("button", { name: /tap to edit$/ }).first().click();
   await page.getByRole("button", { name: /^Booking for / }).first().click();
   await page.getByRole("switch").first().click();
@@ -1350,6 +1351,7 @@ await flow("trip header: every action is on screen at 390px, with the back butto
 
 await flow("locate on map: opens Map Split on that stop", async (page) => {
   await goTab(page, "Timeline");
+  await fullCards(page);
   await page.getByRole("button", { name: /Peace Memorial Museum.*tap to edit$/ }).click();
   await page.getByRole("dialog").getByRole("button", { name: "Locate Peace Memorial Museum on the map", exact: true }).click();
   await page.waitForTimeout(700);
@@ -1425,6 +1427,7 @@ await flow("companion: swipe to All days asks which day to follow", async (page)
 
 await flow("stop card: one editor opens, saves and closes", async (page) => {
   await goTab(page, "Timeline");
+  await fullCards(page);
   const front = page.getByRole("button", { name: /tap to edit$/ }).first();
   const box = await front.boundingBox();
   // Names wrap rather than cut off, so a long one takes a second or third line.
@@ -1723,6 +1726,7 @@ if (flowSelected("a stop pinned far from the trip is flagged, and only that one"
   const { page, errors } = await open("stray");
   try {
     await goTab(page, "Timeline");
+    await fullCards(page);
     const flagged = page.getByText("Pinned far from the rest of this trip", { exact: false });
     if ((await flagged.count()) !== 1) throw new Error(`${await flagged.count()} cards flagged, expected 1`);
     const card = page.getByRole("button", { name: /Motoyasubashi.*tap to edit$/ });
@@ -1732,7 +1736,8 @@ if (flowSelected("a stop pinned far from the trip is flagged, and only that one"
       throw new Error("the back does not explain the flag");
     await page.getByRole("dialog").getByRole("button", { name: "Done", exact: true }).click();
     // Directions between same-day stops hundreds of km apart are a warning, not a drive.
-    await page.getByRole("button", { name: "Directions between stops", exact: true }).first().click();
+    await page.getByRole("button", { name: "Timeline options", exact: true }).first().click();
+    await page.getByRole("button", { name: /^Directions/ }).first().click();
     await page.getByRole("dialog").getByRole("button", { name: "Get directions", exact: true }).click();
     await page.waitForTimeout(600);
     await page.keyboard.press("Escape");
@@ -1773,6 +1778,7 @@ if (flowSelected("place details: hours on the stop, and a warning when the visit
   const { page, errors } = await open("default");
   try {
     await goTab(page, "Timeline");
+    await fullCards(page);
     await page.getByRole("button", { name: /Peace Memorial Museum.*tap to edit$/ }).click();
     await page.waitForTimeout(400);
     if ((await page.getByText("Mo-Su 10:00-18:00").count()) === 0) throw new Error("no hours shown");
@@ -1814,6 +1820,7 @@ if (flowSelected("a journey saved as a stop becomes a note on the stop it leads 
   const { page, errors } = await open("legs");
   try {
     await goTab(page, "Timeline");
+    await fullCards(page);
     await page.getByRole("button", { name: /Head to Motoyasubashi Pier.*tap to edit$/ }).click();
     await page.getByRole("button", { name: "Make it a note on Motoyasubashi Pier ferry" }).click();
     await page.waitForTimeout(600);

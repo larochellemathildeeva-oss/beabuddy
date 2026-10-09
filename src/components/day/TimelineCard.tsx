@@ -660,9 +660,16 @@ export function TimelineEntry({
           ) : null}
           <span className="min-w-0 truncate">{item.title}</span>
         </span>
-        <span className="mt-1 block w-full truncate text-[14px] leading-[1.4] text-foreground">
-          {where || glyphChipLabel(timelineGlyph(item))}
-        </span>
+        {stray ? (
+          // The one warning a row keeps: a pin far from the trip is likely the wrong place.
+          <span className="mt-1 block w-full text-[14px] leading-[1.4] text-destructive">
+            ⚠ Pinned far from the rest of this trip. Tap to check the place.
+          </span>
+        ) : (
+          <span className="mt-1 block w-full truncate text-[14px] leading-[1.4] text-foreground">
+            {where || glyphChipLabel(timelineGlyph(item))}
+          </span>
+        )}
       </button>
       {dragHandle}
     </article>
