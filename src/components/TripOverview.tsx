@@ -8,6 +8,7 @@ import { currentHighlights } from "@/lib/home-trip";
 import { formatTimelineDayLabel } from "@/lib/timeline-groups";
 import { timelineGlyph } from "@/lib/timeline-kind";
 import { tripIsUnderway } from "@/lib/trip-perspective";
+import { ALL_DAYS } from "@/lib/trip-days";
 import {
   cityStretches,
   countBookings,
@@ -24,6 +25,8 @@ import type { PrepTab } from "@/components/TripPrep";
 
 /** A city on the trip's route, as the recap reads it. */
 type RouteCity = {
+  /** The stop's id, which the trip page's city switcher picks by. */
+  id?: string | null;
   city: string;
   country?: string | null;
   kind?: string | null;
@@ -86,7 +89,8 @@ export function TripOverview({
   bookingDocs: TripDocument[];
   /** The trip's bookings list, open on one kind. */
   onOpenBookings: (kind: BookingKind | "all") => void;
-  onOpenTimeline: (dayKey?: string) => void;
+  /** The Timeline on a day, or on every day of one city (`cityId`). */
+  onOpenTimeline: (dayKey?: string, cityId?: string) => void;
   onOpenCompanion: () => void;
   onOpenSaved: () => void;
   onPrep: (tab: PrepTab) => void;
@@ -121,7 +125,6 @@ export function TripOverview({
   const live = tripIsUnderway({ start_date: startDate, end_date: endDate }, today);
   const end = endDate || startDate || "";
   const past = Boolean(end && today > end);
-  const ahead = !live && !past;
   const byDay = new Map(groups.map((group) => [group.key, group.items]));
   const todayStops = companionStops(byDay.get(today) ?? []);
   const now = companionState(todayStops);
@@ -157,49 +160,38 @@ export function TripOverview({
     : "No packing list yet";
 
   // Where the trip is, stretch by stretch (Figma "Your itinerary"): a city
-  // and its days. A trip with days but no cities gets a row a day.
-  const itinerary: Row[] = stretches.length
-    ? stretches.map((stretch) => {
-        const place = stretch.city;
-        const stretchDays = days.filter((d) => d >= stretch.start && d <= stretch.end);
-        const marks = stretchDays.map((day) =>
-          dayMark(day, today, live, companionStops(byDay.get(day) ?? [])),
-        );
-        const mark = marks.includes("Today")
-          ? "Today"
-          : marks.length && marks.every((m) => m === "Done")
-            ? "Done"
-            : "";
-        return {
-          key: `${stretch.start}-${place?.city ?? ""}`,
-          title: place ? shortCity(place.city) : homeCity ? shortCity(homeCity) : "No city set",
-          note: [
-            stretchDates(stretch.start, stretch.end),
-            place && isDayTrip(place) ? "Day trip" : "",
-            place && manyCountries ? placeCountry(place) : "",
-            `${stretch.stops} ${stretch.stops === 1 ? "stop" : "stops"}`,
-            mark,
-          ]
-            .filter(Boolean)
-            .join(" / "),
-          onClick: () => onOpenTimeline(stretch.start),
-        };
-      })
-    : days.map((day, index) => {
-        const count = byDay.get(day)?.length ?? 0;
-        return {
-          key: day,
-          title: `Day ${index + 1}`,
-          note: [
-            formatTimelineDayLabel(day),
-            `${count} ${count === 1 ? "stop" : "stops"}`,
-            dayMark(day, today, live, companionStops(byDay.get(day) ?? [])) ?? "",
-          ]
-            .filter(Boolean)
-            .join(" / "),
-          onClick: () => onOpenTimeline(day),
-        };
-      });
+  // and its days; days the route places nowhere are a stretch of their own.
+  const itinerary: Row[] = stretches.map((stretch) => {
+    const place = stretch.city;
+    const stretchDays = days.filter((d) => d >= stretch.start && d <= stretch.end);
+    const marks = stretchDays.map((day) =>
+      dayMark(day, today, live, companionStops(byDay.get(day) ?? [])),
+    );
+    const mark = marks.includes("Today")
+      ? "Today"
+      : marks.length && marks.every((m) => m === "Done")
+        ? "Done"
+        : "";
+    return {
+      key: `${stretch.start}-${place?.city ?? ""}`,
+      title: place ? shortCity(place.city) : homeCity ? shortCity(homeCity) : "No city set",
+      note: [
+        stretchDates(stretch.start, stretch.end),
+        place && isDayTrip(place) ? "Day trip" : "",
+        place && manyCountries ? placeCountry(place) : "",
+        `${stretch.stops} ${stretch.stops === 1 ? "stop" : "stops"}`,
+        mark,
+      ]
+        .filter(Boolean)
+        .join(" / "),
+      // One day opens on it; several open on that city's days, or on
+      // every day when the stretch has no city to pick.
+      onClick: () =>
+        stretch.start === stretch.end
+          ? onOpenTimeline(stretch.start)
+          : onOpenTimeline(ALL_DAYS, place?.id ?? undefined),
+    };
+  });
   for (const c of undatedCities) {
     itinerary.push({
       key: `undated-${c.city}-${c.arrive_on ?? ""}`,
@@ -226,10 +218,15 @@ export function TripOverview({
           <p className="trip-figure">{days.length}</p>
           <p className="trip-figure-label">{days.length === 1 ? "Day" : "Days"}</p>
         </div>
-        <div>
-          <p className="trip-figure">{Math.max(1, travellers.length)}</p>
-          <p className="trip-figure-label">{travellers.length > 1 ? "Travellers" : "Traveller"}</p>
-        </div>
+        {/* Nothing until the members have loaded, rather than a guessed "1". */}
+        {travellers.length > 0 ? (
+          <div>
+            <p className="trip-figure">{travellers.length}</p>
+            <p className="trip-figure-label">
+              {travellers.length === 1 ? "Traveller" : "Travellers"}
+            </p>
+          </div>
+        ) : null}
       </div>
 
       {live ? <RightNow state={now} onOpenCompanion={onOpenCompanion} /> : null}

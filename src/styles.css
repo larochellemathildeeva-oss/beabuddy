@@ -4593,6 +4593,6 @@ main [class*="rounded-2xl"] {
   line-height: 1.4;
 }
 [data-theme="colorful"]:not(.dark) .trip-primary {
-  background: var(--acc);
-  color: #111111;
+  background: var(--primary);
+  color: var(--primary-foreground);
 }

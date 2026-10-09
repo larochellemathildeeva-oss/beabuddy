@@ -1787,7 +1787,8 @@ export function TripDetail({
             {...(canFindCities ? { onFindCities: findCities, findingCities } : {})}
             bookingDocs={bookingDocs.docs}
             onOpenBookings={openBookings}
-            onOpenTimeline={(dayKey) => {
+            onOpenTimeline={(dayKey, cityId) => {
+              if (cityId !== undefined) setCityChoice(cityId);
               if (dayKey !== undefined) setDayChoice(dayKey);
               setPerspective("timeline");
             }}
