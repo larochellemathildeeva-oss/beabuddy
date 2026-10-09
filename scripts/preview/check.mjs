@@ -883,7 +883,7 @@ await flow("save sheet: lists are Recommendation, Bucket list, Been there; Next 
   if ((await page.getByText(/Next time|Wishlist/).count()) !== 0) throw new Error("the page still says Next time or Wishlist");
 }, "recs");
 
-await flow("you: the settings rows, Profile settings, Appearance with Béa and Customize Home", async (page) => {
+await flow("you: the settings rows, Profile settings, Appearance and its pages, About with the tour", async (page) => {
   const text = async () => page.locator("body").innerText();
   for (const word of ["Your settings.", "Profile settings", "Travel preferences", "Packing lists", "Photos & memories", "Work travel", "Trip documents", "Appearance", "Data & imports", "Privacy & legal", "Help & FAQ", "Feedback", "About Béa", "Done"])
     if (!(await text()).includes(word)) throw new Error(`You lost "${word}"`);
@@ -895,11 +895,23 @@ await flow("you: the settings rows, Profile settings, Appearance with Béa and C
   await page.keyboard.press("Escape");
   await page.waitForTimeout(300);
   await page.getByRole("button", { name: /^Appearance/ }).click();
-  await page.getByRole("dialog").getByText("Theme", { exact: true }).waitFor();
-  if ((await page.getByRole("dialog").getByRole("link", { name: /^Béa's personality/ }).getAttribute("href")) !== "/profile/bea") throw new Error("Béa's personality lost its route");
-  await page.getByRole("button", { name: /Customize home/ }).first().click();
+  // Appearance: the looks as rows, then Reading and motion, then Stop pictures.
+  await page.getByRole("radiogroup", { name: "Theme" }).waitFor();
+  if ((await page.getByRole("radio", { name: /^Dark/ }).count()) !== 1) throw new Error("no Dark row");
+  await page.getByRole("button", { name: /^Font and size/ }).click();
+  await page.getByText("Comfort comes first", { exact: false }).first().waitFor();
+  await page.getByRole("button", { name: "Done", exact: true }).last().click();
   await page.waitForTimeout(300);
-  if ((await page.getByRole("dialog").count()) === 0) throw new Error("Customize home opened nothing");
+  await page.getByRole("button", { name: /^Stop pictures/ }).click();
+  await page.getByRole("radiogroup", { name: "Trip banner" }).waitFor();
+  await page.getByRole("button", { name: "Done", exact: true }).last().click();
+  await page.waitForTimeout(300);
+  await page.getByRole("button", { name: "Done", exact: true }).last().click();
+  await page.waitForTimeout(300);
+  // About Béa keeps the tour and Béa's personality.
+  await page.getByRole("button", { name: /^About Béa/ }).click();
+  if ((await page.getByRole("dialog").getByRole("link", { name: /^Béa's personality/ }).getAttribute("href")) !== "/profile/bea") throw new Error("Béa's personality lost its route");
+  if ((await page.getByRole("dialog").getByRole("button", { name: /^Show me around/ }).count()) !== 1) throw new Error("the tour is gone from About");
   await page.keyboard.press("Escape");
 }, "you");
 

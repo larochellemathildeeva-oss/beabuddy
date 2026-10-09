@@ -1,3 +1,4 @@
+import { Check } from "@/components/icons";
 import { useStopPictures } from "@/hooks/useStopPictures";
 import type { StopPictures } from "@/lib/stop-pictures";
 
@@ -12,8 +13,36 @@ const OPTIONS: { id: StopPictures; label: string; hint: string }[] = [
  * photos, a place neither Pexels nor Wikimedia Commons has a photo of keeps
  * its illustration.
  */
-export function StopPicturesPicker() {
+export function StopPicturesPicker({ variant = "cards" }: { variant?: "cards" | "rows" } = {}) {
   const [value, setValue] = useStopPictures();
+  if (variant === "rows") {
+    // The minimalist pages: one row a choice, a check on the one in use.
+    return (
+      <div role="radiogroup" aria-label="Stop pictures">
+        {OPTIONS.map((o) => {
+          const on = value === o.id;
+          return (
+            <button
+              key={o.id}
+              type="button"
+              role="radio"
+              aria-checked={on}
+              onClick={() => setValue(o.id)}
+              className="flex min-h-16 w-full items-center justify-between gap-3 border-b border-border py-3 text-left"
+            >
+              <span className="min-w-0">
+                <span className="block text-[16px] leading-[22px]">{o.label}</span>
+                <span className="mt-1 block text-[14px] leading-[20px] text-muted-foreground">
+                  {o.hint}
+                </span>
+              </span>
+              {on ? <Check className="size-5 shrink-0" aria-hidden /> : null}
+            </button>
+          );
+        })}
+      </div>
+    );
+  }
   return (
     <div className="plain-card p-4">
       <p className="text-[14.5px] font-semibold">Stop pictures</p>

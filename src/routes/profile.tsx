@@ -4,7 +4,7 @@ import { friendlyError } from "@/lib/friendly-error";
 import { formatTripLocation } from "@/lib/place-label";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState, type ComponentType, type ReactNode } from "react";
-import { BookOpen, CalendarDays, ChevronRight, type LucideProps } from "@/components/icons";
+import { CalendarDays, ChevronRight, type LucideProps } from "@/components/icons";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { rememberedProfileName, rememberProfileName, shownName } from "@/lib/profile-name";
@@ -12,7 +12,6 @@ import { Sheet } from "@/components/Sheet";
 import { ConfirmSheet } from "@/components/ConfirmSheet";
 import { resumeOrReplayTour } from "@/components/Tour";
 import { PackingLists } from "@/components/PackingLists";
-import { CustomizeHome } from "@/components/CustomizeHome";
 import { FeedbackForm } from "@/components/FeedbackForm";
 import { CopyrightNotice } from "@/components/CopyrightNotice";
 import {
@@ -69,11 +68,22 @@ export const Route = createFileRoute("/profile")({
 });
 
 /** The You panels the Menu opens: /profile?panel=appearance and so on. */
+const APP_VERSION = typeof __APP_VERSION__ === "string" ? __APP_VERSION__ : "1.0.0";
+
 const MENU_PANELS = ["appearance", "feedback", "legal", "about", "settings"] as const;
 type MenuPanel = (typeof MENU_PANELS)[number];
 
 /** The panels the You page opens over itself. One at a time. */
-type Panel = "settings" | "packing" | "appearance" | "data" | "legal" | "feedback" | "about";
+type Panel =
+  | "settings"
+  | "packing"
+  | "appearance"
+  | "reading"
+  | "pictures"
+  | "data"
+  | "legal"
+  | "feedback"
+  | "about";
 
 /**
  * A big card or list: plain in every theme, Colorful included. `plain-card`
@@ -387,22 +397,78 @@ function ProfilePage() {
       <Sheet
         open={panel === "appearance"}
         onClose={close}
-        title="Appearance"
-        hint="Saved to your account"
+        page
+        hint="Appearance"
+        title="Pick your look"
+        crumb="You"
       >
-        <div className="space-y-3">
-          <ThemePicker />
-          <TripBannerPicker />
-          <StopPicturesPicker />
-          <AccessibilityPicker />
-          <CustomizeHome variant="row" trips={t} />
-          {/* Béa's personality: the You list in the design has no row of its own for it. */}
-          <YouRow
-            title="Béa's personality"
-            note={`${modeName(bea.mix)} · How much she suggests and helps`}
-            to="/profile/bea"
-          />
-        </div>
+        <ThemePicker variant="rows" />
+        <p className="mt-3 border-t border-[var(--rule)] pt-2 text-[12px] text-foreground">
+          Reading and motion
+        </p>
+        <YouRow
+          title="Font and size"
+          note="Keep things comfortable to read"
+          onClick={() => setPanel("reading")}
+        />
+        <YouRow
+          title="Reduced motion"
+          note="Quiet transitions when preferred"
+          onClick={() => setPanel("reading")}
+        />
+        <YouRow
+          title="Stop pictures"
+          note="Real photos, illustrations or none"
+          onClick={() => setPanel("pictures")}
+        />
+        <button
+          type="button"
+          onClick={close}
+          className="btn-primary mt-4 flex w-full items-center justify-center px-4"
+        >
+          Done
+        </button>
+      </Sheet>
+
+      <Sheet
+        open={panel === "reading"}
+        onClose={() => setPanel("appearance")}
+        page
+        hint="Reading & motion"
+        title="Comfort comes first"
+        crumb="Appearance"
+      >
+        <AccessibilityPicker />
+        <button
+          type="button"
+          onClick={() => setPanel("appearance")}
+          className="btn-primary mt-4 flex w-full items-center justify-center px-4"
+        >
+          Done
+        </button>
+      </Sheet>
+
+      <Sheet
+        open={panel === "pictures"}
+        onClose={() => setPanel("appearance")}
+        page
+        hint="Stop pictures"
+        title="How places are pictured"
+        crumb="Appearance"
+      >
+        <StopPicturesPicker variant="rows" />
+        {/* The trip banner is a picture choice too; the design has no page of its own for it. */}
+        <p className="mt-3 border-t border-[var(--rule)] pt-2 text-[12px] text-foreground">
+          Trip banner
+        </p>
+        <TripBannerPicker variant="rows" />
+        <button
+          type="button"
+          onClick={() => setPanel("appearance")}
+          className="btn-primary mt-4 flex w-full items-center justify-center px-4"
+        >
+          Done
+        </button>
       </Sheet>
 
       <Sheet
@@ -538,17 +604,38 @@ function ProfilePage() {
         </div>
       </Sheet>
 
-      <Sheet open={panel === "about"} onClose={close} title="About Béa" hint="Your travel buddy">
-        <div className="space-y-2">
-          <SheetLink
-            to="/how-it-works"
-            icon={BookOpen}
-            title="How Béa works"
-            hint="What she does with your places, trips and photos."
-          />
-          <TourRow onReplay={replayTour} />
-          <CopyrightNotice className="px-1 pb-0 pt-1 text-left text-[13px] text-muted-foreground" />
-        </div>
+      <Sheet
+        open={panel === "about"}
+        onClose={close}
+        page
+        hint="About Béa"
+        title="Your travel buddy"
+        crumb="You"
+      >
+        <YouRow title="How Béa works" note="Plan, explore and remember" to="/how-it-works" />
+        <YouRow title="Help & FAQ" note="Get a little guidance" to="/help" />
+        <YouRow title="Privacy" note="What Béa keeps" to="/privacy" />
+        <YouRow title="Version" note={`Béa ${APP_VERSION}`} />
+        {/* Not drawn on the About frame, and kept: the tour and Béa's personality. */}
+        <YouRow
+          title="Show me around"
+          note="A step-by-step walk of the app"
+          onClick={replayTour}
+          guide="replay-tour"
+        />
+        <YouRow
+          title="Béa's personality"
+          note={`${modeName(bea.mix)} · How much she suggests and helps`}
+          to="/profile/bea"
+        />
+        <CopyrightNotice className="px-0 pb-0 pt-3 text-left text-[12px] text-foreground" />
+        <Link
+          to="/how-it-works"
+          onClick={close}
+          className="btn-primary mt-4 flex w-full items-center justify-center px-4"
+        >
+          How it works
+        </Link>
       </Sheet>
     </AppShell>
   );
@@ -584,7 +671,14 @@ function YouRow({
 }: {
   title: string;
   note: string;
-  to?: "/preferences" | "/expenses" | "/photos" | "/help" | "/profile/bea";
+  to?:
+    | "/preferences"
+    | "/expenses"
+    | "/photos"
+    | "/help"
+    | "/profile/bea"
+    | "/how-it-works"
+    | "/privacy";
   href?: string;
   onClick?: () => void;
   guide?: string;
@@ -608,6 +702,8 @@ function YouRow({
         {body}
       </a>
     );
+  // A row that only says something (the version) is not a button.
+  if (!onClick) return <div className={cls}>{body}</div>;
   return (
     <button type="button" onClick={onClick} data-guide={guide} className={cls}>
       {body}
@@ -636,26 +732,6 @@ function SheetLink({
       </span>
       <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
     </Link>
-  );
-}
-
-function TourRow({ onReplay }: { onReplay: () => void }) {
-  return (
-    <div className="flex items-center justify-between gap-3 rounded-2xl bg-elevated p-3">
-      <div>
-        <p className="text-[14.5px] font-medium">Show me around</p>
-        <p className="text-[12.5px] text-muted-foreground">
-          A step-by-step walk for planning, importing, saving places, the trip itself, or your map.
-        </p>
-      </div>
-      <button
-        type="button"
-        onClick={onReplay}
-        className="shrink-0 rounded-full border border-border bg-card px-3.5 py-2 text-[14.5px] font-semibold"
-      >
-        Start
-      </button>
-    </div>
   );
 }
 
