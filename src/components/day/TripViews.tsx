@@ -79,7 +79,8 @@ export function TripViews({
             // Map keeps the live Companion side when that is where you were.
             onClick={() => onChange(p.id === "map" && value === "companion" ? "companion" : p.id)}
           >
-            <Icon className="size-5 shrink-0" aria-hidden />
+            {/* On top the design draws words only (Figma "Ruled tabs"). */}
+            {position !== "top" && <Icon className="size-5 shrink-0" aria-hidden />}
             {position !== "side" && <span>{p.label}</span>}
           </button>
         );
@@ -90,7 +91,7 @@ export function TripViews({
     <div
       ref={anchor}
       className={
-        position === "top" ? "sticky top-0 z-40 px-3 py-2 bg-background/95 backdrop-blur-xl" : "h-0"
+        position === "top" ? "sticky top-0 z-40 px-5 pt-3 bg-background/95 backdrop-blur-xl" : "h-0"
       }
     >
       {floating && bounds.width ? createPortal(nav, document.body) : !floating ? nav : null}

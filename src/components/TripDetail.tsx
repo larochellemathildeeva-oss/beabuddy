@@ -1656,11 +1656,16 @@ export function TripDetail({
           },
         }}
         viewTransitionName={`trip-photo-${trip.id}`}
-        tracker={perspective === "map" ? mapDayTracker : bannerTracker}
+        kicker={`Trip / ${activePerspective.label.toLowerCase()}`}
+        // Overview draws no day strip (Figma "trip-overview"): its itinerary
+        // rows open each stretch of days instead.
+        tracker={
+          perspective === "map" ? mapDayTracker : perspective === "overview" ? null : bannerTracker
+        }
       />
       {/* Béa's line scrolls away with the page; only the bar above stays.
           The trip's actions moved up into the banner. */}
-      {!liveCompanion && (
+      {!liveCompanion && perspective !== "overview" && (
         <div className="flex items-baseline justify-between gap-3 px-3 pb-1 pt-2.5 text-[13px] text-muted-foreground">
           <p>{tripNote}</p>
           <span className="shrink-0">
@@ -1675,7 +1680,7 @@ export function TripDetail({
       )}
 
       <TripViews position={barPosition} value={perspective} onChange={setPerspective} />
-      <div className="trip-content section-stagger px-3 pb-4 pt-3">
+      <div className="trip-content section-stagger px-5 pb-4 pt-3">
         {(perspective === "map" || perspective === "companion") && (
           <MapModeSwitch value={perspective} onChange={setPerspective} />
         )}
@@ -1765,16 +1770,6 @@ export function TripDetail({
             }}
           />
         )}
-        {/* Past You, for a trip still ahead or under way: not one already over. */}
-        {perspective === "overview" &&
-          todayKey <= (trip.end_date ?? trip.start_date ?? "9999-12-31") && (
-            <div className="mb-3">
-              <PastYouCard
-                trip={trip}
-                places={cities.stops.map((stop) => ({ city: stop.city, country: stop.country }))}
-              />
-            </div>
-          )}
         {perspective === "overview" && (
           <TripOverview
             travellers={members.map((m) => m.display_name || "Traveller")}
@@ -1791,16 +1786,11 @@ export function TripDetail({
             route={routeCities}
             {...(canFindCities ? { onFindCities: findCities, findingCities } : {})}
             bookingDocs={bookingDocs.docs}
-            bookingsOpen={bookingsOpen}
-            onToggleBookings={() => setBookingsOpen((open) => !open)}
             onOpenBookings={openBookings}
-            onOpenTimeline={(dayKey) => {
+            onOpenTimeline={(dayKey, cityId) => {
+              if (cityId !== undefined) setCityChoice(cityId);
               if (dayKey !== undefined) setDayChoice(dayKey);
               setPerspective("timeline");
-            }}
-            onOpenMap={(dayKey) => {
-              if (dayKey) setDayChoice(dayKey);
-              setPerspective("map");
             }}
             onOpenCompanion={() => {
               setDayChoice(todayKey);
@@ -1809,8 +1799,23 @@ export function TripDetail({
             }}
             onOpenSaved={() => setSavedOpen(true)}
             onPrep={(tab) => setPrepAsk((cur) => ({ tab, n: (cur?.n ?? 0) + 1 }))}
+            onOpenSettings={() => {
+              setSettingsOpen(true);
+              setSheetSection(null);
+            }}
           />
         )}
+        {/* Past You, for a trip still ahead or under way: not one already over.
+            Under the overview's rows, which the design draws first. */}
+        {perspective === "overview" &&
+          todayKey <= (trip.end_date ?? trip.start_date ?? "9999-12-31") && (
+            <div className="mt-6">
+              <PastYouCard
+                trip={trip}
+                places={cities.stops.map((stop) => ({ city: stop.city, country: stop.country }))}
+              />
+            </div>
+          )}
 
         {perspective === "companion" && (
           <div data-guide="trip-companion" className="space-y-3" {...(offerDays ? daySwipe : {})}>

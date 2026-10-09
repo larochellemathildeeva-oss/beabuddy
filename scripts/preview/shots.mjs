@@ -45,6 +45,8 @@ for (const theme of ["calm", "colorful", "dark"]) {
     const path = existsSync(join(out, file)) ? join(out, file) : file.startsWith("/assets/") && existsSync(builtAsset) ? builtAsset : join(here, "..", "..", "public", file);
     return existsSync(path) ? route.fulfill({ body: readFileSync(path), contentType: types[file.split(".").pop()] ?? "application/octet-stream" }) : route.fulfill({ status: 404 });
   });
+  // Inside the sample trip (Oct 7–8, 2026), whatever day the shots are taken.
+  await page.clock.setFixedTime(new Date("2026-10-08T10:30:00"));
   await page.goto(`https://preview.test/?sample=${sample}${process.env.SHOTS_QUERY ?? ""}`, { waitUntil: "domcontentloaded", timeout: 30000 });
   await page.waitForTimeout(1500);
   for (const sel of clicks) {
