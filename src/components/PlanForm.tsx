@@ -1,6 +1,5 @@
 import type { ComponentType, ReactNode } from "react";
 import {
-  ArrowRight,
   Clock,
   CloudRain,
   Leaf,
@@ -15,36 +14,56 @@ import {
 import { PLAN_PRIORITIES, type PlanPriorityId } from "@/lib/plan-priorities";
 
 /*
- * The pieces the Plan with Béa forms are drawn with: a title and one line
- * under it, light tinted panels, the priority chips with a box for your own,
- * and the one wide button at the bottom. Drawn compact, so each form fits on
- * one screen without scrolling.
+ * The pieces the Plan with Béa forms are drawn with, as the minimalist
+ * frames draw them: a small label over a large title and a hairline,
+ * labelled boxes, the priority chips with a box for your own, and the one
+ * black button at the bottom.
  */
 
 export type PanelTone = "rose" | "mint" | "sky" | "butter";
 
-/** "Optimize my trip", and one line under it. */
-export function PlanTitle({ title, children }: { title: string; children?: ReactNode }) {
-  return (
-    <header>
-      <h2 className="font-display text-[26px] leading-[1.05]">{title}</h2>
-      {children ? (
-        <p className="mt-1 text-[13px] leading-snug text-muted-foreground">{children}</p>
-      ) : null}
-    </header>
-  );
+/**
+ * The one line under a form's title. The title itself ("A better flow.")
+ * is the planner page's own heading (`plannerHead`), so it is not drawn twice.
+ */
+export function PlanTitle({ children }: { children?: ReactNode }) {
+  return children ? (
+    <p className="text-[14px] leading-[20px] text-muted-foreground">{children}</p>
+  ) : null;
 }
 
-/** A light tinted panel: a small badge, its title (and "(optional)"), then the fields. */
+/** The label and title each planner form's page wears, as the frames name them. */
+export function plannerHead(
+  tab: "build" | "import" | "optimize" | "compare",
+  addingMore = false,
+): { label: string; title: string } {
+  switch (tab) {
+    case "build":
+      return {
+        label: "Build a trip",
+        title: addingMore ? "Tell Béa what to add." : "Tell Béa where to begin.",
+      };
+    case "import":
+      return { label: "Import a plan", title: "Your plan, brought together." };
+    case "optimize":
+      return { label: "Optimize", title: "A better flow." };
+    case "compare":
+      return { label: "Compare options", title: "Two paths. One choice." };
+  }
+}
+
+/**
+ * A labelled box, as the minimalist inputs draw it: a small label (and
+ * "(optional)") over the fields. `tone` and `icon` are kept for callers but
+ * no longer drawn: the frame has one quiet box for every field.
+ */
 export function PlanPanel({
-  tone,
-  icon: Icon,
   title,
   optional = false,
   aside,
   children,
 }: {
-  tone: PanelTone;
+  tone?: PanelTone;
   icon?: ComponentType<{ className?: string }>;
   title: ReactNode;
   optional?: boolean;
@@ -53,14 +72,9 @@ export function PlanPanel({
   children?: ReactNode;
 }) {
   return (
-    <section className={`plan-panel plan-${tone} space-y-2 px-3 py-2`}>
+    <section className="plan-panel space-y-2 px-4 py-3">
       <div className="flex items-center gap-2">
-        {Icon ? (
-          <span className="plan-badge grid size-7 shrink-0 place-items-center rounded-full">
-            <Icon className="size-4" aria-hidden />
-          </span>
-        ) : null}
-        <h3 className="min-w-0 flex-1 font-display text-[17px] leading-tight">
+        <h3 className="min-w-0 flex-1 text-[12px] font-normal leading-[17px] text-foreground">
           {title}
           {optional ? <span className="text-muted-foreground"> (optional)</span> : null}
         </h3>
@@ -82,21 +96,21 @@ export function CharCount({ value, max }: { value: string; max: number }) {
 
 /** The class a panel's text box wears. */
 export const PLAN_FIELD =
-  "w-full rounded-xl border border-border bg-card px-3 py-2 text-[14px] outline-none placeholder:text-muted-foreground/70 focus:border-primary";
+  "min-h-11 w-full !rounded-none border-0 border-b border-[var(--rule)] bg-transparent px-0 py-2 text-[16px] outline-none placeholder:text-muted-foreground focus:border-foreground";
 
 const PRIORITY_ICON: Record<
   PlanPriorityId,
-  { icon: ComponentType<{ className?: string }>; color: string }
+  { icon: ComponentType<{ className?: string }> }
 > = {
-  closest: { icon: MapPin, color: "text-[#d6455d]" },
-  hours: { icon: Clock, color: "text-foreground" },
-  rainy: { icon: CloudRain, color: "text-[#2f7bb0]" },
-  "easy-morning": { icon: Sun, color: "text-[#e59a0b]" },
-  rest: { icon: BedDouble, color: "text-[#9b4fd6]" },
-  even: { icon: Walk, color: "text-[#2a8a55]" },
-  food: { icon: Utensils, color: "text-[#e0621e]" },
-  budget: { icon: PiggyBank, color: "text-[#9b4fd6]" },
-  unique: { icon: Leaf, color: "text-[#2a8a55]" },
+  closest: { icon: MapPin },
+  hours: { icon: Clock },
+  rainy: { icon: CloudRain },
+  "easy-morning": { icon: Sun },
+  rest: { icon: BedDouble },
+  even: { icon: Walk },
+  food: { icon: Utensils },
+  budget: { icon: PiggyBank },
+  unique: { icon: Leaf },
 };
 
 /**
@@ -138,20 +152,20 @@ export function PriorityPicker({
       <div className="flex flex-wrap gap-1.5">
         {list.map((p) => {
           const on = selected.includes(p.id);
-          const { icon: Icon, color } = PRIORITY_ICON[p.id];
+          const { icon: Icon } = PRIORITY_ICON[p.id];
           return (
             <button
               key={p.id}
               type="button"
               aria-pressed={on}
               onClick={() => onToggle(p.id)}
-              className={`flex items-center gap-1 rounded-full border px-2 py-[5px] text-[12.5px] leading-none transition-colors ${
+              className={`flex min-h-9 items-center gap-1.5 rounded-full border px-3 text-[14px] leading-none transition-colors ${
                 on
-                  ? "border-primary bg-primary text-primary-foreground"
-                  : "border-border bg-card text-foreground"
+                  ? "border-foreground bg-foreground text-background"
+                  : "border-[var(--field-border)] bg-card text-foreground"
               }`}
             >
-              <Icon className={`size-3.5 shrink-0 ${on ? "" : color}`} aria-hidden />
+              <Icon className="size-4 shrink-0" aria-hidden />
               {p.label}
             </button>
           );
@@ -168,7 +182,7 @@ export function PriorityPicker({
           onChange={(e) => onCustom(e.target.value)}
           maxLength={customMax}
           placeholder="Add your own: vegetarian food, kid-friendly, no early starts…"
-          className={`${PLAN_FIELD} py-1.5 pl-9 text-[13px]`}
+          className={`${PLAN_FIELD} pl-9`}
         />
       </label>
       {children}
@@ -176,7 +190,7 @@ export function PriorityPicker({
   );
 }
 
-/** The wide button that ends a form: "Optimize my trip →". */
+/** The black button that ends a form: "Preview a better order". */
 export function PlanAction({
   onClick,
   disabled = false,
@@ -191,10 +205,9 @@ export function PlanAction({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-primary px-5 py-3 text-[15px] font-semibold text-primary-foreground shadow-sm disabled:opacity-50"
+      className="btn-primary flex w-full items-center justify-center gap-2 px-4 disabled:opacity-60"
     >
       {children}
-      <ArrowRight className="size-5" aria-hidden />
     </button>
   );
 }

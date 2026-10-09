@@ -24,6 +24,7 @@ import {
   PlanPanel,
   PlanTitle,
   PriorityPicker,
+  plannerHead,
 } from "@/components/PlanForm";
 import {
   budgetFor,
@@ -346,16 +347,22 @@ export function ItineraryImport({
       </fieldset>
     ) : null;
 
+  const head = plannerHead(
+    tab === "import" ? start.mode : tab === "start" ? "build" : tab,
+    existingItems.length > 0,
+  );
+
   return (
     <Sheet
       open={open}
       onClose={onClose}
-      title={tab === "start" ? "Plan with Béa" : "Ask Béa"}
+      title={tab === "start" ? "Plan with Béa" : head.title}
       hint={
         tab === "start"
           ? [tripTitle, "build / import / optimize / compare"].filter(Boolean).join(" · ")
-          : (tripTitle ?? undefined)
+          : head.label
       }
+      {...(tab === "start" ? {} : { crumb: "Plan with Béa" })}
       page
       tone={5}
       onBack={tab === "start" || panelBusy ? undefined : () => setTab("start")}
@@ -1276,7 +1283,7 @@ function ImportPanel({
   return (
     <div className="mt-1 space-y-2.5">
       {mode === "build" ? (
-        <PlanTitle title={addingMore ? "Build more for this trip" : "Build me a trip"}>
+        <PlanTitle>
           {tripPlace && !needsPlace
             ? `${tripPlace}${tripDates ? ` · ${tripDates}` : ""}. ${
                 addingMore
@@ -1286,7 +1293,7 @@ function ImportPanel({
             : "Tell Béa what you'd like; she drafts the days for you."}
         </PlanTitle>
       ) : (
-        <PlanTitle title="Import a plan">
+        <PlanTitle>
           Paste, upload or link your itinerary. Béa finds the places and adds it to your trip.
         </PlanTitle>
       )}
@@ -1509,8 +1516,8 @@ function ImportPanel({
           : mode === "build"
             ? addingMore
               ? "Find and add to my trip"
-              : "Build my trip"
-            : "Import plan"}
+              : "Draft the days"
+            : "Read the plan"}
       </PlanAction>
       {busy && (
         <div className="mt-2">
@@ -2054,7 +2061,7 @@ function OptimizePanel({
 
   return (
     <div className="mt-1 space-y-2.5">
-      <PlanTitle title="Optimize my trip">
+      <PlanTitle>
         Béa keeps your {items.length} stop{items.length === 1 ? "" : "s"} and reorganizes the days
         around what matters to you. She doesn't check reservations.
       </PlanTitle>
@@ -2127,7 +2134,7 @@ function OptimizePanel({
             </p>
           </PriorityPicker>
           <PlanAction onClick={() => void rearrange()} disabled={busy || goals.length === 0}>
-            {busy && !plan ? "Béa is rearranging…" : "Optimize my trip"}
+            {busy && !plan ? "Béa is rearranging…" : "Preview a better order"}
           </PlanAction>
           {busy && !plan && <BeaRunning moment="choose.working" status="Rearranging the days" />}
         </>
@@ -2274,7 +2281,7 @@ function ComparePanel() {
 
   return (
     <div className="mt-1 space-y-2">
-      <PlanTitle title="Compare options">
+      <PlanTitle>
         Paste or upload two plans; Béa picks the better fit.
       </PlanTitle>
       <AiPromptButton variant="banner" label="Get the AI prompt" />
@@ -2309,7 +2316,7 @@ function ComparePanel() {
       />
 
       <PlanAction onClick={() => void compare()} disabled={busy || !ready}>
-        {busy ? "Comparing…" : "Compare these plans"}
+        {busy ? "Comparing…" : "Compare options"}
       </PlanAction>
       {busy && <BeaRunning moment="choose.working" status="Reading both plans, then comparing" />}
 

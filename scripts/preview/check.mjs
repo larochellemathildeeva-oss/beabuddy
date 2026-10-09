@@ -1590,7 +1590,7 @@ await flow("import: places, times and stays reach the timeline; doubtful pins ar
   await page.getByRole("button", { name: /Plan with Béa/ }).click();
   await page.getByRole("button", { name: /^Import your plan/ }).click();
   await page.getByRole("textbox", { name: "Paste your plan" }).fill("Day 1: breakfast at the station 8-8:45, shrine at 10 for 90 min, lunch at Kakiya, evening stroll");
-  await page.getByRole("button", { name: "Import plan", exact: true }).click();
+  await page.getByRole("button", { name: "Read the plan", exact: true }).click();
   await page.waitForTimeout(800);
   // The trip page runs its own lookup for unplaced stops; this is the import's.
   const geo = await page.evaluate(() =>
@@ -1631,7 +1631,7 @@ await flow("import: after alternatives, pins are looked up again, not carried by
   await page.getByRole("button", { name: /Plan with Béa/ }).click();
   await page.getByRole("button", { name: /^Import your plan/ }).click();
   await page.getByRole("textbox", { name: "Paste your plan" }).fill("Day 1: breakfast, shrine, lunch, stroll");
-  await page.getByRole("button", { name: "Import plan", exact: true }).click();
+  await page.getByRole("button", { name: "Read the plan", exact: true }).click();
   await page.waitForTimeout(800);
   await page.getByPlaceholder(/Rainy-day activities/).fill("cheaper lunch please");
   await page.getByRole("button", { name: /find alternatives/ }).click();
@@ -1715,7 +1715,7 @@ await flow("optimize: estimated travel times, checked on real routes, days plann
   await page.getByRole("button", { name: /Plan with Béa/ }).click();
   await page.getByRole("dialog").getByRole("button", { name: /^Optimize my trip/ }).click();
   await page.getByRole("button", { name: /Open at visit time/ }).click();
-  await page.getByRole("button", { name: "Optimize my trip", exact: true }).click();
+  await page.getByRole("button", { name: "Preview a better order", exact: true }).click();
   await page.waitForTimeout(500);
   const sent = await page.evaluate(() => (window.__optimizeCalls ?? [])[0]);
   if (!sent) throw new Error("Optimize was never asked");
