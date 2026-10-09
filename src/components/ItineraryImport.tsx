@@ -1567,11 +1567,15 @@ function ImportPanel({
         </div>
       )}
       {items && (
-        <fieldset
-          disabled={busy || reviewLocked}
-          className="rise space-y-2 rounded-xl border border-border bg-elevated p-3"
-        >
-          {summary && <p className="text-[13px] text-muted-foreground">{summary}</p>}
+        <fieldset disabled={busy || reviewLocked} className="rise space-y-2 pt-2">
+          {/* "Review the plan / A first draft.", as the minimalist frame heads it. */}
+          <header>
+            <p className="text-[12px] leading-[17px] text-foreground">Review the plan</p>
+            <h3 className="mt-3 border-b border-[var(--rule)] pb-3 text-[28px] font-bold leading-[1.15] tracking-tight">
+              A first draft.
+            </h3>
+          </header>
+          {summary && <p className="text-[14px] leading-[20px] text-muted-foreground">{summary}</p>}
           {plan?.grounding && <SearchGroundingNote grounding={plan.grounding} />}
           {includeCosts && plan?.estimated_total != null && (
             <p className="text-[14.5px] font-semibold">
@@ -1579,7 +1583,7 @@ function ImportPanel({
             </p>
           )}
           {items.length > 0 && (
-            <div className="sticky top-0 z-10 -mx-1 rounded-xl border border-border bg-card p-2 shadow-sm">
+            <div className="sticky top-0 z-10 border-b border-[var(--rule)] bg-background py-3">
               {needsDayOne && (
                 <div className="mb-2 rounded-xl border border-primary/40 bg-elevated p-2.5">
                   <p className="text-[13px]">
@@ -1694,7 +1698,7 @@ function ImportPanel({
                 disabled={
                   busy || placing !== null || picked.length === 0 || (datesDisagree && !dateChoice)
                 }
-                className="w-full rounded-xl bg-primary px-4 py-2 text-[14.5px] font-semibold text-primary-foreground disabled:opacity-50"
+                className="btn-primary flex w-full items-center justify-center px-4 disabled:opacity-60"
               >
                 {placing && !busy
                   ? "Placing your stops…"
@@ -1720,20 +1724,17 @@ function ImportPanel({
             <p className="text-[13px] text-muted-foreground">Nothing readable in there.</p>
           )}
           {items.map((it, i) => (
-            <label
-              key={i}
-              className="flex items-start gap-2 rounded-lg border border-border/60 p-2"
-            >
+            <label key={i} className="flex items-start gap-3 border-b border-border py-3">
               <input
                 type="checkbox"
                 checked={picked.includes(i)}
                 onChange={() =>
                   setPicked((cur) => (cur.includes(i) ? cur.filter((x) => x !== i) : [...cur, i]))
                 }
-                className="mt-1"
+                className="mt-1 size-4 shrink-0 accent-[var(--color-foreground)]"
               />
               <span className="min-w-0">
-                <span className="block text-[12px] uppercase tracking-wider text-muted-foreground">
+                <span className="block text-[12px] leading-[17px] text-muted-foreground">
                   {[it.day_date ?? (it.day_number ? `Day ${it.day_number}` : null), it.time_label]
                     .filter(Boolean)
                     .join(" · ")}
@@ -1741,7 +1742,7 @@ function ImportPanel({
                   {it.kind}
                   {it.within ? ` · in ${it.within}` : ""}
                 </span>
-                <span className="block text-[14.5px] font-medium">
+                <span className="mt-0.5 block text-[16px] leading-[22px]">
                   {it.title}
                   {it.source === "vault" && (
                     <span className="ml-1.5 rounded-full border border-primary/40 px-1.5 py-0.5 text-[12px] font-semibold text-primary">
