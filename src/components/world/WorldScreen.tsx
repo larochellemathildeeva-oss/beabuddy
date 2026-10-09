@@ -412,14 +412,21 @@ export function WorldStatsStrip({
       {shown.map((s) => (
         <div
           key={s.key}
-          className="flex min-w-0 flex-col gap-1 rounded-[var(--r-card)] border border-(--border) px-4 py-3"
+          className={cn(
+            "flex min-w-0 flex-col gap-1 rounded-[var(--r-card)] border border-(--border) py-3",
+            // Four to a row on a phone: less room each, so the words wrap rather than clip.
+            shown.length > 2 ? "px-2" : "px-4",
+          )}
         >
-          <dd className="order-1 truncate text-[28px] font-bold leading-[1.4] tabular-nums text-(--foreground)">
+          <dd
+            className={cn(
+              "order-1 font-bold leading-[1.2] tabular-nums text-(--foreground) [overflow-wrap:anywhere]",
+              shown.length > 2 ? "text-[20px]" : "text-[28px]",
+            )}
+          >
             {typeof s.value === "number" ? s.value.toLocaleString() : s.value}
           </dd>
-          <dt className="order-2 truncate text-[12px] leading-[1.4] text-(--foreground)">
-            {s.label}
-          </dt>
+          <dt className="order-2 text-[12px] leading-[1.4] text-(--foreground)">{s.label}</dt>
         </div>
       ))}
     </dl>

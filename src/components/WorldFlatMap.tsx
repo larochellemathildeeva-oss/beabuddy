@@ -40,6 +40,16 @@ function placeRingLabels<T extends { name: string; x: number; y: number }>(
   });
 }
 
+/** What the map shows, in words: how many countries, and the cities by name. */
+function mapLabel(cities: readonly string[], countries: number): string {
+  const names = [...new Set(cities)];
+  const shown = names.slice(0, 12).join(", ");
+  const more = names.length > 12 ? ` and ${names.length - 12} more` : "";
+  const countriesLine = `${countries} ${countries === 1 ? "country" : "countries"} shaded`;
+  if (names.length === 0) return `A flat map of the world: ${countriesLine}.`;
+  return `A flat map of the world: ${countriesLine}, and a mark for ${shown}${more}.`;
+}
+
 /**
  * The World tab's Stats view: the same places as the globe, laid flat so the
  * whole world is seen at once. Countries you have been to are shaded, your
@@ -105,9 +115,10 @@ export function WorldFlatMap({
     <svg
       viewBox={`0 0 ${W} ${H}`}
       role="img"
-      aria-label={`A flat map of the world with ${points.length} ${
-        points.length === 1 ? "city" : "cities"
-      } you have been to.`}
+      aria-label={mapLabel(
+        points.map((p) => p.name),
+        visitedCountries.size,
+      )}
       className="block h-auto w-full"
     >
       {countries.map((c) =>
