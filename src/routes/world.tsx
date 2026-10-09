@@ -12,9 +12,7 @@ import {
   MoreHorizontal,
   Plus,
   Quote,
-  Search,
   Upload,
-  X,
 } from "@/components/icons";
 import { AppShell } from "@/components/AppShell";
 import { BeaGlobe } from "@/components/world/BeaGlobe";
@@ -302,6 +300,8 @@ function WorldPage() {
 
   /** Open the add sheet where one of the tiles or buttons asked. */
   const startAdd = (mode: "one" | "list", type?: PinType, file?: File) => {
+    // One sheet at a time: the add sheet takes the globe's place.
+    setGlobeOpen(false);
     setAddStart({ key: Date.now(), mode, type, file });
     setAddOpen(true);
   };
@@ -518,13 +518,14 @@ function WorldPage() {
               .filter(Boolean)
               .join(" · "),
           }}
-          onOpen={() =>
+          onOpen={() => {
+            setGlobeOpen(false);
             setOpenLocation({
               name: selected.city,
               city: selected.city,
               country: selectedCity.country,
-            })
-          }
+            });
+          }}
           caption="You've been here"
           onClose={() => setSelected(null)}
         />

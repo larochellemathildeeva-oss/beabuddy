@@ -238,10 +238,12 @@ export async function restoreKeptOffline(uid: string): Promise<string[]> {
  * Signing out from the profile: remove from this phone every trip kept
  * offline that the account holds (directions, plan, map, day pictures), after
  * sending the account any copy it is missing. A copy the account could not
- * take, or any copy at all with no signal, stays on the phone.
+ * take, or any copy at all with no signal, stays on the phone. Once `signal`
+ * is aborted (sign-out gave up waiting), nothing more is removed.
  */
 export async function clearKeptOfflineOnSignOut(
   uid: string,
+  signal?: AbortSignal,
 ): Promise<{ cleared: number; kept: number }> {
   const phone = phoneCopies();
   if (!phone.size) return { cleared: 0, kept: 0 };
@@ -255,8 +257,10 @@ export async function clearKeptOfflineOnSignOut(
   const dated = new Map<string, { savedAt?: string | null }>(
     [...phone].map(([tripId, p]) => [tripId, { savedAt: p.savedAt ?? null }]),
   );
+  if (signal?.aborted) return { cleared: 0, kept: phone.size };
   const { clear, keep } = signOutClears(dated, account);
   for (const tripId of clear) {
+    if (signal?.aborted) break;
     try {
       localStorage.removeItem(`${DIRECTIONS_KEY_PREFIX}${tripId}`);
       localStorage.removeItem(`${DAY_MAPS_KEY_PREFIX}${tripId}`);

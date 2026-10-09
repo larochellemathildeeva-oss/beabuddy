@@ -391,22 +391,16 @@ await flow("shell: every theme and accent saves, restores and responds to accoun
   if (await page.getByRole("radio", { name: "Pink", exact: true }).getAttribute("aria-checked") !== "true") throw new Error("the picker missed a synced accent change");
 }, "shell");
 
-await flow("trips: tabs, layout and picture switches, New trip and Join sheets", async (page) => {
+await flow("trips: tabs, next trip card, Later rows, New trip and Join sheets", async (page) => {
   const text = () => page.evaluate(() => document.body.innerText);
   if (!(await text()).includes("Your trips.")) throw new Error("the Trips header is missing");
-  if (!(await text()).toLowerCase().includes("next up")) throw new Error("Big banner shows no Next up");
-  await page.getByRole("button", { name: "List", exact: true }).click();
-  await page.waitForTimeout(300);
-  if (!(await text()).toLowerCase().includes("upcoming trips") || (await page.evaluate(() => localStorage.getItem("bea-trips-layout"))) !== "list") throw new Error("List did not apply and save");
+  if ((await page.getByRole("link", { name: /^View trip / }).count()) !== 1) throw new Error("the next trip lost View trip");
+  if (!(await text()).includes("Later")) throw new Error("Upcoming lost Later");
   for (const [tab, expect] of [["Past", "Lisbon & Porto"], ["All", "Montréal Holidays"], ["Upcoming", "Trip documents"]]) {
     await page.getByRole("tab", { name: tab, exact: true }).click();
     await page.waitForTimeout(250);
     if (!(await text()).toLowerCase().includes(expect.toLowerCase())) throw new Error(`${tab} does not show ${expect}`);
   }
-  await page.getByRole("button", { name: "More for JQAPALA A", exact: true }).click();
-  for (const item of ["Open trip", "To-dos", "Packing", "Bookings"])
-    if ((await page.getByRole("menuitem", { name: item, exact: true }).count()) !== 1) throw new Error(`the row menu lost ${item}`);
-  await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "New trip", exact: true }).click();
   await page.waitForTimeout(300);
   const sheet = page.getByRole("dialog");
@@ -883,13 +877,16 @@ await flow("save sheet: lists are Recommendation, Bucket list, Been there; Next 
   if ((await page.getByText(/Next time|Wishlist/).count()) !== 0) throw new Error("the page still says Next time or Wishlist");
 }, "recs");
 
-await flow("you: figures, rows, Profile settings, Customize Home, theme and Sign out", async (page) => {
+await flow("you: figures, rows, Profile settings with its rows, Customize Home and theme", async (page) => {
   const text = async () => page.locator("body").innerText();
-  for (const word of ["Travel, your way.", "Trips", "Countries", "Travel preferences", "Béa", "Packing lists", "Photos and memories", "Work travel", "Trip documents", "Appearance", "Data & imports", "Privacy & legal", "Help & FAQ", "Feedback", "About Béa", "Profile settings", "Sign out"])
+  for (const word of ["Travel, your way.", "Trips", "Countries", "Travel preferences", "Béa", "Photos and memories", "Work travel", "Trip documents", "Appearance", "Profile settings"])
     if (!(await text()).includes(word)) throw new Error(`You lost "${word}"`);
   if ((await page.locator("[data-guide='your-bea']").getAttribute("href")) !== "/profile/bea") throw new Error("Béa lost its route");
   await page.getByRole("button", { name: "Profile settings", exact: true }).click();
-  await page.getByRole("dialog").getByLabel("Home city").waitFor();
+  const settings = page.getByRole("dialog");
+  await settings.getByLabel("Home city").waitFor();
+  for (const row of ["Packing lists", "Data & imports", "Privacy & legal", "About Béa", "Sign out"])
+    if ((await settings.getByRole("button", { name: new RegExp(`^${row}`) }).count()) < 1) throw new Error(`Profile settings lost ${row}`);
   await page.keyboard.press("Escape");
   await page.waitForTimeout(300);
   await page.getByRole("button", { name: /Appearance/ }).click();
@@ -927,6 +924,9 @@ await flow("shell: brand, back, guide, five tabs and offline status remain reach
   if (await page.getByText("Travel Buddy", { exact: true }).count() !== 0) throw new Error("the wordmark caption came back");
   await page.setViewportSize({ width: 414, height: 900 });
   await page.getByRole("button", { name: "Menu", exact: true }).click();
+  for (const item of ["Help & FAQ", "Appearance", "Feedback", "Privacy & legal"])
+    if ((await page.getByRole("dialog").getByRole("link", { name: new RegExp(`^${item}`) }).count()) !== 1) throw new Error(`the Menu lost ${item}`);
+  if ((await page.getByRole("dialog").getByRole("button", { name: /^Sign out/ }).count()) !== 1) throw new Error("the Menu lost Sign out");
   await page.getByRole("button", { name: /Help for this page/ }).click();
   await page.waitForTimeout(300);
   if (await page.getByRole("dialog").count() !== 1) throw new Error("the page guide did not open");
@@ -997,12 +997,13 @@ await flow("shell: a null account accent resets visually without storing or uplo
   if (result.accent !== "pink" || result.stored !== null || result.uploaded) throw new Error(`account accent reset: ${JSON.stringify(result)}`);
 }, "shell");
 
-await flow("shell: header actions are named icon buttons at least 48px", async (page) => {
+await flow("shell: header actions are named and at least 48px", async (page) => {
   for (const [role, name] of [["link", "Search your places"], ["button", "Menu"]]) {
     const el = page.getByRole(role, { name, exact: true });
     const box = await el.boundingBox();
     if (!box || box.width < 48 || box.height < 48) throw new Error(`${name} is ${box?.width}x${box?.height}`);
-    if (!(await el.locator("svg").count())) throw new Error(`${name} has no icon`);
+    const words = (await el.innerText()).trim();
+    if (words !== (name === "Menu" ? "Menu" : "Search")) throw new Error(`${name} shows "${words}", not its word`);
   }
 }, "shell");
 
