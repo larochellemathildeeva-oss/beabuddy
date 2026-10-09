@@ -208,3 +208,33 @@ export function PlanAction({
     </button>
   );
 }
+
+/**
+ * A planner step that failed, as the minimalist failure frame draws it:
+ * a heading over a 2px rule, then what went wrong and that the trip itself
+ * is untouched.
+ */
+export function PlanError({ message }: { message: string }) {
+  return (
+    <div role="alert" className="border-t-2 border-foreground pt-3">
+      <p className="text-[12px] leading-[17px] text-foreground">Planner / retry</p>
+      <p className="mt-1 text-[20px] font-bold leading-tight">{retryHeading(message)}</p>
+      <p className="mt-2 break-words text-[14px] leading-[20px] text-destructive">{message}</p>
+      <p className="mt-1 text-[14px] leading-[20px] text-muted-foreground">
+        Your existing trip is still saved.
+      </p>
+    </div>
+  );
+}
+
+/**
+ * The frame's "Try a smaller step." fits a plan Béa could not finish; when
+ * the reason is waiting (busy, a limit, tomorrow) or the connection, a
+ * smaller step would not help, so the heading says so and the message says
+ * what to do (`aiFailure` in ai-errors.ts writes those messages).
+ */
+export function retryHeading(message: string): string {
+  return /\b(minute|tomorrow|busy|limit|allowance|connection|offline)\b/i.test(message)
+    ? "Not right now."
+    : "Try a smaller step.";
+}
