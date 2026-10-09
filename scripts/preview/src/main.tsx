@@ -32,6 +32,7 @@ import { Route as DocsRoute } from "@/routes/profile_.documents";
 import { Route as ForgotRoute } from "@/routes/forgot-password";
 import { Route as ResetRoute } from "@/routes/reset-password";
 import { Route as SharedRoute } from "@/routes/shared.$token";
+import { ErrorPage, NotFoundPage } from "@/components/SystemState";
 import { Route as CalendarRoute } from "@/routes/_authenticated/calendar";
 import { Route as ExpensesRoute } from "@/routes/_authenticated/expenses";
 import { Route as MemoriesRoute } from "@/routes/_authenticated/memories";
@@ -41,7 +42,7 @@ import { Route as StoryRoute } from "@/routes/_authenticated/story";
 /** The pages the mockup does not show, each rendered as its own route. */
 const PAGES: Record<string, unknown> = {
   help: HelpRoute, how: HowRoute, privacy: PrivacyRoute, terms: TermsRoute, prefs: PrefsRoute,
-  bea: BeaRoute, docs: DocsRoute, forgot: ForgotRoute, reset: ResetRoute, shared: SharedRoute,
+  bea: BeaRoute, docs: DocsRoute, forgot: ForgotRoute, reset: ResetRoute, shared: SharedRoute, "shared-gone": SharedRoute,
   calendar: CalendarRoute, expenses: ExpensesRoute, memories: MemoriesRoute, photos: PhotosRoute, story: StoryRoute,
 };
 
@@ -94,7 +95,11 @@ const trip = {
   owner_id: guest ? "someone-else" : "me",
 } as never;
 
-if (sample === "docs-open") {
+if (sample === "not-found") {
+  createRoot(document.getElementById("root")!).render(<NotFoundPage />);
+} else if (sample === "error-page") {
+  createRoot(document.getElementById("root")!).render(<ErrorPage error={new Error("preview")} reset={() => {}} />);
+} else if (sample === "docs-open") {
   // Trip documents with the lock off and a few bookings in it.
   const Page = (DocsRoute as unknown as { options: { component: () => JSX.Element } }).options.component;
   createRoot(document.getElementById("root")!).render(<Page />);

@@ -1,15 +1,8 @@
 import { BeaProvider, BeaFontLinks } from "../components/BeaProvider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import {
-  Outlet,
-  Link,
-  createRootRouteWithContext,
-  useRouter,
-  HeadContent,
-  Scripts,
-} from "@tanstack/react-router";
+import { Outlet, createRootRouteWithContext, HeadContent, Scripts } from "@tanstack/react-router";
 import { useCallback, useEffect, type ReactNode } from "react";
-import { reportError } from "@/lib/report";
+import { ErrorPage, NotFoundPage } from "../components/SystemState";
 
 import appCss from "../styles.css?url";
 import { Tour, useTourControl } from "../components/Tour";
@@ -27,108 +20,6 @@ import { ACCESSIBILITY_BOOT_SCRIPT } from "@/lib/accessibility";
 import { ACCENT_BOOT_SCRIPT, DEFAULT_ACCENT } from "@/lib/accent";
 
 const APP_VERSION = typeof __APP_VERSION__ === "string" ? __APP_VERSION__ : "1.0.0";
-
-const PAGE_BUTTON = "btn-primary inline-flex items-center justify-center px-6";
-const PAGE_BUTTON_QUIET =
-  "inline-flex min-h-[var(--h-button)] items-center justify-center rounded-[var(--r-button)] border border-border bg-card px-6 text-[16px] font-semibold text-foreground";
-
-function NotFoundComponent() {
-  return (
-    <main className="flex min-h-screen items-center justify-center bg-background px-6">
-      <div className="max-w-md text-center">
-        <p className="label-caps">Page not found</p>
-        <h1 className="mt-2 font-display text-[40px] leading-[1.1]">Béa can't find that page.</h1>
-        <p className="mt-3 text-[16px] text-muted-foreground">
-          It may have moved, or the link may be mistyped.
-        </p>
-        <div className="mt-6">
-          <Link to="/" className={PAGE_BUTTON}>
-            Back home
-          </Link>
-        </div>
-      </div>
-    </main>
-  );
-}
-
-function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
-  console.error(error);
-  const router = useRouter();
-
-  // console.error dies in the user's browser. File it so a crash someone hit on
-  // their phone is visible to us afterwards.
-  useEffect(() => {
-    reportError(error, "route error boundary");
-    // A code file that would not load (a deploy replaced it, or a stale copy
-    // was kept): one fresh load fetches the current ones. Not while offline
-    // (the kept copies are all there is then), and at most once in ten
-    // minutes, so a real outage cannot loop but a later deploy still recovers.
-    if (
-      !/importing a module script failed|failed to fetch dynamically imported module/i.test(
-        error.message,
-      )
-    )
-      return;
-    if (navigator.onLine === false) return;
-    try {
-      const last = Number(sessionStorage.getItem("bea-chunk-reload") ?? 0);
-      if (Date.now() - last < 10 * 60_000) return;
-      sessionStorage.setItem("bea-chunk-reload", String(Date.now()));
-    } catch {
-      return;
-    }
-    let live = true;
-    void (async () => {
-      try {
-        const regs = await navigator.serviceWorker?.getRegistrations();
-        await Promise.all((regs ?? []).map((r) => r.update().catch(() => {})));
-      } catch {
-        // clear the copies anyway
-      }
-      try {
-        const keys = await caches.keys();
-        await Promise.all(
-          keys
-            .filter((k) => k.startsWith("bea-pages-") || k.startsWith("bea-assets-"))
-            .map((k) => caches.delete(k)),
-        );
-      } catch {
-        // reload anyway
-      }
-      if (live) window.location.reload();
-    })();
-    return () => {
-      live = false;
-    };
-  }, [error]);
-
-  return (
-    <main className="flex min-h-screen items-center justify-center bg-background px-6">
-      <div className="max-w-md text-center">
-        <p className="label-caps">Something slipped</p>
-        <h1 className="mt-2 font-display text-[40px] leading-[1.1]">This page didn't load.</h1>
-        <p className="mt-3 text-[16px] text-muted-foreground">
-          That one's on us. Try again, or head home.
-        </p>
-        <div className="mt-6 flex flex-wrap justify-center gap-2">
-          <button
-            type="button"
-            onClick={() => {
-              router.invalidate();
-              reset();
-            }}
-            className={PAGE_BUTTON}
-          >
-            Try again
-          </button>
-          <a href="/" className={PAGE_BUTTON_QUIET}>
-            Back home
-          </a>
-        </div>
-      </div>
-    </main>
-  );
-}
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   head: () => ({
@@ -160,8 +51,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   }),
   shellComponent: RootShell,
   component: RootComponent,
-  notFoundComponent: NotFoundComponent,
-  errorComponent: ErrorComponent,
+  notFoundComponent: NotFoundPage,
+  errorComponent: ErrorPage,
 });
 
 function RootShell({ children }: { children: ReactNode }) {

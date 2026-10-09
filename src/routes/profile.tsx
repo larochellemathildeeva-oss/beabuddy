@@ -3,7 +3,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { friendlyError } from "@/lib/friendly-error";
 import { formatTripLocation } from "@/lib/place-label";
 import { useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState, type ComponentType } from "react";
+import { useEffect, useRef, useState, type ComponentType, type ReactNode } from "react";
 import { BookOpen, CalendarDays, ChevronRight, type LucideProps } from "@/components/icons";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
@@ -11,7 +11,6 @@ import { rememberedProfileName, rememberProfileName, shownName } from "@/lib/pro
 import { Sheet } from "@/components/Sheet";
 import { ConfirmSheet } from "@/components/ConfirmSheet";
 import { resumeOrReplayTour } from "@/components/Tour";
-import { useSignOut } from "@/hooks/useSignOut";
 import { PackingLists } from "@/components/PackingLists";
 import { CustomizeHome } from "@/components/CustomizeHome";
 import { FeedbackForm } from "@/components/FeedbackForm";
@@ -143,6 +142,10 @@ function ProfilePage() {
         setDisplayName(data.display_name ?? "");
         rememberProfileName(safeStorage(), user.id, data.display_name ?? "");
         setHomeCity(data.home_city ?? "");
+        lastSaved.current = {
+          display_name: data.display_name ?? "",
+          home_city: data.home_city ?? "",
+        };
         if (data.preferences?.length) setInterests(data.preferences);
       });
     return () => {
@@ -150,18 +153,40 @@ function ProfilePage() {
     };
   }, [user]);
 
-  const saveProfile = async (patch: {
+  /** What the account holds, so a blur and Save details do not write the same thing twice. */
+  const lastSaved = useRef<{ display_name?: string; home_city?: string }>({});
+  /** Saves run one after another, never overlapping. */
+  const saveQueue = useRef<Promise<boolean>>(Promise.resolve(true));
+  const [savingProfile, setSavingProfile] = useState(false);
+  const saveProfile = (patch: {
     display_name?: string;
     home_city?: string;
     preferences?: string[];
-  }) => {
-    if (!user) return;
-    await supabase.from("profiles").upsert({ id: user.id, ...patch });
-    if (patch.display_name !== undefined) {
-      rememberProfileName(safeStorage(), user.id, patch.display_name);
-    }
-    setSaved(true);
-    setTimeout(() => setSaved(false), 1600);
+  }): Promise<boolean> => {
+    const run = saveQueue.current.then(async () => {
+      if (!user) return false;
+      const changed = Object.fromEntries(
+        Object.entries(patch).filter(
+          ([key, value]) => lastSaved.current[key as keyof typeof lastSaved.current] !== value,
+        ),
+      ) as typeof patch;
+      if (Object.keys(changed).length === 0) return true;
+      const { error } = await supabase.from("profiles").upsert({ id: user.id, ...changed });
+      if (error) {
+        toast.error("That didn't save. Try again.");
+        return false;
+      }
+      if (changed.display_name !== undefined) {
+        lastSaved.current.display_name = changed.display_name;
+        rememberProfileName(safeStorage(), user.id, changed.display_name);
+      }
+      if (changed.home_city !== undefined) lastSaved.current.home_city = changed.home_city;
+      setSaved(true);
+      setTimeout(() => setSaved(false), 1600);
+      return true;
+    });
+    saveQueue.current = run.catch(() => false);
+    return run;
   };
 
   useEffect(() => {
@@ -176,18 +201,13 @@ function ProfilePage() {
   // The same figure as World: places been there and trips started.
   const countryCount = useCountriesVisited(t.trips);
 
-  const signOut = useSignOut();
-
   const replayTour = () => {
     resumeOrReplayTour();
     void navigate({ to: "/" });
   };
 
   return (
-    <AppShell
-      eyebrow={user && signedInName ? `You / ${signedInName}` : "You"}
-      title="Travel, your way."
-    >
+    <AppShell eyebrow="You / menu" title="Your settings.">
       <div className="you-page space-y-6">
         {!loading && !user && (
           <div data-guide="profile-account" className={`${PLAIN} p-4`}>
@@ -204,48 +224,33 @@ function ProfilePage() {
           </div>
         )}
 
-        {user && (
-          <section data-guide="profile-account" className="space-y-3">
-            <div className="grid grid-cols-2 overflow-hidden rounded-[var(--r-card)] border border-border">
-              <Figure value={String(tripCount)} label="Trips" to="/trips" />
-              <Figure
-                value={String(countryCount)}
-                label={countryCount === 1 ? "Country" : "Countries"}
-                to="/world"
-              />
-            </div>
-            <div className="border-t border-border pt-2">
-              <p className="label-caps">
-                {[signedInName, homeCity].filter(Boolean).join(" / ")}
-                {saved ? " · Saved" : ""}
-              </p>
-            </div>
-            <Link
-              to="/preferences"
-              data-guide="travel-preferences"
-              className="block text-[20px] leading-[28px]"
-            >
-              {interests.length > 0 ? interestLine(interests) : "Add your interests"}
-            </Link>
-          </section>
-        )}
-
-        <div>
+        {/* The rows of the Figma "You / menu" frame, in its order. */}
+        <div data-guide={user ? "profile-account" : undefined}>
           {user ? (
-            <YouRow title="Travel preferences" note="How you like to travel" to="/preferences" />
+            <YouRow
+              title="Profile settings"
+              note="Name and home city"
+              onClick={() => setPanel("settings")}
+              guide="profile-settings"
+            />
           ) : null}
-          <YouRow
-            title="Béa"
-            note={`${modeName(bea.mix)} · Personality and assistance`}
-            to="/profile/bea"
-            guide="your-bea"
-          />
-          <YouRow
-            title="Appearance"
-            note="Your look and reading options"
-            onClick={() => setPanel("appearance")}
-          />
-          <YouRow title="Photos and memories" note="Your travels, kept together" to="/photos" />
+          {user ? (
+            <YouRow
+              title="Travel preferences"
+              note="How you like to travel"
+              to="/preferences"
+              guide="travel-preferences"
+            />
+          ) : null}
+          {user ? (
+            <YouRow
+              title="Packing lists"
+              note="Reusable templates"
+              onClick={() => setPanel("packing")}
+              guide="packing-lists"
+            />
+          ) : null}
+          <YouRow title="Photos & memories" note="Your travels kept together" to="/photos" />
           <YouRow
             title="Work travel"
             note="Receipts and expenses"
@@ -254,98 +259,114 @@ function ProfilePage() {
           />
           <YouRow
             title="Trip documents"
-            note="Protected when you need them"
+            note="Bookings and references"
             href="/profile/documents"
             guide="trip-documents"
           />
-          {!user ? (
+          <YouRow
+            title="Appearance"
+            note="Calm, Colorful and Dark"
+            onClick={() => setPanel("appearance")}
+            guide="your-bea"
+          />
+          {user ? (
             <YouRow
-              title="Privacy & legal"
-              note="How your data is kept"
-              onClick={() => setPanel("legal")}
+              title="Data & imports"
+              note="Bring your travel history"
+              onClick={() => setPanel("data")}
+              guide="offline-options"
             />
           ) : null}
+          <YouRow
+            title="Privacy & legal"
+            note="Your data and choices"
+            onClick={() => setPanel("legal")}
+            guide="legal"
+          />
+          <YouRow title="Help & FAQ" note="A little guidance" to="/help" />
+          <YouRow title="Feedback" note="Tell Béa something" onClick={() => setPanel("feedback")} />
+          <YouRow
+            title="About Béa"
+            note="Your travel buddy"
+            onClick={() => setPanel("about")}
+            guide="replay-tour"
+          />
         </div>
 
-        {user && (
-          <div className="space-y-3">
-            <button
-              type="button"
-              data-guide="profile-settings"
-              onClick={() => setPanel("settings")}
-              className={SECONDARY}
-            >
-              Profile settings
-            </button>
-          </div>
-        )}
+        <Link to="/" className="btn-primary flex w-full items-center justify-center px-4">
+          Done
+        </Link>
       </div>
 
       <Sheet
         open={panel === "settings"}
         onClose={close}
-        title="Profile settings"
-        hint="Your name and home city"
+        page
+        hint="Profile settings"
+        title="A little about you"
+        crumb="You"
       >
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <p className="label-caps text-foreground">Your details</p>
+        <form
+          className="space-y-3"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (savingProfile) return;
+            setSavingProfile(true);
+            void saveProfile({ display_name: displayName, home_city: homeCity })
+              .then((ok) => {
+                // A failed save keeps the page open, to try again.
+                if (ok) close();
+              })
+              .finally(() => setSavingProfile(false));
+          }}
+        >
+          <LabelledField label="Your name" id="profile-name">
             <input
+              id="profile-name"
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
               onBlur={() => saveProfile({ display_name: displayName })}
               placeholder="Your name"
-              aria-label="Your name"
-              className="w-full rounded-full border border-[var(--field-border)] bg-card px-4 py-2.5 text-[15px] outline-none focus:border-primary"
+              className="min-h-11 w-full bg-transparent text-[16px] outline-none"
             />
+          </LabelledField>
+          <LabelledField label="Home city" id="profile-city">
             <input
+              id="profile-city"
               value={homeCity}
               onChange={(e) => setHomeCity(e.target.value)}
               onBlur={() => saveProfile({ home_city: homeCity })}
               placeholder="Home city"
-              aria-label="Home city"
-              className="w-full rounded-full border border-[var(--field-border)] bg-card px-4 py-2.5 text-[15px] outline-none focus:border-primary"
+              className="min-h-11 w-full bg-transparent text-[16px] outline-none"
             />
-            {saved && <p className="text-[12.5px] text-muted-foreground">Saved</p>}
-            {user?.email && (
-              <p className="text-[12.5px] text-muted-foreground">
-                Signed in as {user.email} — everything saves to your account.
-              </p>
-            )}
-          </div>
-          {/* Help, Privacy & legal, Feedback, About and Sign out are in the Menu too. */}
-          <div className="border-t border-border">
-            <YouRow
-              title="Packing lists"
-              note="Your reusable lists"
-              onClick={() => setPanel("packing")}
-              guide="packing-lists"
-            />
-            <YouRow
-              title="Data & imports"
-              note="Calendar, offline trips on this phone"
-              onClick={() => setPanel("data")}
-              guide="offline-options"
-            />
-            <YouRow
-              title="Privacy & legal"
-              note="How your data is kept"
-              onClick={() => setPanel("legal")}
-              guide="legal"
-            />
-            <YouRow
-              title="About Béa"
-              note="How Béa works and the tour"
-              onClick={() => setPanel("about")}
-              guide="replay-tour"
-            />
-          </div>
-          {user ? (
-            <button type="button" onClick={() => void signOut()} className={SECONDARY}>
-              Sign out
-            </button>
-          ) : null}
-        </div>
+          </LabelledField>
+          {/* Travel tags are chosen on Travel preferences; the box shows them and goes there. */}
+          <Link
+            to="/preferences"
+            className="block rounded-[var(--r-card)] border border-[var(--field-border)] bg-card px-4 py-3"
+          >
+            <span className="block text-[12px] text-foreground">Travel tags</span>
+            <span className="mt-1 block text-[16px]">
+              {interests.length > 0 ? interestLine(interests) : "Add your interests"}
+            </span>
+          </Link>
+          {user?.email && (
+            <p className="text-[12px] text-muted-foreground">
+              Signed in as {user.email}
+              {` · ${tripCount} ${tripCount === 1 ? "trip" : "trips"} · ${countryCount} ${
+                countryCount === 1 ? "country" : "countries"
+              }`}
+              {saved ? " · Saved" : ""}
+            </p>
+          )}
+          <button
+            type="submit"
+            disabled={savingProfile}
+            className="btn-primary flex w-full items-center justify-center px-4 disabled:opacity-60"
+          >
+            Save details
+          </button>
+        </form>
       </Sheet>
 
       <Sheet
@@ -375,6 +396,12 @@ function ProfilePage() {
           <StopPicturesPicker />
           <AccessibilityPicker />
           <CustomizeHome variant="row" trips={t} />
+          {/* Béa's personality: the You list in the design has no row of its own for it. */}
+          <YouRow
+            title="Béa's personality"
+            note={`${modeName(bea.mix)} · How much she suggests and helps`}
+            to="/profile/bea"
+          />
         </div>
       </Sheet>
 
@@ -527,24 +554,26 @@ function ProfilePage() {
   );
 }
 
-/** A figure in the joined pair under the title: a large number and its word. */
-function Figure({ value, label, to }: { value: string; label: string; to: "/trips" | "/world" }) {
+/** A field in a hairline box with its label inside, as the Figma forms draw it. */
+function LabelledField({
+  label,
+  id,
+  children,
+}: {
+  label: string;
+  id: string;
+  children: ReactNode;
+}) {
   return (
-    <Link
-      to={to}
-      className="flex min-w-0 flex-col gap-1 px-4 py-3 [&+&]:border-s [&+&]:border-border"
-    >
-      <span className="text-[28px] font-bold leading-[1.2]">{value}</span>
-      <span className="text-[12px] leading-[16px]">{label}</span>
-    </Link>
+    <div className="rounded-[var(--r-card)] border border-[var(--field-border)] bg-card px-4 py-3 focus-within:border-primary">
+      <label htmlFor={id} className="block text-[12px] text-foreground">
+        {label}
+      </label>
+      <div className="mt-1">{children}</div>
+    </div>
   );
 }
 
-/** A secondary action: a hairline box, the words in the middle. */
-const SECONDARY =
-  "flex min-h-[52px] w-full items-center justify-center rounded-[var(--r-button)] border border-border bg-card px-4 text-[14px] font-medium";
-
-/** A row of the You list: a title, one line under it, a hairline. */
 function YouRow({
   title,
   note,

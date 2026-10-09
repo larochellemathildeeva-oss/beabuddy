@@ -129,19 +129,17 @@ function SharedTripPending() {
 function SharedTripError({ error }: { error: Error }) {
   const router = useRouter();
   return (
-    <AppShell publicPage eyebrow="Shared trip" title="A trip, shared with you.">
-      <div className="plain-card space-y-3 p-4">
-        <p className="text-[16px] text-muted-foreground">
-          {error.message || "This trip didn't load. Try again."}
-        </p>
-        <button
-          type="button"
-          onClick={() => void router.invalidate()}
-          className="btn-primary flex w-full items-center justify-center px-4"
-        >
-          Try again
-        </button>
-      </div>
+    <AppShell publicPage eyebrow="Shared trip" title="This journey didn't load.">
+      <p className="mt-1 text-[14px] text-foreground">
+        {error.message || "Try again in a moment."}
+      </p>
+      <button
+        type="button"
+        onClick={() => void router.invalidate()}
+        className="btn-primary mt-4 flex w-full items-center justify-center px-4"
+      >
+        Try again
+      </button>
     </AppShell>
   );
 }
@@ -196,11 +194,16 @@ function SharedTripPage() {
 
   if (!trip) {
     return (
-      <AppShell publicPage eyebrow="Shared trip" title="A trip, shared with you.">
-        <p className="plain-card p-4 text-[16px] text-muted-foreground">
-          This link doesn't open a trip any more. It may have expired, or been turned off by the
-          traveller who shared it.
+      <AppShell publicPage eyebrow="Shared trip" title="This journey isn't available.">
+        <p className="mt-1 text-[14px] text-foreground">
+          The link may have expired or sharing may have been turned off.
         </p>
+        <Link
+          to="/"
+          className="btn-primary mt-4 inline-flex w-full items-center justify-center px-6"
+        >
+          Open home
+        </Link>
       </AppShell>
     );
   }
