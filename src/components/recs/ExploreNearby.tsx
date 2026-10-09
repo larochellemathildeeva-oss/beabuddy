@@ -73,6 +73,7 @@ const pinTypes = SAVE_LISTS;
  */
 export function ExploreNearby({
   initialKind = "All",
+  initialView = "map",
   saved,
   tripLine,
   savingName,
@@ -83,6 +84,8 @@ export function ExploreNearby({
   onHere,
 }: {
   initialKind?: BrowseKind | "All";
+  /** Recs' Nearby tab opens the list, its Map tab the map. */
+  initialView?: "map" | "list";
   saved: readonly RecoRowDB[];
   /** The dates of a trip under way, for the line under the title. */
   tripLine?: string | undefined;
@@ -112,7 +115,9 @@ export function ExploreNearby({
   const [placesError, setPlacesError] = useState(false);
   const [placesRetryKey, setPlacesRetryKey] = useState(0);
   const [kind, setKind] = useState<BrowseKind | "All">(initialKind);
-  const [view, setView] = useState<"map" | "list">("map");
+  const [view, setView] = useState<"map" | "list">(initialView);
+  // The screen stays mounted between visits: a tab picks the view again.
+  useEffect(() => setView(initialView), [initialView]);
   const [sort, setSort] = useState<"distance" | "name">("distance");
   const [showSaved, setShowSaved] = useState(true);
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -891,10 +896,14 @@ export function ExploreNearby({
                     if (view === "list") setView("map");
                   }}
                   onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      setSelectedId(p.id);
-                      setCenter({ lat: p.lat, lon: p.lon });
-                    }
+                    // Enter and Space, as a button does, and the same move to the map.
+                    if (e.target !== e.currentTarget) return;
+                    if (e.key !== "Enter" && e.key !== " ") return;
+                    e.preventDefault();
+                    setSelectedId(p.id);
+                    setCenter({ lat: p.lat, lon: p.lon });
+                    setDraft(null);
+                    if (view === "list") setView("map");
                   }}
                   className="recs-box flex cursor-pointer items-center gap-3 p-2.5"
                 >

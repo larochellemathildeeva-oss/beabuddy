@@ -46,11 +46,10 @@ function subscribe(onChange: () => void): () => void {
 export function useHomeNextLayout(state: HomeState) {
   const { user } = useAuth();
   const userId = user?.id;
-  const accountLayout = useHomeLayout().modules;
+  const { modules: accountLayout, saved } = useHomeLayout();
   // A layout the traveller chose on Home is where each list starts; the app's untouched default is not.
-  const account = isUntouched(accountLayout, HOME_KEYS, DEFAULT_HOME_MODULES)
-    ? null
-    : accountLayout;
+  const account =
+    !saved || isUntouched(accountLayout, HOME_KEYS, DEFAULT_HOME_MODULES) ? null : accountLayout;
   const key = homeNextLayoutKey(state, userId);
   const raw = useSyncExternalStore(
     subscribe,

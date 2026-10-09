@@ -102,8 +102,8 @@ export const QUICK_STEPS: TourStep[] = [
     fallback: "[data-guide='bucket-list']",
   },
   {
-    title: "Your travel globe",
-    body: "Everywhere you've been, on one globe: the countries, their provinces or states, and a dot for each city. Drag to spin it. Add places, beside it, fills in more.",
+    title: "Your travel map",
+    body: "Everywhere you've been, on one map: the countries you've been to, shaded, and a dot for each city. Globe controls and geography, below it, opens the globe to spin. Add places fills in more.",
     to: "/world",
     search: { tab: "map" },
     selector: "[data-guide='globe']",
@@ -279,8 +279,8 @@ export const WALKS: Walk[] = [
     hint: "Your countries, cities and memories on one globe.",
     steps: [
       {
-        title: "Your globe",
-        body: "Every country and city you've been to, shaded in. Drag to spin it.",
+        title: "Your map",
+        body: "Every country and city you've been to, shaded in. Globe controls and geography opens the globe to spin.",
         to: "/world",
         search: { tab: "map" },
         selector: "[data-guide='globe']",

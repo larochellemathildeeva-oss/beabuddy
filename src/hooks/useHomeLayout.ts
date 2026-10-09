@@ -1,3 +1,7 @@
+import { useEffect } from "react";
+import type { TripRow } from "@/hooks/useTrips";
+import { pickActiveTrip } from "@/lib/home-trip";
+import { toLocalISODate } from "@/lib/trip-dates";
 import { normalizeHomeWidgets } from "@/lib/home-widget-grid";
 import { homeLayoutKey } from "@/lib/account-settings";
 import { createModuleStore, type ModuleInfo } from "@/hooks/moduleStore";
@@ -81,6 +85,20 @@ export const NO_TRIP_DEFAULTS: ReadonlySet<HomeSectionKey> = new Set([
   "future",
 ]);
 
+/**
+ * Per account, whether Home has no trip ahead, once its trips have loaded.
+ * Until then the defaults are the trip ones, so nothing appears and then goes
+ * again, and one account's answer is never another's.
+ */
+const noTripFor = new Map<string, boolean>();
+
+/** The defaults for this moment: without the no-trip modules while a trip may be ahead. */
+export function homeDefaultsNow(noTrip: boolean): HomeSectionKey[] {
+  return noTrip
+    ? DEFAULT_HOME_MODULES
+    : DEFAULT_HOME_MODULES.filter((k) => !NO_TRIP_DEFAULTS.has(k));
+}
+
 /** Wide modules take a row; the others sit two to a row as cards. */
 export const HOME_SMALL: ReadonlySet<HomeSectionKey> = new Set([
   "saved",
@@ -103,4 +121,29 @@ export const useHomeLayout = createModuleStore({
   fixed: [],
   // Home already showed it before it could be switched off.
   newOn: ["suggested"],
+  defaultsNow: (userId) => homeDefaultsNow(Boolean(userId && noTripFor.get(userId))),
 });
+
+/** Records, once an account's trips have loaded, whether it has no trip ahead. */
+export function setHomeNoTrip(userId: string, noTrip: boolean): void {
+  if (noTripFor.get(userId) === noTrip) return;
+  noTripFor.set(userId, noTrip);
+  useHomeLayout.refresh();
+}
+
+/**
+ * Wherever Home's modules are shown or chosen (Home, Customize home under
+ * You), tell the defaults whether this account has a trip ahead. Given the
+ * screen's own trips, so they are not loaded twice.
+ */
+export function useHomeTripMoment(
+  trips: { uid: string | null; loading: boolean; trips: TripRow[] } | undefined,
+): void {
+  const today = toLocalISODate(new Date());
+  const uid = trips?.uid ?? null;
+  const ready = Boolean(trips && !trips.loading);
+  const noTrip = ready && !pickActiveTrip(trips?.trips ?? [], today);
+  useEffect(() => {
+    if (uid && ready) setHomeNoTrip(uid, noTrip);
+  }, [uid, ready, noTrip]);
+}
