@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { DayMap } from "@/components/day/DayMap";
-import { MapFootnotes } from "@/components/day/DayMapView";
 import { between, type LegFor } from "@/components/day/stop-words";
 import type { ItineraryRow } from "@/hooks/useTrips";
 import { companionState } from "@/lib/companion";
-import { dayMapModel, toggleSelection } from "@/lib/day-map";
+import { dayMapCaption, dayMapModel, toggleSelection, type DayMapModel } from "@/lib/day-map";
+import { GEOAPIFY_ATTRIBUTION, OSM_ATTRIBUTION, OVERTURE_ATTRIBUTION } from "@/lib/geo-endpoints";
 import { timeForRail } from "@/lib/timeline-kind";
 import type { TimelineDayGroup } from "@/lib/timeline-groups";
 
@@ -38,7 +38,10 @@ export function MapSplit({
 }) {
   const stops = groups.flatMap((group) => group.items);
   const model = dayMapModel(stops, { nesting });
-  const numbers = new Map(model.pins.map((pin) => [pin.id, pin.number]));
+  // Every row numbered by its place in the list shown, as the pins are, so a
+  // stop with no pin never takes a number a pin already has.
+  const numbers = new Map(stops.map((stop, index) => [stop.id, index + 1]));
+  const placed = new Set(model.pins.map((pin) => pin.id));
   const [selectedId, setSelectedId] = useState<string | null>(focusId ?? null);
   const mapRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -49,11 +52,12 @@ export function MapSplit({
     setSelectedId((current) => toggleSelection(current, id));
     document
       .getElementById(`split-${id}`)
-      ?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+      ?.scrollIntoView({ block: "nearest", behavior: scrollBehavior() });
   };
   const pickFromList = (id: string) => {
     setSelectedId((current) => toggleSelection(current, id));
-    if (numbers.has(id)) mapRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    if (placed.has(id))
+      mapRef.current?.scrollIntoView({ block: "nearest", behavior: scrollBehavior() });
   };
   const many = groups.length > 1;
 
@@ -68,6 +72,8 @@ export function MapSplit({
             label={`Map of ${model.pins.length === 1 ? "one place" : `${model.pins.length} places`}`}
             heightClass="h-[320px] w-full"
             roundedClass="rounded-[var(--r-card)]"
+            // Opened from "Locate on map": frame that stop, not the whole day.
+            follow={Boolean(focusId && placed.has(focusId))}
           />
         </div>
       ) : (
@@ -106,7 +112,7 @@ export function MapSplit({
                     className="trip-row"
                   >
                     <span className="trip-row-title">
-                      {String(number).padStart(2, "0")} / {stop.title}
+                      {TWO_DIGITS.format(number)} / {stop.title}
                     </span>
                     {note ? <span className="trip-row-note">{note}</span> : null}
                   </button>
@@ -166,6 +172,31 @@ export function LiveMap({
         roundedClass="rounded-[var(--r-card)]"
       />
       <MapFootnotes model={model} brief />
+    </div>
+  );
+}
+
+/** "01", "02": the design's two-digit stop numbers, in the reader's digits. */
+const TWO_DIGITS = new Intl.NumberFormat(undefined, { minimumIntegerDigits: 2 });
+
+/** Smooth, unless the device or Béa's Reading settings ask for less motion. */
+function scrollBehavior(): ScrollBehavior {
+  const reduce =
+    document.documentElement.dataset["motion"] === "reduce" ||
+    window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+  return reduce ? "auto" : "smooth";
+}
+
+/** What the map cannot show, and the credits its data asks for. */
+function MapFootnotes({ model, brief = false }: { model: DayMapModel; brief?: boolean }) {
+  const caption = dayMapCaption(model);
+  return (
+    <div className={brief ? "mt-1.5 space-y-1" : "mt-3 space-y-1"}>
+      {caption && <p className="text-[14px] leading-snug text-muted-foreground">{caption}</p>}
+      {/* The credit ODbL asks for, next to the data it applies to. */}
+      <p className="text-[13px] leading-snug text-muted-foreground">
+        {OSM_ATTRIBUTION} · {GEOAPIFY_ATTRIBUTION} · {OVERTURE_ATTRIBUTION}
+      </p>
     </div>
   );
 }

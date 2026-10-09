@@ -1510,9 +1510,25 @@ export function TripDetail({
   );
   // Live and Split: the days as ruled words under the map ("Today / All
   // days" in the design). In Live, "All days" asks which day to follow.
-  const mapDayTabs = offerDays ? (
-    <DayCards ruled chips={chips} value={chosenDay} onChange={pickDayManually} />
-  ) : null;
+  // Split hides the city picker, so its tabs offer every day of the trip and
+  // a pick there clears the city, as the banner's day circles did before.
+  const splitChips = dayChips(allDayGroups, todayKey);
+  const mapDayTabs =
+    perspective === "map" ? (
+      shouldOfferDays(allDayGroups) ? (
+        <DayCards
+          ruled
+          chips={splitChips}
+          value={chosenDay}
+          onChange={(day) => {
+            setCityChoice("");
+            pickDayManually(day);
+          }}
+        />
+      ) : null
+    ) : offerDays ? (
+      <DayCards ruled chips={chips} value={chosenDay} onChange={pickDayManually} />
+    ) : null;
   // In every view the tracker sits at the foot of the banner: the trip's days
   // on Overview, the day's stops in the others.
   const bannerTracker = showDayTracker ? (
@@ -1924,7 +1940,7 @@ export function TripDetail({
                 focusId={mapFocus}
                 groups={shownGroups}
                 nesting={view.prefs.nesting}
-                ordinals={Object.fromEntries(chips.map((chip) => [chip.key, chip.ordinal]))}
+                ordinals={Object.fromEntries(splitChips.map((chip) => [chip.key, chip.ordinal]))}
                 legFor={travelInto}
                 dayTabs={mapDayTabs}
                 {...directionsButton}
