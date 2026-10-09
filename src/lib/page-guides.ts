@@ -95,7 +95,7 @@ export const guides: Record<string, Guide> = {
     steps: [
       {
         title: "The map itself",
-        body: "Drag to spin the globe, pinch or scroll to zoom. It shows where you've been: the countries, the provinces or states inside them, and a dot for each city.",
+        body: "It shows where you've been: the countries, the provinces or states inside them, and a dot for each city. Globe controls and geography, below it, opens the globe: drag to spin, pinch or scroll to zoom, filter and search.",
         selector: "[data-guide='globe']",
       },
       {

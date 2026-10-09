@@ -40,6 +40,16 @@ function placeRingLabels<T extends { name: string; x: number; y: number }>(
   });
 }
 
+/** What the map shows, in words: how many countries, and the cities by name. */
+function mapLabel(cities: readonly string[], countries: number): string {
+  const names = [...new Set(cities)];
+  const shown = names.slice(0, 12).join(", ");
+  const more = names.length > 12 ? ` and ${names.length - 12} more` : "";
+  const countriesLine = `${countries} ${countries === 1 ? "country" : "countries"} shaded`;
+  if (names.length === 0) return `A flat map of the world: ${countriesLine}.`;
+  return `A flat map of the world: ${countriesLine}, and a mark for ${shown}${more}.`;
+}
+
 /**
  * The World tab's Stats view: the same places as the globe, laid flat so the
  * whole world is seen at once. Countries you have been to are shaded, your
@@ -52,7 +62,13 @@ export function WorldFlatMap({
   visitedCountries,
   regions,
   countryMarks,
+  atlas = false,
 }: {
+  /**
+   * World's Map view, as the minimalist design draws it: hairline countries,
+   * the ones you have been to faintly filled, a dot per city, no names.
+   */
+  atlas?: boolean;
   pins: Pin[];
   visitedCountries: ReadonlySet<string>;
   regions?: { id: string; name: string; feature: Feature<Geometry, GeoJsonProperties> }[];
@@ -99,13 +115,22 @@ export function WorldFlatMap({
     <svg
       viewBox={`0 0 ${W} ${H}`}
       role="img"
-      aria-label={`A flat map of the world with ${points.length} ${
-        points.length === 1 ? "city" : "cities"
-      } you have been to.`}
+      aria-label={mapLabel(
+        points.map((p) => p.name),
+        visitedCountries.size,
+      )}
       className="block h-auto w-full"
     >
       {countries.map((c) =>
-        c.d ? (
+        c.d && atlas ? (
+          <path
+            key={c.id}
+            d={c.d}
+            fill={c.visited ? "var(--muted)" : "none"}
+            stroke="var(--border)"
+            strokeWidth={0.4}
+          />
+        ) : c.d ? (
           <path
             key={c.id}
             d={c.d}
@@ -117,9 +142,23 @@ export function WorldFlatMap({
         ) : null,
       )}
       {regionPaths.map((r) =>
-        r.d ? <path key={r.id} d={r.d} fill="var(--visited)" opacity={0.9} /> : null,
+        r.d ? (
+          <path
+            key={r.id}
+            d={r.d}
+            fill={atlas ? "var(--border)" : "var(--visited)"}
+            opacity={atlas ? 1 : 0.9}
+          />
+        ) : null,
       )}
-      {points.map((p) => (
+      {atlas
+        ? points.map((p) => (
+            <circle key={p.id} cx={p.x} cy={p.y} r={2.2} fill="var(--foreground)">
+              <title>{p.name}</title>
+            </circle>
+          ))
+        : null}
+      {(atlas ? [] : points).map((p) => (
         <g key={p.id} transform={`translate(${p.x} ${p.y})`}>
           <title>{p.name}</title>
           {/* A map pin, its point on the place. */}
@@ -134,7 +173,7 @@ export function WorldFlatMap({
       ))}
       {/* Country rings go over the city pins, as on the globe, with the
           name beside them where it has room. */}
-      {rings.map((r) => (
+      {(atlas ? [] : rings).map((r) => (
         <g key={`country-${r.key}`}>
           <title>{r.name}</title>
           <circle

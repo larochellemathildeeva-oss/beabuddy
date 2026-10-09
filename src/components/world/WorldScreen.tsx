@@ -402,36 +402,31 @@ export function WorldStatsStrip({
 }) {
   const shown = stats.slice(0, 4);
   if (shown.length === 0) return null;
+  // Joined figure cells, as the minimalist design draws them: the number in
+  // bold over its label, each cell on a hairline.
   const body = (
     <dl
       className="grid w-full"
       style={{ gridTemplateColumns: `repeat(${shown.length}, minmax(0, 1fr))` }}
     >
-      {shown.map((s, i) => (
-        <div key={s.key} className="relative flex flex-col items-center px-1 py-2.5">
+      {shown.map((s) => (
+        <div
+          key={s.key}
+          className={cn(
+            "flex min-w-0 flex-col gap-1 rounded-[var(--r-card)] border border-(--border) py-3",
+            // Four to a row on a phone: less room each, so the words wrap rather than clip.
+            shown.length > 2 ? "px-2" : "px-4",
+          )}
+        >
           <dd
             className={cn(
-              serif,
-              "order-1 text-[24px] leading-none tabular-nums text-(--foreground)",
+              "order-1 font-bold leading-[1.2] tabular-nums text-(--foreground) [overflow-wrap:anywhere]",
+              shown.length > 2 ? "text-[20px]" : "text-[28px]",
             )}
           >
             {typeof s.value === "number" ? s.value.toLocaleString() : s.value}
           </dd>
-          <dt
-            className={cn(
-              sans,
-              "order-2 mt-1 text-center text-[13px] leading-[1.15] text-(--muted-foreground)",
-            )}
-          >
-            {s.label}
-          </dt>
-          {i > 0 && (
-            <span
-              aria-hidden
-              className="absolute bottom-3 start-0 top-3 w-[1.5px] rounded-full"
-              style={{ background: `var(--world-stat-${Math.min(i, 3)})` }}
-            />
-          )}
+          <dt className="order-2 text-[12px] leading-[1.4] text-(--foreground)">{s.label}</dt>
         </div>
       ))}
     </dl>
@@ -442,15 +437,14 @@ export function WorldStatsStrip({
       onClick={onOpen}
       aria-label="Open your travel stats"
       className={cn(
-        "mx-4 flex rounded-[20px] text-left outline-none focus-visible:ring-2 focus-visible:ring-(--ring)",
-        float,
+        "mx-4 flex rounded-[var(--r-card)] text-left outline-none focus-visible:ring-2 focus-visible:ring-(--ring)",
         className,
       )}
     >
       {body}
     </button>
   ) : (
-    <section aria-label="Travel stats" className={cn("mx-4 flex rounded-[20px]", float, className)}>
+    <section aria-label="Travel stats" className={cn("mx-4 flex", className)}>
       {body}
     </section>
   );

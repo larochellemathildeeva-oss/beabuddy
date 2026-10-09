@@ -3266,6 +3266,16 @@ html:not(.dark)
   filter: blur(6px);
 }
 
+/* World's flat map, as the minimalist design draws it: 220px tall, centred. */
+.world-atlas {
+  display: flex;
+  height: 220px;
+  align-items: center;
+}
+.world-atlas svg {
+  max-height: 100%;
+}
+
 /* Home widgets share iOS's square / wide / large rhythm, in Béa's palette. */
 .home-widgets-frame {
   container-type: inline-size;
@@ -4214,7 +4224,8 @@ main [class*="rounded-\\[var(--r-"] {
   font-weight: 400;
   letter-spacing: 0;
   text-transform: none;
-  color: var(--muted-foreground);
+  /* Every tab word in ink; the line under the chosen one tells them apart. */
+  color: var(--foreground);
   border-bottom: 1px solid transparent;
 }
 [role="tablist"][aria-label="World views"] > button svg,
