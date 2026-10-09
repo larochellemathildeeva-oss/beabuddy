@@ -50,21 +50,31 @@ function ForgotPasswordPage() {
 
   return (
     <div className="min-h-[100dvh] bg-background">
-      <div className="mx-auto flex min-h-[100dvh] w-full max-w-[520px] flex-col border-x border-border/70 px-6 py-10">
-        <div className="flex flex-1 flex-col justify-center">
-          <BrandMark large />
-          <h1 className="mt-6 font-display text-[40px] leading-[1.1]">Forgot your password?</h1>
-          <p className="mt-2 text-[16px] text-muted-foreground">
-            Enter the email on your account and we'll send you a link to choose a new password.
-          </p>
+      <div className="mx-auto flex min-h-[100dvh] w-full max-w-[520px] flex-col gap-6 p-5">
+        <header className="flex min-h-11 items-center justify-between gap-3">
+          <BrandMark />
+          <Link
+            to="/auth"
+            className="flex min-h-11 min-w-11 items-center justify-end px-1 text-[14px] text-foreground"
+          >
+            Back
+          </Link>
+        </header>
+        <div className="flex flex-1 flex-col gap-6">
+          <div className="space-y-2">
+            <h1 className="text-[28px] font-bold leading-[1.4]">Forgot your password?</h1>
+            <p className="text-[14px] leading-[1.4] text-muted-foreground">
+              Enter your email to receive a reset link.
+            </p>
+          </div>
 
           {sent ? (
-            <p className="mt-6 rounded-xl border border-border bg-card p-4 text-[16px]">
+            <p className="rounded-[var(--r-card)] border border-border bg-card p-4 text-[14px] leading-[1.4]">
               If that email has a Béa account, a reset link is on its way. Check your inbox (and
               your spam folder) and tap the link within the hour.
             </p>
           ) : (
-            <form onSubmit={submit} className="mt-6 space-y-3">
+            <form onSubmit={submit} className="space-y-6">
               <AuthField
                 label="Email"
                 value={email}
@@ -85,13 +95,6 @@ function ForgotPasswordPage() {
               </button>
             </form>
           )}
-
-          <Link
-            to="/auth"
-            className="mt-4 inline-flex min-h-11 items-center self-start text-[16px] text-muted-foreground underline underline-offset-4"
-          >
-            Back to sign in
-          </Link>
         </div>
         <CopyrightNotice />
       </div>
