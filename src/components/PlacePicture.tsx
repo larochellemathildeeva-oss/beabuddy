@@ -23,6 +23,7 @@ export function PlacePicture({
   className = "",
   linked = false,
   decoding,
+  eager = false,
 }: {
   name?: string | null | undefined;
   category?: string | null | undefined;
@@ -32,6 +33,8 @@ export function PlacePicture({
   className?: string;
   linked?: boolean;
   decoding?: "async" | "auto" | "sync";
+  /** At the top of the screen: fetched at once, not when scrolled to. */
+  eager?: boolean;
 }) {
   const [pictures] = useStopPictures();
   const { facts } = usePlaceDetails(name, lat, lon, pictures === "photos");
@@ -44,6 +47,7 @@ export function PlacePicture({
         photo={photo}
         className={className}
         linked={linked}
+        eager={eager}
         onError={() => setBroken(photo.url)}
       />
     );
@@ -52,7 +56,7 @@ export function PlacePicture({
     <img
       src={placeArtUrl(placeArtFor({ category: category ?? kind, kind, name }))}
       alt=""
-      loading="lazy"
+      loading={eager ? "eager" : "lazy"}
       decoding={decoding}
       draggable={false}
       className={`place-art art-dim object-cover ${className}`}
@@ -64,11 +68,13 @@ function CommonsThumb({
   photo,
   className,
   linked,
+  eager,
   onError,
 }: {
   photo: PlacePhoto;
   className: string;
   linked: boolean;
+  eager: boolean;
   onError: () => void;
 }) {
   const credit = creditedOnPhoto(photo) ? photoCredit(photo) : "";
@@ -84,7 +90,7 @@ function CommonsThumb({
         alt=""
         width={photo.width}
         height={photo.height}
-        loading="lazy"
+        loading={eager ? "eager" : "lazy"}
         referrerPolicy="no-referrer"
         draggable={false}
         onError={onError}

@@ -23,6 +23,7 @@ export function PlaceArt({
   place,
   className = "",
   linked = false,
+  eager = false,
 }: {
   place: {
     name?: string | null | undefined;
@@ -32,9 +33,11 @@ export function PlaceArt({
   };
   className?: string;
   linked?: boolean;
+  eager?: boolean;
 }) {
   return (
     <PlacePicture
+      eager={eager}
       name={place.name}
       category={place.category}
       lat={place.lat}

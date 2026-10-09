@@ -616,6 +616,9 @@ await flow("home: trip ahead is the design's modules; the rest are in Customize 
   // Customize home brings back every other module, in the order chosen.
   await page.getByRole("button", { name: /^Customize home/ }).last().click();
   await page.waitForTimeout(400);
+  // The switches say what Home shows: the no-trip modules are off with a trip ahead.
+  for (const name of ["Weather here", "Saved places", "Future me note"])
+    if ((await page.getByRole("switch", { name: `Show ${name}` }).getAttribute("aria-checked")) !== "false") throw new Error(`${name} reads as on but is not shown`);
   for (const name of ["Suggested for your trip", "Trip tools", "Right now there", "Worth a detour"])
     await page.getByRole("switch", { name: `Show ${name}` }).click();
   await page.getByRole("button", { name: "Move Notes from Béa up" }).click();
@@ -627,6 +630,7 @@ await flow("home: trip ahead is the design's modules; the rest are in Customize 
     if (!shown.includes(guide)) throw new Error(`Customize home did not add ${guide}: ${shown.join()}`);
   if (shown.indexOf("home-module-notes") > shown.indexOf("home-module-weather")) throw new Error(`Notes did not move up: ${shown.join()}`);
   if ((await page.getByRole("link", { name: /Iconic Landmarks/ }).count()) !== 1) throw new Error("Suggested ideas did not come back");
+  if ((await text()).includes("Future me note")) throw new Error("a change brought back a module that was not on");
   for (const word of ["Currency", "Transport", "Translate", "Offline", "Live from Los Angeles"])
     if (!(await text()).includes(word)) throw new Error(`Home modules lost "${word}"`);
   if (!/\d+°[CF]/.test(await text())) throw new Error("the weather modules show no temperature");
@@ -664,55 +668,61 @@ await flow("home: with no trip, saved cities wait on the map and in tiles", asyn
 await flow("world: four views, filters, search, add sheet, bucket menu, stats options", async (page) => {
   const text = () => page.evaluate(() => document.body.innerText);
   const view = async (name) => { await page.getByRole("tab", { name, exact: true }).click(); await page.waitForTimeout(400); };
-  for (const word of ["Your world.", "Cities", "Countries", "Add places"])
+  // The Map view as the design draws it: the flat map, two figures, the lists, three buttons.
+  for (const word of ["World / map", "Your world.", "Countries", "Cities", "Your travel lists", "Add places", "Customize world", "Globe controls and geography"])
     if (!(await text()).includes(word)) throw new Error(`World lost "${word}"`);
+  if ((await page.locator("[data-guide=globe] svg").count()) !== 1) throw new Error("the flat map is missing");
+  await page.getByRole("button", { name: /^Bucket list/ }).first().click();
+  await page.waitForTimeout(400);
+  if ((await page.getByRole("tab", { name: "Bucket list", exact: true }).getAttribute("aria-selected")) !== "true") throw new Error("the Bucket list row did not open its view");
+  await view("Map");
+  // The globe, its filters and search live in "Globe controls and geography".
+  await page.getByRole("button", { name: "Globe controls and geography" }).click();
+  await page.waitForTimeout(500);
+  const sheet = page.getByRole("dialog", { name: "Globe controls and geography" });
   // Filters are toggles: tap once to narrow, again for everything.
-  const cities = page.getByRole("button", { name: /^5 Cities$/ });
+  const cities = sheet.getByRole("button", { name: /^5 Cities$/ });
   await cities.click();
   if ((await cities.getAttribute("aria-pressed")) !== "true") throw new Error("the Cities filter did not turn on");
   await cities.click();
   if ((await cities.getAttribute("aria-pressed")) !== "false") throw new Error("the Cities filter did not turn off");
-  // Search finds a city and spins to it.
-  await page.getByRole("button", { name: "Search your world" }).click();
-  await page.getByRole("textbox", { name: "Search your world" }).fill("lis");
-  await page.getByRole("button", { name: "Lisbon Portugal", exact: true }).click();
+  // Search finds a city and shows its card.
+  await sheet.getByRole("textbox", { name: "Search your world" }).fill("lis");
+  await sheet.getByRole("button", { name: "Lisbon Portugal", exact: true }).click();
   await page.waitForTimeout(400);
-  // Customize world: "Add modules" opens the modules; a switch shows or hides
-  // one, the arrows reorder them, and Reset restores the mockup's three.
-  await page.getByRole("button", { name: "Add modules" }).click();
+  if (!(await text()).toLowerCase().includes("you've been here")) throw new Error("search did not select the city");
+  // The globe wears terrain and its controls still work.
+  await sheet.locator("[data-guide=globe] canvas").waitFor({ state: "attached" });
+  for (const name of ["Zoom in", "Zoom out", "Reset the view"]) await sheet.getByRole("button", { name }).first().click();
+  await page.waitForTimeout(300);
+  if ((await sheet.locator("[data-guide=globe] canvas").count()) !== 1) throw new Error("the globe lost its terrain");
+  await page.keyboard.press("Escape");
   await page.waitForTimeout(400);
-  await page.getByRole("switch", { name: "Show Globe filters" }).click();
+  // Customize world: a switch shows or hides a module, the arrows reorder
+  // them, and Reset restores the design's two.
+  await page.getByRole("button", { name: "Customize world" }).click();
+  await page.waitForTimeout(400);
+  await page.getByRole("switch", { name: "Show Map filters" }).click();
   await page.getByRole("switch", { name: "Show Bucket list" }).click();
   await page.getByRole("switch", { name: "Show Notes from Béa" }).click();
-  await page.getByRole("switch", { name: "Show Your travel lists" }).click();
   await page.waitForTimeout(300);
   await page.getByRole("button", { name: "Move Notes from Béa up" }).click();
   await page.waitForTimeout(300);
   await page.keyboard.press("Escape");
   await page.waitForTimeout(400);
-  if ((await page.getByRole("group", { name: "Show on the map" }).count()) !== 0) throw new Error("Globe filters did not hide");
-  if ((await page.getByRole("button", { name: /^Bucket list\s*\d+ places?$/ }).count()) === 0) throw new Error("Your travel lists did not show on the Map");
+  if ((await page.getByRole("group", { name: "Show on the map" }).count()) !== 1) throw new Error("Map filters did not show under the map");
   const order = await page.evaluate(() => [...document.querySelectorAll("[data-guide^=world-module-]")].map((e) => e.getAttribute("data-guide")));
   if (order.join() !== "world-module-notes,world-module-bucket") throw new Error(`modules out of order: ${order.join()}`);
   if (!(await text()).includes("so far.")) throw new Error("Notes from Béa says nothing");
-  await page.getByRole("button", { name: "Bucket list: Open the bucket list" }).click();
-  await page.waitForTimeout(400);
-  if ((await page.getByRole("tab", { name: "Bucket list", exact: true }).getAttribute("aria-selected")) !== "true") throw new Error("the Bucket list module did not open its view");
-  await view("Map");
-  await page.getByRole("button", { name: "Add modules" }).click();
+  await page.getByRole("button", { name: "Customize world" }).click();
   await page.waitForTimeout(400);
   await page.getByRole("button", { name: "Reset to default" }).click();
   await page.waitForTimeout(300);
   await page.keyboard.press("Escape");
   await page.waitForTimeout(400);
-  if ((await page.getByRole("group", { name: "Show on the map" }).count()) !== 1) throw new Error("Reset did not bring Globe filters back");
-  // The globe wears terrain and its controls still work.
-  await page.locator("[data-guide=globe] canvas").waitFor({ state: "attached" });
-  for (const name of ["Zoom in", "Zoom out", "Reset the view"]) await page.getByRole("button", { name }).first().click();
-  await page.waitForTimeout(300);
-  if ((await page.locator("[data-guide=globe] canvas").count()) !== 1) throw new Error("the globe lost its terrain");
-  // The add sheet opens from the globe button and closes with Escape.
-  await page.getByRole("button", { name: "Add a city or country" }).click();
+  if ((await page.getByRole("group", { name: "Show on the map" }).count()) !== 0) throw new Error("Reset did not restore the design's modules");
+  // The add sheet opens from Add places and closes with Escape.
+  await page.getByRole("button", { name: "Add places", exact: true }).click();
   await page.waitForTimeout(400);
   if ((await page.getByRole("dialog").count()) < 1) throw new Error("Add places did not open");
   await page.keyboard.press("Escape");
@@ -734,10 +744,14 @@ await flow("world: four views, filters, search, add sheet, bucket menu, stats op
   if (!(await text()).includes("Where you've been")) throw new Error("Been there lost its list");
   await page.getByRole("button", { name: "Paris", exact: true }).click();
   await page.waitForTimeout(400);
-  if ((await page.getByRole("tab", { name: "Map", exact: true }).getAttribute("aria-selected")) !== "true") throw new Error("a city chip did not return to the Map");
+  if ((await page.getByRole("dialog", { name: "Globe controls and geography" }).count()) !== 1) throw new Error("a city chip did not open the globe");
   if (!(await text()).toLowerCase().includes("you've been here")) throw new Error("a city chip did not select the city");
-  await page.getByRole("button", { name: "Close", exact: true }).click();
+  await page.getByLabel(/^Paris,/).getByRole("button", { name: "Close", exact: true }).click();
+  await page.waitForTimeout(300);
   if ((await text()).toLowerCase().includes("you've been here")) throw new Error("Close did not clear the city card");
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(300);
+  if ((await page.getByRole("tab", { name: "Map", exact: true }).getAttribute("aria-selected")) !== "true") throw new Error("a city chip did not return to the Map");
   // Stats: the options sheet and the note.
   await view("Stats");
   await page.getByRole("button", { name: "What these numbers count" }).click();
@@ -812,43 +826,53 @@ await flow("world: the Bucket list holds cities and countries only, each with it
   if (!/\d+ recs?/.test(await page.locator('[data-guide="places-list"]').innerText())) throw new Error("no Been there place shows its recs");
 }, "world");
 
-await flow("recs: header, pills, list chips, saved-for-trip cards, More ways and Add to trip", async (page) => {
+await flow("recs: the design's blocks; Save a place holds every way in; Filters holds the lists", async (page) => {
   const text = async () => page.locator("body").innerText();
-  for (const word of ["Places worth keeping.", "Add place", "Nearby map", "More ways", "Recently saved", "Explore nearby"])
+  for (const word of ["Recs / saved", "Places worth keeping.", "Search or add a place", "Recently saved", "Save a place", "Filters"])
     if (!(await text()).includes(word)) throw new Error(`Recs lost "${word}"`);
-  await page.getByRole("button", { name: /^Bucket list/ }).click();
-  if (await page.getByRole("button", { name: /^Bucket list/ }).getAttribute("aria-pressed") !== "true") throw new Error("the Bucket list chip did not apply");
-  await page.getByRole("button", { name: /^All/ }).click();
-  if (!(await text()).includes("Saved for ")) throw new Error("no Saved for the next trip's city");
+  const tabs = await page.getByRole("tablist", { name: "Recs views" }).getByRole("tab").allInnerTexts();
+  if (tabs.join("|") !== "Saved|Nearby|Map") throw new Error(`Recs tabs are ${tabs.join(", ")}`);
+  for (const word of ["Nearby map", "More ways", "Explore nearby"])
+    if ((await text()).includes(word)) throw new Error(`"${word}" is still on Recs`);
+  if ((await page.getByText(/Wishlist|Next time|Visited/).count()) !== 0) throw new Error("an old list name is still on the page");
+  if ((await page.getByText("Porto", { exact: true }).count()) !== 0) throw new Error("a saved city shows in Recs");
+  // Save a place: every way in, as More ways had them.
+  await page.getByRole("button", { name: "Save a place" }).click();
+  for (const word of ["From my trips", "I'm here now", "By hand", "Paste a list", "Send places", "Open a share", "Pin somewhere nearby"])
+    if (!(await text()).includes(word)) throw new Error(`Save a place lost "${word}"`);
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(300);
+  // A row opens its place, which still offers Add to trip.
+  await page.getByRole("button", { name: /^Venice Canals/ }).first().click();
+  await page.waitForTimeout(400);
   await page.getByRole("button", { name: "Add to trip" }).first().click();
   await page.waitForTimeout(300);
   if ((await page.getByRole("dialog").count()) === 0) throw new Error("Add to trip opened nothing");
   await page.keyboard.press("Escape");
-  await page.getByRole("button", { name: /More ways/ }).click();
-  for (const word of ["From my trips", "I'm here now", "By hand", "Paste a list", "Send places", "Open a share", "Pin somewhere nearby"])
-    if (!(await text()).includes(word)) throw new Error(`More ways lost "${word}"`);
 }, "recs");
 
-await flow("recs: chips read All, Recs, Bucket list, Been there; no city or old list name shows", async (page) => {
-  const chips = await page.getByRole("group", { name: "Lists" }).getByRole("button").evaluateAll((els) => els.map((e) => e.childNodes[0]?.textContent?.trim()));
-  if (chips.join("|") !== "All|Recs|Bucket list|Been there") throw new Error(`chips are ${chips.join(", ")}`);
-  if ((await page.getByText(/Wishlist|Next time|Visited/).count()) !== 0) throw new Error("an old list name is still on the page");
-  if ((await page.getByText("Porto", { exact: true }).count()) !== 0) throw new Error("a saved city shows in Recs");
-  if ((await page.getByRole("button", { name: /Add to a day/ }).count()) !== 0) throw new Error("a card still says Add to a day");
-  if ((await page.getByRole("button", { name: /Add to trip/ }).count()) === 0) throw new Error("no card offers Add to trip");
+await flow("recs: Filters holds the lists, search, city and type", async (page) => {
+  await page.getByRole("button", { name: "Filters", exact: true }).click();
+  await page.waitForTimeout(400);
+  const lists = await page.getByRole("tablist", { name: "Which list" }).getByRole("tab").allInnerTexts();
+  if (lists.join("|") !== "All|Recommendation|Bucket list|Been there") throw new Error(`lists are ${lists.join(", ")}`);
+  await page.getByRole("tab", { name: "Bucket list", exact: true }).click();
+  if ((await page.getByRole("tab", { name: "Bucket list", exact: true }).getAttribute("aria-selected")) !== "true") throw new Error("the Bucket list did not apply");
 }, "recs");
 
-await flow("recs: the add-or-search box has a name; the list chips fit at 320px and the largest text", async (page) => {
+await flow("recs: the add-or-search box has a name and fits at 320px and the largest text", async (page) => {
   if ((await page.getByRole("textbox", { name: "Search or add a place" }).count()) === 0) throw new Error("the add-or-search box has no name");
   await page.setViewportSize({ width: 320, height: 800 });
   await page.evaluate(() => document.documentElement.style.setProperty("--text-scale", "1.45"));
   await page.waitForTimeout(400);
-  const row = await page.getByRole("group", { name: "Lists" }).evaluate((el) => ({ scroll: el.scrollWidth, width: el.clientWidth }));
-  if (row.scroll > row.width + 1) throw new Error(`the list chips run off the screen (${row.scroll} > ${row.width})`);
+  const wide = await page.evaluate(() => document.documentElement.scrollWidth);
+  if (wide > 321) throw new Error(`Recs runs off the screen (${wide}px)`);
 }, "recs");
 
 await flow("save sheet: lists are Recommendation, Bucket list, Been there; Next time opens as Bucket list", async (page) => {
-  await page.getByRole("button", { name: /^Venice Canals: note, list, who told you$/ }).first().click();
+  await page.getByRole("button", { name: /^Venice Canals/ }).first().click();
+  await page.waitForTimeout(400);
+  await page.getByRole("button", { name: "Note, list, who told you" }).first().click();
   await page.waitForTimeout(500);
   const dialog = page.getByRole("dialog").last();
   const radios = await dialog.getByRole("radio").evaluateAll((els) => els.map((e) => [e.textContent.trim(), e.getAttribute("aria-checked")]));

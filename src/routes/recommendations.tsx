@@ -8,17 +8,13 @@ import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import {
   ArrowLeft,
-  ArrowRight,
-  Bookmark,
   ChevronDown,
   Hand,
   Inbox,
   ListPlus,
   LocateFixed,
   MapPinned,
-  Plus,
   Search,
-  Settings2,
   Share2,
 } from "@/components/icons";
 import { AppShell } from "@/components/AppShell";
@@ -29,8 +25,7 @@ import { PlaceSearchInput } from "@/components/PlaceSearchInput";
 import { AddToTripSheet } from "@/components/recs/AddToTripSheet";
 import { ExploreNearby } from "@/components/recs/ExploreNearby";
 import { PlaceDetail } from "@/components/recs/PlaceDetail";
-import { KIND_ICON } from "@/components/recs/kind-icons";
-import { PlaceArt, RecsSectionHead, Sheet, type RecsPlace } from "@/components/recs/RecsParts";
+import { PlaceArt, Sheet, type RecsPlace } from "@/components/recs/RecsParts";
 import { SaveSheet } from "@/components/recs/SaveSheet";
 import {
   addPlaceholder,
@@ -46,7 +41,7 @@ import { beaCheer, useBeaSettings } from "@/hooks/useBeaSettings";
 import { useTrips } from "@/hooks/useTrips";
 import { pinColorClass, pinLabel, type Pin, type PinType } from "@/data/atlas";
 import { groupCountLabel, groupRecosByType } from "@/lib/reco-groups";
-import { isLocation, listOf, SAVE_LISTS } from "@/lib/place-lists";
+import { isLocation, SAVE_LISTS } from "@/lib/place-lists";
 import { useRecommendations, type RecoRowDB } from "@/hooks/useRecommendations";
 import {
   PLACE_TRAVEL_TAGS,
@@ -78,9 +73,8 @@ import { PlaceFacts } from "@/components/PlaceFacts";
 import { scoreOpportunity } from "@/lib/score-opportunity";
 import { beaLine } from "@/lib/bea-voice";
 import { emptyLine } from "@/lib/bea-personality";
-import { BROWSE_KINDS, listCounts, recentlySaved, type BrowseKind } from "@/lib/recs-browse";
+import { recentlySaved, type BrowseKind } from "@/lib/recs-browse";
 import { toLocalISODate } from "@/lib/trip-dates";
-import { pickActiveTrip } from "@/lib/home-trip";
 
 export const Route = createFileRoute("/recommendations")({
   staticData: { plane: "tab" },
@@ -141,7 +135,7 @@ type Draft = {
 type Screen =
   | { kind: "home" }
   | { kind: "saved"; list: PinType | "all" }
-  | { kind: "nearby"; browse: BrowseKind | "All" }
+  | { kind: "nearby"; browse: BrowseKind | "All"; view?: "map" | "list" }
   | { kind: "place"; place: RecsPlace; back: Screen };
 
 function draftWithTags(place: Draft): Draft {
@@ -708,17 +702,7 @@ function RecommendationsPage() {
         .join(" – ")
     : undefined;
 
-  const [homeList, setHomeList] = useState<"all" | "reco" | "wishlist" | "visited">("all");
-  const nextTrip = pickActiveTrip(trips.trips, today);
   const visibleRows = vault.rows.filter((r) => !hiddenFromRecs(r, r.pin_type, r.visited));
-  const savedForTrip = nextTrip?.city
-    ? visibleRows
-        .filter(
-          (r) => !isAreaPlace(r) && recMatchesPlace(r, (nextTrip.city ?? "").split(",")[0]!.trim()),
-        )
-        .slice(0, 4)
-    : [];
-  const counts = listCounts(vault.rows.filter((r) => !hiddenFromRecs(r, r.pin_type, r.visited)));
   const savedRow = justSaved ? vault.rows.find((r) => r.id === justSaved.id) : undefined;
   const placeRow =
     screen.kind === "place" && screen.place.savedId
@@ -729,80 +713,24 @@ function RecommendationsPage() {
   const listFilter = screen.kind === "saved" ? screen.list : "all";
   const shownGroups = listFilter === "all" ? groups : groups.filter((g) => g.type === listFilter);
 
-  // A saved place as a card: its name, its picture, a line, and the two things
-  // to do with it next.
-  const recCard = (r: RecoRowDB) => (
-    <article className="recs-card">
-      <div className="flex gap-3">
-        <button
-          type="button"
-          onClick={() => openPlace(placeFromRow(r))}
-          aria-label={`Open ${r.name}`}
-          className="shrink-0"
-        >
-          <PlaceArt
-            place={{ name: r.name, category: r.category, lat: r.lat, lon: r.lon }}
-            className="size-[96px] rounded-2xl"
-          />
-        </button>
-        <div className="min-w-0 flex-1">
-          <button
-            type="button"
-            onClick={() => openPlace(placeFromRow(r))}
-            className="flex min-h-11 w-full items-center gap-2 text-left"
-          >
-            <span
-              className={`size-2.5 shrink-0 rounded-full ${pinColorClass[(r.pin_type ?? "reco") as PinType]}`}
-              aria-hidden
-            />
-            <span className="font-display text-[22px] leading-tight">{r.name}</span>
-          </button>
-          <p className="text-[15px] font-semibold leading-snug">
-            {[r.city, r.category].filter(Boolean).join(" · ") || "Saved place"}
-          </p>
-          <p className="text-[14px] leading-snug text-muted-foreground">
-            {r.notes
-              ? `“${r.notes}”`
-              : [
-                  r.recommended_by ? `From ${r.recommended_by}` : null,
-                  r.city?.split(",")[0],
-                  pinLabel[(r.pin_type ?? "reco") as PinType],
-                ]
-                  .filter(Boolean)
-                  .join(" · ")}
-          </p>
-        </div>
-      </div>
-      <div className="mt-3 grid grid-cols-2 gap-2">
-        <a
-          href={recMapsUrl(r)}
-          target="_blank"
-          rel="noreferrer"
-          className="recs-pill grid min-h-11 place-items-center text-center text-[14px] font-semibold"
-        >
-          Open in Maps ↗
-        </a>
-        <button
-          type="button"
-          onClick={() => setTripSheet(placeFromRow(r))}
-          className="recs-pill min-h-11 text-[14px] font-semibold"
-        >
-          Add to trip
-        </button>
-      </div>
-    </article>
-  );
-
   return (
     <AppShell
       {...(screen.kind === "home"
-        ? { eyebrow: `${visibleRows.length} saved`, title: "Places worth keeping." }
+        ? { eyebrow: "Recs / saved", title: "Places worth keeping." }
         : {})}
     >
       {nearbyOpen && (
         <div className={screen.kind === "nearby" ? "" : "hidden"}>
           <ExploreNearby
             initialKind={screen.kind === "nearby" ? screen.browse : "All"}
+            initialView={
+              // A place opened from Nearby keeps the view it was opened from.
+              screen.kind === "nearby"
+                ? (screen.view ?? "map")
+                : screen.kind === "place" && screen.back.kind === "nearby"
+                  ? (screen.back.view ?? "map")
+                  : "map"
+            }
             saved={vault.rows}
             tripLine={tripLine}
             savingName={savingName}
@@ -1059,24 +987,24 @@ function RecommendationsPage() {
       )}
 
       {screen.kind === "home" && (
-        <div className="space-y-5">
+        <div className="space-y-3">
           {/* One field, whatever you have: a name is looked up as you type, a
               pasted link gets read. The filter button beside it opens the
               saved places with their search, city and type filters. */}
           <section data-guide="reco-add" className="space-y-3">
-            <div className="flex items-start gap-2">
-              <div className="relative min-w-0 flex-1 [&_textarea]:min-h-12 [&_textarea]:rounded-[24px] [&_textarea]:py-[13px] [&_textarea]:pl-12 [&_textarea]:text-[15px] [&_textarea]:leading-snug [&_textarea+button]:size-12 [&_textarea+button]:rounded-full [&_textarea+button]:bg-card [&_textarea:placeholder-shown+button]:hidden">
-                <Search
-                  className="pointer-events-none absolute left-4 top-3.5 z-[1] size-5 text-muted-foreground"
-                  aria-hidden
-                />
+            {/* The design's search box: a small label over the words, one hairline box. */}
+            <div className="recs-search rounded-[var(--r-card)] border border-border px-3 pb-2 pt-3">
+              <p id="recs-search-label" className="text-[12px] leading-[1.4]">
+                Search or add a place
+              </p>
+              <div className="relative min-w-0 [&_textarea]:min-h-11 [&_textarea]:border-0 [&_textarea]:bg-transparent [&_textarea]:px-0 [&_textarea]:py-2 [&_textarea]:text-[16px] [&_textarea]:leading-[1.4] [&_textarea]:shadow-none [&_textarea+button]:size-11 [&_textarea:placeholder-shown+button]:hidden">
                 <PlaceSearchInput
                   value={addText}
                   onChange={setAddText}
                   at={searchAt}
                   onLocate={locateForSearch}
                   onPick={openFound}
-                  ariaLabel="Search or add a place"
+                  ariaLabelledBy="recs-search-label"
                   placeholder={
                     views.length > 0 ? "Search places, cities, people…" : addPlaceholder(false)
                   }
@@ -1099,18 +1027,7 @@ function RecommendationsPage() {
                   }}
                 />
               </div>
-              <button
-                type="button"
-                data-guide="reco-search"
-                onClick={() => setScreen({ kind: "saved", list: "all" })}
-                aria-label="Your saved places: search and filter"
-                title="Your saved places: search and filter"
-                className="grid size-12 shrink-0 place-items-center rounded-full border border-border bg-card"
-              >
-                <Settings2 className="size-5" aria-hidden />
-              </button>
             </div>
-
             {/* Saved places matching what is typed, so a name, a city or who
                 told you finds your own save before the map is asked. */}
             {addText.trim().length >= 2 && !looksLikePastedPlaceLink(addText) && (
@@ -1125,42 +1042,6 @@ function RecommendationsPage() {
                 onOpen={(r) => openPlace(placeFromRow(r))}
               />
             )}
-
-            <div className="grid grid-cols-3 gap-2" role="group" aria-label="Add or explore">
-              {(
-                [
-                  ["add", "Add place", "link or name", Plus, "tile-fill-5", "text-primary"],
-                  ["near", "Nearby map", "what's close", MapPinned, "tile-fill-2", "text-primary"],
-                  ["more", "More ways", "import, share", Plus, "tile-fill-4", "text-primary"],
-                ] as const
-              ).map(([k, label, hint, Glyph, bg, ink]) => (
-                <button
-                  key={k}
-                  type="button"
-                  aria-expanded={k === "more" ? moreWays : undefined}
-                  onClick={() => {
-                    if (k === "near") setScreen({ kind: "nearby", browse: "All" });
-                    else if (k === "more") setMoreWays((v) => !v);
-                    else {
-                      const field = document.querySelector<HTMLElement>(
-                        "[data-guide=reco-add] textarea",
-                      );
-                      field?.scrollIntoView({ block: "center", behavior: "smooth" });
-                      field?.focus();
-                    }
-                  }}
-                  className={`${bg} recs-act flex min-h-[92px] flex-col items-start justify-center gap-0.5 rounded-[20px] border border-border px-3 py-2 text-left`}
-                >
-                  <span className="recs-act-ico mb-1 grid size-9 place-items-center rounded-full">
-                    <Glyph className={`size-5 shrink-0 ${ink}`} aria-hidden />
-                  </span>
-                  <span className="whitespace-nowrap text-[15px] font-semibold leading-tight">
-                    {label}
-                  </span>
-                  <span className="text-[13px] leading-tight text-foreground/65">{hint}</span>
-                </button>
-              ))}
-            </div>
 
             <div className="empty:hidden">
               <ShareRecos
@@ -1432,165 +1313,96 @@ function RecommendationsPage() {
             )}
           </section>
 
+          <div
+            role="tablist"
+            aria-label="Recs views"
+            data-guide="explore-nearby"
+            className="grid grid-cols-3"
+          >
+            {(
+              [
+                ["saved", "Saved"],
+                ["list", "Nearby"],
+                ["map", "Map"],
+              ] as const
+            ).map(([k, label]) => (
+              <button
+                key={k}
+                type="button"
+                role="tab"
+                aria-selected={k === "saved"}
+                onClick={() =>
+                  k !== "saved" && setScreen({ kind: "nearby", browse: "All", view: k })
+                }
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
           {views.length === 0 && !vault.loading ? (
             <section data-guide="reco-list">
               <EmptyVault />
             </section>
           ) : (
-            <div data-guide="reco-list" className="space-y-6">
-              <div className="flex flex-wrap gap-2 pb-1" role="group" aria-label="Lists">
-                {(
-                  [
-                    ["all", "All", visibleRows.length],
-                    ["reco", "Recs", counts.reco],
-                    ["wishlist", pinLabel.wishlist, counts.bucket],
-                    ["visited", pinLabel.visited, counts.visited],
-                  ] as const
-                ).map(([k, label, n]) => (
-                  <button
-                    key={k}
-                    type="button"
-                    aria-pressed={homeList === k}
-                    onClick={() => setHomeList(k)}
-                    className={`recs-chip h-11 shrink-0 whitespace-nowrap rounded-full border px-4 font-display text-[18px] ${
-                      homeList === k
-                        ? "border-primary bg-primary text-primary-foreground"
-                        : `tile-fill-${(["all", "reco", "wishlist", "visited"].indexOf(k) % 5) + 1} border-border text-foreground`
-                    }`}
-                  >
-                    {label}
-                    <span className="ms-1.5 font-sans text-[13px] opacity-70">{n}</span>
-                  </button>
-                ))}
+            <section data-guide="reco-list" className="space-y-3">
+              {recentlySaved(visibleRows, 1).map((r) => (
+                <button
+                  key={r.id}
+                  type="button"
+                  onClick={() => openPlace(placeFromRow(r))}
+                  aria-label={`Open ${r.name}`}
+                  className="block w-full"
+                >
+                  <PlaceArt
+                    place={{ name: r.name, category: r.category, lat: r.lat, lon: r.lon }}
+                    className="h-[160px] w-full rounded-[var(--r-card)]"
+                    eager
+                  />
+                </button>
+              ))}
+              <div className="space-y-2">
+                <hr className="border-0 border-t border-[var(--rule)]" />
+                <p className="text-[12px] leading-[1.4]">Recently saved</p>
               </div>
-
-              {homeList === "all" && savedForTrip.length > 0 && nextTrip && (
-                <section>
-                  <RecsSectionHead
-                    title={`Saved for ${(nextTrip.city ?? "").split(",")[0]}`}
-                    hint="your next trip"
-                  />
-                  <ul className="space-y-3">
-                    {savedForTrip.map((r) => (
-                      <li key={r.id}>{recCard(r)}</li>
-                    ))}
-                  </ul>
-                </section>
-              )}
-
-              {homeList === "all" ? (
-                <section>
-                  <RecsSectionHead
-                    title="Recently saved"
-                    onSeeAll={() => setScreen({ kind: "saved", list: "all" })}
-                  />
-                  {vault.loading && vault.rows.length === 0 && <RowListSkeleton />}
-                  <ul className="recs-list">
-                    {recentlySaved(visibleRows, 5).map((r) => (
-                      <li key={r.id} className="flex items-center">
-                        <button
-                          type="button"
-                          onClick={() => openPlace(placeFromRow(r))}
-                          className="flex min-w-0 flex-1 items-center gap-3 p-3 text-left"
-                        >
-                          <PlaceArt
-                            place={{ name: r.name, category: r.category }}
-                            className="size-14 shrink-0 rounded-2xl"
-                          />
-                          <span className="min-w-0">
-                            <span className="block truncate text-[17px] font-semibold">
-                              {r.name}
-                            </span>
-                            <span className="block truncate text-[14px] text-muted-foreground">
-                              {[r.city, r.category].filter(Boolean).join(" · ")}
-                            </span>
-                          </span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setJustSaved({ id: r.id, name: r.name })}
-                          aria-label={`${r.name}: note, list, who told you`}
-                          className="grid size-12 shrink-0 place-items-center"
-                        >
-                          <Bookmark className="size-5 text-primary" weight="fill" aria-hidden />
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                </section>
-              ) : (
-                <section>
-                  <RecsSectionHead
-                    title={homeList === "reco" ? "Recommendations" : pinLabel[homeList]}
-                    onSeeAll={() => setScreen({ kind: "saved", list: homeList })}
-                  />
-                  {counts[homeList === "wishlist" ? "bucket" : homeList] === 0 ? (
-                    <p className="py-6 text-center text-[15px] text-muted-foreground">
-                      Nothing in this list yet.
-                    </p>
-                  ) : (
-                    <ul className="space-y-3">
-                      {recentlySaved(
-                        visibleRows.filter(
-                          (r) =>
-                            listOf(r) ===
-                            (homeList === "wishlist"
-                              ? "bucket"
-                              : homeList === "visited"
-                                ? "been"
-                                : "recommendation"),
-                        ),
-                        8,
-                      ).map((r) => (
-                        <li key={r.id}>{recCard(r)}</li>
-                      ))}
-                    </ul>
-                  )}
-                </section>
-              )}
-            </div>
+              {vault.loading && vault.rows.length === 0 && <RowListSkeleton />}
+              <ul>
+                {recentlySaved(visibleRows, 3).map((r) => (
+                  <li key={r.id}>
+                    <button
+                      type="button"
+                      onClick={() => openPlace(placeFromRow(r))}
+                      className="flex w-full flex-col gap-1 border-b border-border py-3 text-left"
+                    >
+                      <span className="truncate text-[16px] leading-[1.4]">{r.name}</span>
+                      <span className="truncate text-[14px] leading-[1.4]">
+                        {[r.city, r.category].filter(Boolean).join(" / ")}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </section>
           )}
 
-          <nav aria-label="Explore by kind" className="grid grid-cols-5 gap-1">
-            {BROWSE_KINDS.map((k, i) => {
-              const Icon = KIND_ICON[k];
-              return (
-                <button
-                  key={k}
-                  type="button"
-                  onClick={() => setScreen({ kind: "nearby", browse: k === "More" ? "All" : k })}
-                  className="flex flex-col items-center gap-1.5"
-                >
-                  <span
-                    className={`tile-fill-${i + 1} grid size-[60px] place-items-center rounded-full border border-border`}
-                  >
-                    <Icon className="size-6 text-primary" aria-hidden />
-                  </span>
-                  <span className="whitespace-nowrap text-center text-[13px] leading-tight tracking-tight">
-                    {k}
-                  </span>
-                </button>
-              );
-            })}
-          </nav>
-
-          <button
-            type="button"
-            data-guide="explore-nearby"
-            onClick={() => setScreen({ kind: "nearby", browse: "All" })}
-            className="recs-nearby grid w-full grid-cols-[1fr_118px] overflow-hidden text-left"
-          >
-            <span className="block p-4">
-              <span className="block font-display text-[26px] leading-none">Explore nearby</span>
-              <span className="mt-2 block text-[14px] leading-snug text-muted-foreground">
-                Open a map of where you are and discover what's around you.
-              </span>
-              <span className="mt-3 inline-flex h-10 items-center gap-2 rounded-full bg-primary-soft px-4 text-[15px] font-semibold text-primary">
-                Open map <ArrowRight className="size-4" aria-hidden />
-              </span>
-            </span>
-            <MapSketch />
-          </button>
+          <div className="space-y-3">
+            <button
+              type="button"
+              aria-expanded={moreWays}
+              onClick={() => setMoreWays(true)}
+              className="flex h-[52px] w-full items-center justify-center rounded-[var(--r-card)] bg-primary text-[14px] font-medium text-primary-foreground"
+            >
+              Save a place
+            </button>
+            <button
+              type="button"
+              data-guide="reco-search"
+              onClick={() => setScreen({ kind: "saved", list: "all" })}
+              className="flex h-[52px] w-full items-center justify-center rounded-[var(--r-card)] border border-border bg-card text-[14px] font-medium text-foreground"
+            >
+              Filters
+            </button>
+          </div>
         </div>
       )}
 
@@ -1763,40 +1575,6 @@ function SavedMatches({ rows, onOpen }: { rows: RecoRowDB[]; onOpen: (row: RecoR
         ))}
       </ul>
     </div>
-  );
-}
-
-/** A small drawing of a map for the Explore nearby card: neutral in every theme. */
-function MapSketch() {
-  return (
-    <svg
-      viewBox="0 0 118 140"
-      preserveAspectRatio="xMidYMid slice"
-      className="h-full min-h-[140px] w-full"
-      aria-hidden
-    >
-      <rect width="118" height="140" fill="var(--color-elevated)" />
-      <path
-        d="M70 140 C 80 110, 118 100, 118 70 L118 140 Z"
-        fill="color-mix(in oklch, var(--color-muted-foreground) 18%, var(--color-elevated))"
-      />
-      <g stroke="var(--color-card)" strokeWidth="5" fill="none" strokeLinecap="round">
-        <path d="M-5 30 L 125 80" />
-        <path d="M30 -5 L 60 145" />
-        <path d="M-5 105 L 80 60 L 125 20" />
-      </g>
-      <g stroke="var(--color-border)" strokeWidth="1.5" fill="none">
-        <path d="M-5 60 L 125 45" />
-        <path d="M90 -5 L 75 145" />
-      </g>
-      <g transform="translate(59 48)">
-        <path
-          d="M0 22 C -9 11, -11 7, -11 0 A 11 11 0 0 1 11 0 C 11 7, 9 11, 0 22 Z"
-          fill="var(--color-primary)"
-        />
-        <circle r="4" fill="var(--color-card)" />
-      </g>
-    </svg>
   );
 }
 
