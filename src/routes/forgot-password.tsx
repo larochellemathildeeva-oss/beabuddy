@@ -53,7 +53,10 @@ function ForgotPasswordPage() {
       <div className="mx-auto flex min-h-[100dvh] w-full max-w-[520px] flex-col gap-6 p-5">
         <header className="flex min-h-11 items-center justify-between gap-3">
           <BrandMark />
-          <Link to="/auth" className="flex min-h-11 items-center px-1 text-[14px] text-foreground">
+          <Link
+            to="/auth"
+            className="flex min-h-11 min-w-11 items-center justify-end px-1 text-[14px] text-foreground"
+          >
             Back
           </Link>
         </header>

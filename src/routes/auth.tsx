@@ -315,7 +315,10 @@ function AuthPage() {
       <div className="mx-auto flex min-h-[100dvh] w-full max-w-[520px] flex-col gap-6 p-5">
         <header className="flex min-h-11 items-center justify-between gap-3">
           <BrandMark />
-          <Link to="/" className="flex min-h-11 items-center px-1 text-[14px] text-foreground">
+          <Link
+            to="/"
+            className="flex min-h-11 min-w-11 items-center justify-end px-1 text-[14px] text-foreground"
+          >
             Back
           </Link>
         </header>
@@ -364,13 +367,21 @@ function AuthPage() {
             {emailOpen ? (
               emailForm
             ) : (
-              <button
-                type="button"
-                onClick={() => setEmailOpen(true)}
-                className="flex h-[52px] w-full items-center justify-center rounded-[var(--r-card)] border border-border bg-card text-[14px] font-medium text-foreground"
-              >
-                Continue with email
-              </button>
+              <>
+                {/* A failed Google attempt: the form that would show it is closed. */}
+                {error && (
+                  <p role="alert" className="text-[14px] text-destructive">
+                    {error}
+                  </p>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setEmailOpen(true)}
+                  className="flex h-[52px] w-full items-center justify-center rounded-[var(--r-card)] border border-border bg-card text-[14px] font-medium text-foreground"
+                >
+                  Continue with email
+                </button>
+              </>
             )}
             <p className="text-[12px] leading-[1.4] text-muted-foreground">
               Free account · No card required

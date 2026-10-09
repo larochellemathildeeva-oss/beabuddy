@@ -84,8 +84,13 @@ function ResetPasswordPage() {
       <div className="mx-auto flex min-h-[100dvh] w-full max-w-[520px] flex-col gap-6 p-5">
         <header className="flex min-h-11 items-center justify-between gap-3">
           <BrandMark />
-          <Link to="/auth" className="flex min-h-11 items-center px-1 text-[14px] text-foreground">
-            Back
+          {/* The reset link signs the traveller in, and sign-in sends anyone
+              signed in home, so with that session open "back" is Home. */}
+          <Link
+            to={ready ? "/" : "/auth"}
+            className="flex min-h-11 min-w-11 items-center justify-end px-1 text-[14px] text-foreground"
+          >
+            {ready ? "Home" : "Back"}
           </Link>
         </header>
         <div className="flex flex-1 flex-col gap-6">
