@@ -1,15 +1,11 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { Sheet } from "@/components/Sheet";
-import { TripPicture } from "@/components/HomeTripCard";
-import { AiPromptButton } from "@/components/AiPromptSheet";
-import { PlanAsk, PlanCards, PlanExamples, PlanHero } from "@/components/PlanWithBea";
-import { CalendarDays, ChevronRight, Plus, Users } from "@/components/icons";
+import { PlanCards } from "@/components/PlanWithBea";
+import { Check } from "@/components/icons";
 import type { PlannerTab } from "@/components/ItineraryImport";
 import { useTrips, type TripRow } from "@/hooks/useTrips";
-import { useTripPhotos } from "@/hooks/useTripPhotos";
-import { pastTrips, peopleOnTrip, pickActiveTrip } from "@/lib/home-trip";
 import { planTripChoices, startsNewTrip } from "@/lib/plan-trip-choices";
 import { tripDateLine } from "@/lib/trip-card";
 import { toLocalISODate } from "@/lib/trip-dates";
@@ -33,20 +29,14 @@ export const Route = createFileRoute("/trips_/plan")({
 type Ask = { tab: PlannerTab; ask?: string };
 
 /**
- * Plan with Béa, as its own page under Trips: the master's "What would you
- * like to do?" with its four cards, your recent trip, examples, and a box
- * for anything else. Every road leads into a trip's planner — the one you
- * pick, or a new one for Build and Import.
+ * Plan with Béa, as its own page under Trips: the minimalist frame's four
+ * rows and "Start a new plan". Every road leads into a trip's planner — the
+ * one picked under "Which journey?", or a new one for Build and Import.
  */
 function PlanPage() {
   const navigate = useNavigate();
   const t = useTrips();
-  const { photos } = useTripPhotos(t.uid);
   const today = toLocalISODate(new Date());
-  const recent = useMemo(
-    () => pickActiveTrip(t.trips, today) ?? pastTrips(t.trips, today, 1)[0] ?? null,
-    [t.trips, today],
-  );
   const [asking, setAsking] = useState<Ask | null>(null);
   /** Trips the sheet offers for the card that opened it (`plan-trip-choices.ts`). */
   const choices = useMemo(
@@ -84,207 +74,158 @@ function PlanPage() {
     setAsking(ask);
   };
 
-  return (
-    <AppShell>
-      <div className="space-y-6">
-        <PlanHero />
+  const [picked, setPicked] = useState<string | null>(null);
+  const close = () => {
+    setAsking(null);
+    setPicked(null);
+  };
+  /** Continue with the row picked: a new trip, or one of yours. */
+  const go = () => {
+    const ask = asking;
+    if (!ask || !picked) return;
+    const trip = choices.find((c) => c.id === picked);
+    close();
+    if (picked === NEW_TRIP) newTrip(ask);
+    else if (picked === NEW_IMPORT) newTrip({ tab: "import" });
+    else if (picked === NEW_BUILD) newTrip({ tab: "build" });
+    else if (trip) openTrip(trip, ask);
+  };
+  const noTrips = asking && !t.loading && !startsNewTrip(asking.tab) && choices.length === 0;
 
+  return (
+    <AppShell eyebrow="Build / import / optimize / compare" title="Plan with Béa.">
+      <div className="space-y-3">
         <PlanCards
           onBuild={() => start({ tab: "build" })}
           onImport={() => start({ tab: "import" })}
           onOptimize={() => start({ tab: "optimize" })}
           onCompare={() => start({ tab: "compare" })}
         />
-        <AiPromptButton />
-
-        {recent && (
-          <section className="border-t border-border pt-5">
-            <div className="mb-3 flex items-baseline justify-between">
-              <h2 className="font-display text-[26px] leading-none">Recent trip</h2>
-              <Link
-                to="/trips"
-                className="flex items-center gap-1 text-[14px] text-muted-foreground"
-              >
-                View all
-                <ChevronRight className="size-4" aria-hidden />
-              </Link>
-            </div>
-            <RecentTrip
-              trip={recent}
-              photos={photos}
-              people={peopleOnTrip(t.members, recent.id, t.uid)}
-            />
-          </section>
-        )}
-
-        <PlanExamples onPick={(ask) => start({ tab: "build", ask })} />
-        <PlanAsk onSend={(ask) => start({ tab: "build", ask })} />
+        <button
+          type="button"
+          onClick={() => newTrip({ tab: "build" })}
+          data-guide="plan-start"
+          className="btn-primary flex w-full items-center justify-center px-4"
+        >
+          Start a new plan
+        </button>
       </div>
 
       <Sheet
         open={asking !== null}
-        onClose={() => setAsking(null)}
-        title="Which trip?"
-        hint={
-          asking && !t.loading && !startsNewTrip(asking.tab) && choices.length === 0
+        onClose={close}
+        page
+        hint="Plan with Béa"
+        title="Which journey?"
+        crumb="Plan with Béa"
+        width="sm"
+      >
+        <p className="mb-2 text-[14px] text-muted-foreground">
+          {noTrips
             ? "Béa needs a trip with a few stops first. Start one here."
             : asking?.tab === "optimize"
               ? "Béa reorders the stops already on a trip."
               : asking?.tab === "compare"
                 ? "Compare plans for one of your trips."
-                : "Plan a new trip, or add to one you have."
-        }
-        width="sm"
-      >
-        <div className="space-y-2">
+                : "Plan a new trip, or add to one you have."}
+        </p>
+        <div role="radiogroup" aria-label="Which journey?">
           {asking && startsNewTrip(asking.tab) && (
-            <NewTripButton
+            <JourneyRow
+              id={NEW_TRIP}
               title="A new trip"
-              body="Where and when, then Béa takes it from there."
-              onClick={() => {
-                const ask = asking;
-                setAsking(null);
-                newTrip(ask);
-              }}
+              note="Start from an idea"
+              picked={picked}
+              onPick={setPicked}
             />
           )}
-          {/* No trip to optimize or compare: start one from here, never "come back later". */}
-          {t.loading && choices.length === 0 && (
-            // Rows the shape of the trips to come, so the sheet does not jump.
-            <div
-              className="plain-card divide-y divide-border overflow-hidden"
-              aria-busy="true"
-              aria-label="Fetching your trips"
-            >
-              {[0, 1, 2].map((i) => (
-                <div key={i} className="flex items-center gap-3 px-3 py-2.5">
-                  <div className="size-12 shrink-0 animate-pulse rounded-xl bg-muted" />
-                  <div className="min-w-0 flex-1 space-y-2">
-                    <div className="h-4 w-2/3 animate-pulse rounded bg-muted" />
-                    <div className="h-3 w-1/3 animate-pulse rounded bg-muted" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-          {asking && !t.loading && !startsNewTrip(asking.tab) && choices.length === 0 && (
+          {noTrips && (
             <>
-              <NewTripButton
+              <JourneyRow
+                id={NEW_IMPORT}
                 title="Import a plan"
-                body="A photo, PDF, calendar or pasted plan becomes a trip."
-                onClick={() => {
-                  setAsking(null);
-                  newTrip({ tab: "import" });
-                }}
+                note="A photo, PDF, calendar or pasted plan becomes a trip"
+                picked={picked}
+                onPick={setPicked}
               />
-              <NewTripButton
+              <JourneyRow
+                id={NEW_BUILD}
                 title="Plan a new trip"
-                body="Where and when, then Béa drafts the days."
-                onClick={() => {
-                  setAsking(null);
-                  newTrip({ tab: "build" });
-                }}
+                note="Where and when, then Béa drafts the days"
+                picked={picked}
+                onPick={setPicked}
               />
             </>
           )}
-          {choices.length === 0 ? null : (
-            <div className="plain-card divide-y divide-border overflow-hidden">
-              {choices.map((trip) => (
-                <button
-                  key={trip.id}
-                  type="button"
-                  onClick={() => {
-                    const ask = asking;
-                    setAsking(null);
-                    if (ask) openTrip(trip, ask);
-                  }}
-                  className="flex w-full items-center gap-3 px-3 py-2.5 text-left"
-                >
-                  <span className="relative block size-12 shrink-0 overflow-hidden rounded-xl">
-                    <TripPicture trip={trip} photos={photos} cities={[]} />
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate font-display text-[19px] leading-tight">
-                      {trip.title}
-                    </span>
-                    <span className="block truncate text-[12.5px] text-muted-foreground">
-                      {tripDateLine(trip.start_date, trip.end_date) || "No dates yet"}
-                    </span>
-                  </span>
-                  <ChevronRight className="size-5 shrink-0 text-muted-foreground" aria-hidden />
-                </button>
-              ))}
-            </div>
-          )}
+          {choices.map((trip) => (
+            <JourneyRow
+              key={trip.id}
+              id={trip.id}
+              title={trip.title}
+              note={tripDateLine(trip.start_date, trip.end_date) || "No dates yet"}
+              picked={picked}
+              onPick={setPicked}
+            />
+          ))}
         </div>
+        {/* Rows the shape of the trips to come, so the sheet does not jump. */}
+        {t.loading && choices.length === 0 && (
+          <div aria-busy="true" aria-label="Fetching your trips">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="space-y-2 border-b border-border py-3">
+                <div className="h-4 w-2/3 animate-pulse rounded bg-muted" />
+                <div className="h-3 w-1/3 animate-pulse rounded bg-muted" />
+              </div>
+            ))}
+          </div>
+        )}
+        <button
+          type="button"
+          onClick={go}
+          disabled={!picked}
+          className="btn-primary mt-3 flex w-full items-center justify-center px-4 disabled:opacity-60"
+        >
+          Continue
+        </button>
       </Sheet>
     </AppShell>
   );
 }
 
-/** A dashed row that starts a new trip, at the top of the "Which trip?" sheet. */
-function NewTripButton({
+const NEW_TRIP = "new";
+const NEW_IMPORT = "new-import";
+const NEW_BUILD = "new-build";
+
+/** One choice in "Which journey?": a title over one line, checked when picked. */
+function JourneyRow({
+  id,
   title,
-  body,
-  onClick,
+  note,
+  picked,
+  onPick,
 }: {
+  id: string;
   title: string;
-  body: string;
-  onClick: () => void;
+  note: string;
+  picked: string | null;
+  onPick: (id: string) => void;
 }) {
+  const on = picked === id;
   return (
     <button
       type="button"
-      onClick={onClick}
-      className="flex w-full items-center gap-3 rounded-2xl border border-dashed border-primary/50 px-3 py-3 text-left"
+      role="radio"
+      aria-checked={on}
+      onClick={() => onPick(id)}
+      className="flex w-full items-center gap-3 border-b border-border py-3 text-start"
     >
-      <span className="grid size-12 shrink-0 place-items-center rounded-xl bg-primary-soft text-primary">
-        <Plus className="size-5" aria-hidden />
-      </span>
       <span className="min-w-0 flex-1">
-        <span className="block text-[15.5px] font-semibold">{title}</span>
-        <span className="block text-[12.5px] text-muted-foreground">{body}</span>
-      </span>
-    </button>
-  );
-}
-
-function RecentTrip({
-  trip,
-  photos,
-  people,
-}: {
-  trip: TripRow;
-  photos: Parameters<typeof TripPicture>[0]["photos"];
-  people: number;
-}) {
-  const dates = tripDateLine(trip.start_date, trip.end_date);
-  return (
-    <Link
-      to="/trips/$tripId"
-      params={{ tripId: trip.id }}
-      viewTransition
-      className="plain-card flex items-center gap-3 p-2.5"
-    >
-      <span className="relative block h-[88px] w-[124px] shrink-0 overflow-hidden rounded-2xl">
-        <TripPicture trip={trip} photos={photos} cities={[]} />
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="line-clamp-2 font-display text-[22px] leading-tight">{trip.title}</span>
-        {dates ? (
-          <span className="mt-1 flex items-center gap-1.5 text-[13.5px] text-muted-foreground">
-            <CalendarDays className="size-4 shrink-0" aria-hidden />
-            {dates}
-          </span>
-        ) : null}
-        <span className="mt-0.5 flex items-center gap-1.5 text-[13.5px] text-muted-foreground">
-          <Users className="size-4 shrink-0" aria-hidden />
-          {people} {people === 1 ? "traveller" : "travellers"}
+        <span className="block truncate text-[16px] leading-[22px]">{title}</span>
+        <span className="mt-1 block truncate text-[14px] leading-[20px] text-muted-foreground">
+          {note}
         </span>
       </span>
-      <span className="tile-fill-3 shrink-0 rounded-full px-3.5 py-2 text-[14px] font-semibold text-primary">
-        Open
-      </span>
-    </Link>
+      {on ? <Check className="size-5 shrink-0" aria-hidden /> : null}
+    </button>
   );
 }

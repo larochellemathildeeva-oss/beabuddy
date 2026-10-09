@@ -23,6 +23,7 @@ import { Route as AuthRoute } from "@/routes/auth";
 import { Welcome } from "@/components/Welcome";
 import { Route as ProfileRoute } from "@/routes/profile";
 import { Route as HelpRoute } from "@/routes/help";
+import { Route as PlanRoute } from "@/routes/trips_.plan";
 import { Route as HowRoute } from "@/routes/how-it-works";
 import { Route as PrivacyRoute } from "@/routes/privacy";
 import { Route as TermsRoute } from "@/routes/terms";
@@ -44,6 +45,7 @@ const PAGES: Record<string, unknown> = {
   help: HelpRoute, how: HowRoute, privacy: PrivacyRoute, terms: TermsRoute, prefs: PrefsRoute,
   bea: BeaRoute, docs: DocsRoute, forgot: ForgotRoute, reset: ResetRoute, shared: SharedRoute, "shared-gone": SharedRoute,
   calendar: CalendarRoute, expenses: ExpensesRoute, memories: MemoriesRoute, photos: PhotosRoute, story: StoryRoute,
+  plan: PlanRoute,
 };
 
 /** Home below the header, as SignedInHome lays it out. */

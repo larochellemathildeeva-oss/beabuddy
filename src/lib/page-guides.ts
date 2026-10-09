@@ -165,28 +165,23 @@ export const guides: Record<string, Guide> = {
     about:
       "Béa's planner: start a trip from what you saved, or improve one you already have. You approve before anything saves.",
     features: [
-      "Build my trip: a day-by-day plan from your saved places and preferences",
-      "Import a plan: a photo, PDF, calendar or pasted text becomes a trip",
+      "Build a new trip: a day-by-day plan from your saved places and preferences",
+      "Import your plan: a photo, PDF, calendar or pasted text becomes a trip",
       "Optimize my trip: a better order for a trip's stops, with less travel",
       "Compare options: two plans side by side, with pros and cons",
-      "Planning in ChatGPT or another assistant? Get the prompt, then import its answer",
+      "Planning in ChatGPT or another assistant? Import your plan has Get the AI prompt; paste its answer back",
       "Béa does not book or check availability; you reserve yourself",
     ],
     steps: [
       {
         title: "Four ways to start",
-        body: "Build a new plan, import one you already have, optimize the order of a trip's stops, or compare two plans. Béa asks which trip when it matters, and you approve before anything saves.",
+        body: "Build a new plan, import one you already have, optimize the order of a trip's stops, or compare two plans. Béa asks which journey when it matters, and you approve before anything saves.",
         selector: "[data-guide='plan-cards']",
       },
       {
-        title: "Try an example",
-        body: "Not sure what to ask? Each example starts a build with its words, which you can change before Béa drafts.",
-        selector: "[data-guide='plan-examples']",
-      },
-      {
-        title: "In your own words",
-        body: "Anything else: a pace, a budget, who is coming. Béa takes it into the build.",
-        selector: "[data-guide='plan-ask']",
+        title: "Start a new plan",
+        body: "Straight to a new trip: where and when, then anything that matters, a pace, a budget, who is coming. Not sure what to ask? Build has examples under its box.",
+        selector: "[data-guide='plan-start']",
       },
     ],
   },

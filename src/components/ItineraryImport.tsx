@@ -2,7 +2,7 @@ import { SaveAttempt } from "@/lib/save-attempt";
 import { Sheet } from "@/components/Sheet";
 import { friendlyError } from "@/lib/friendly-error";
 import { AiPromptButton } from "@/components/AiPromptSheet";
-import { PlanAsk, PlanCards, PlanExamples, PlanHero } from "@/components/PlanWithBea";
+import { PlanCards, PlanExamples } from "@/components/PlanWithBea";
 import { BeaRunning } from "@/components/BeaRunning";
 import { SearchGroundingNote } from "@/components/SearchGroundingNote";
 import { useServerFn } from "@tanstack/react-start";
@@ -350,10 +350,10 @@ export function ItineraryImport({
     <Sheet
       open={open}
       onClose={onClose}
-      title="Ask Béa"
+      title={tab === "start" ? "Plan with Béa" : "Ask Béa"}
       hint={
         tab === "start"
-          ? [tripTitle, "make the trip better"].filter(Boolean).join(" · ")
+          ? [tripTitle, "build / import / optimize / compare"].filter(Boolean).join(" · ")
           : (tripTitle ?? undefined)
       }
       page
@@ -365,8 +365,7 @@ export function ItineraryImport({
     >
       <PlannerBusy.Provider value={setPanelBusy}>
         {tab === "start" ? (
-          <div className="space-y-5">
-            <PlanHero compact />
+          <div className="space-y-3">
             <PlanCards
               optimizeNote={existingItems.length >= 2 ? "" : "Add two stops first"}
               onBuild={() => openPlan("build")}
@@ -374,9 +373,13 @@ export function ItineraryImport({
               onOptimize={() => setTab("optimize")}
               onCompare={() => setTab("compare")}
             />
-            <AiPromptButton />
-            <PlanExamples onPick={(ask) => openPlan("build", ask)} />
-            <PlanAsk onSend={(ask) => openPlan("build", ask)} />
+            <button
+              type="button"
+              onClick={() => openPlan("build")}
+              className="btn-primary flex w-full items-center justify-center px-4"
+            >
+              Start a new plan
+            </button>
           </div>
         ) : null}
 
@@ -1330,6 +1333,7 @@ function ImportPanel({
             }
             className={`${PLAN_FIELD} resize-none`}
           />
+          {!text.trim() && <PlanExamples onPick={setText} />}
         </PlanPanel>
       ) : (
         <PlanPanel
