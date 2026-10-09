@@ -723,7 +723,14 @@ function RecommendationsPage() {
         <div className={screen.kind === "nearby" ? "" : "hidden"}>
           <ExploreNearby
             initialKind={screen.kind === "nearby" ? screen.browse : "All"}
-            initialView={screen.kind === "nearby" ? (screen.view ?? "map") : "map"}
+            initialView={
+              // A place opened from Nearby keeps the view it was opened from.
+              screen.kind === "nearby"
+                ? (screen.view ?? "map")
+                : screen.kind === "place" && screen.back.kind === "nearby"
+                  ? (screen.back.view ?? "map")
+                  : "map"
+            }
             saved={vault.rows}
             tripLine={tripLine}
             savingName={savingName}
@@ -1350,6 +1357,7 @@ function RecommendationsPage() {
                   <PlaceArt
                     place={{ name: r.name, category: r.category, lat: r.lat, lon: r.lon }}
                     className="h-[160px] w-full rounded-[var(--r-card)]"
+                    eager
                   />
                 </button>
               ))}

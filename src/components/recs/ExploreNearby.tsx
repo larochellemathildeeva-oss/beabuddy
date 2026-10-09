@@ -896,10 +896,14 @@ export function ExploreNearby({
                     if (view === "list") setView("map");
                   }}
                   onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      setSelectedId(p.id);
-                      setCenter({ lat: p.lat, lon: p.lon });
-                    }
+                    // Enter and Space, as a button does, and the same move to the map.
+                    if (e.target !== e.currentTarget) return;
+                    if (e.key !== "Enter" && e.key !== " ") return;
+                    e.preventDefault();
+                    setSelectedId(p.id);
+                    setCenter({ lat: p.lat, lon: p.lon });
+                    setDraft(null);
+                    if (view === "list") setView("map");
                   }}
                   className="recs-box flex cursor-pointer items-center gap-3 p-2.5"
                 >
