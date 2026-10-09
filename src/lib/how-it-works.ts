@@ -93,3 +93,23 @@ export const HOW_CLOSING = {
 
 /** What the play button says when a deploy has a film to show. */
 export const WATCH_LABEL = "Watch how Béa works";
+
+/** The four steps the page shows, as the Figma "How it works" frame draws them. */
+export const HOW_STEPS: readonly { title: string; body: string }[] = [
+  {
+    title: "Bring your places",
+    body: "Save links and ideas, or import a plan you already have.",
+  },
+  {
+    title: "Review a plan",
+    body: "Béa helps organise the order. You choose what to keep.",
+  },
+  {
+    title: "Travel with the details",
+    body: "Follow stops with directions and bookings close by.",
+  },
+  {
+    title: "Keep the memories",
+    body: "Save places, photos and notes for another visit.",
+  },
+];

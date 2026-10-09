@@ -296,14 +296,15 @@ export const guides: Record<string, Guide> = {
     name: "Help",
     about: "Answers about Béa, grouped by topic.",
     features: [
-      "Open any question to read the answer",
-      "Find the prompt to use when another assistant writes your plan",
+      "Open a topic, then any question, to read the answer",
+      "Plan a trip has the prompt to use when another assistant writes your plan",
+      "Show me how: walks on the real screens, and a search of every answer",
       "Replay the tour from You → About Béa",
     ],
     steps: [
       {
         title: "Welcome to Béa",
-        body: "A conversation, not a manual — start here, then open any question. The ? at the top right of any page says what that page does, and can walk you around it.",
+        body: "A conversation, not a manual — open a topic, then any question. Menu → Help for this page says what a page does, and can walk you around it.",
         selector: "[data-guide='help-faq']",
       },
     ],
@@ -314,18 +315,19 @@ export const guides: Record<string, Guide> = {
     features: [
       "Edit your name, photo, home city and travel tags",
       "Set travel preferences: style, pace, budget, interests and diet",
-      "Profile settings: your name and home city, packing lists, Data & imports, Privacy & legal, About Béa and Sign out",
+      "Profile settings: your name and home city",
+      "Packing lists, Data & imports, Privacy & legal, Help & FAQ, Feedback and About Béa, each a row",
       "Work travel: receipts and an expense spreadsheet",
       "Trip documents: bookings, confirmations and private files",
-      "Choose Béa's personality and how much she suggests",
+      "Choose Béa's personality and how much she suggests (Appearance)",
       "Change the theme and what Home shows (Appearance)",
       "Import photos (Photos & memories)",
-      "Help & FAQ, Feedback and Sign out are in the Menu too",
+      "Sign out is in the Menu",
     ],
     steps: [
       {
         title: "Your account",
-        body: "How many trips and countries, your name and home city. Profile settings, at the bottom, changes them; everything stays synced across your phone and laptop.",
+        body: "Everything Béa keeps for you, one row each. Profile settings changes your name and home city; everything stays synced across your phone and laptop.",
         selector: "[data-guide='profile-account']",
       },
       {
@@ -344,8 +346,8 @@ export const guides: Record<string, Guide> = {
         selector: "[data-guide='trip-documents']",
       },
       {
-        title: "Your Béa",
-        body: "Her personality, and how much she suggests and helps. The line under it names the preset you picked.",
+        title: "Appearance and your Béa",
+        body: "Your theme and reading options, and Béa's personality: how much she suggests and helps.",
         selector: "[data-guide='your-bea']",
       },
     ],

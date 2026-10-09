@@ -188,7 +188,7 @@ export const WALKS: Walk[] = [
       },
       {
         title: "Planning somewhere else?",
-        body: "Copy this prompt into the assistant you use. It asks for the shape Béa reads best, so the plan comes in cleanly when you paste the answer back.",
+        body: "After the tour, open Plan a trip here, or Get the prompt on Plan with Béa: a prompt for the assistant you use, asking for the shape Béa reads best, so its plan comes in cleanly when you paste the answer back.",
         to: "/help",
         selector: "[data-guide='plan-prompt']",
       },
@@ -260,9 +260,9 @@ export const WALKS: Walk[] = [
       },
       {
         title: "No signal? Keep it offline",
-        body: "In a trip's menu (•••), Offline maps keeps the plan, the directions and the map on this phone. Profile settings → Data & imports lists them.",
+        body: "In a trip's menu (•••), Offline maps keeps the plan, the directions and the map on this phone. You → Data & imports lists them.",
         to: "/profile",
-        selector: "[data-guide='profile-settings']",
+        selector: "[data-guide='offline-options']",
       },
       {
         title: "Saved places nearby",

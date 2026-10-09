@@ -70,7 +70,7 @@ export const HELP_FAQ_GROUPS: { title: string; items: Faq[] }[] = [
       },
       {
         q: "Can I bring in a plan from another assistant?",
-        a: 'Yes. Under Planning with another assistant, just below, there is a prompt to copy into whichever one you use. Fill in the city, dates and what you\'d like, then paste its answer into Plan with Béa → Import a plan.\n\nThe prompt asks for one place per line, each with a time and a street address, and no "walk to…" lines. That is the shape Béa reads most precisely: each stop lands on the map on its own, and trips between them stay out of your timeline.',
+        a: 'Yes. Help → Plan a trip, and Get the prompt on Plan with Béa, both have a prompt to copy into whichever one you use. Fill in the city, dates and what you\'d like, then paste its answer into Plan with Béa → Import a plan.\n\nThe prompt asks for one place per line, each with a time and a street address, and no "walk to…" lines. That is the shape Béa reads most precisely: each stop lands on the map on its own, and trips between them stay out of your timeline.',
         walk: "import",
       },
       {
