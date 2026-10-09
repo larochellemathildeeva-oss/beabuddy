@@ -3,7 +3,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { friendlyError } from "@/lib/friendly-error";
 import { formatTripLocation } from "@/lib/place-label";
 import { useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState, type ComponentType, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ComponentType, type ReactNode } from "react";
 import { BookOpen, CalendarDays, ChevronRight, type LucideProps } from "@/components/icons";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
@@ -142,6 +142,10 @@ function ProfilePage() {
         setDisplayName(data.display_name ?? "");
         rememberProfileName(safeStorage(), user.id, data.display_name ?? "");
         setHomeCity(data.home_city ?? "");
+        lastSaved.current = {
+          display_name: data.display_name ?? "",
+          home_city: data.home_city ?? "",
+        };
         if (data.preferences?.length) setInterests(data.preferences);
       });
     return () => {
@@ -149,18 +153,40 @@ function ProfilePage() {
     };
   }, [user]);
 
-  const saveProfile = async (patch: {
+  /** What the account holds, so a blur and Save details do not write the same thing twice. */
+  const lastSaved = useRef<{ display_name?: string; home_city?: string }>({});
+  /** Saves run one after another, never overlapping. */
+  const saveQueue = useRef<Promise<boolean>>(Promise.resolve(true));
+  const [savingProfile, setSavingProfile] = useState(false);
+  const saveProfile = (patch: {
     display_name?: string;
     home_city?: string;
     preferences?: string[];
-  }) => {
-    if (!user) return;
-    await supabase.from("profiles").upsert({ id: user.id, ...patch });
-    if (patch.display_name !== undefined) {
-      rememberProfileName(safeStorage(), user.id, patch.display_name);
-    }
-    setSaved(true);
-    setTimeout(() => setSaved(false), 1600);
+  }): Promise<boolean> => {
+    const run = saveQueue.current.then(async () => {
+      if (!user) return false;
+      const changed = Object.fromEntries(
+        Object.entries(patch).filter(
+          ([key, value]) => lastSaved.current[key as keyof typeof lastSaved.current] !== value,
+        ),
+      ) as typeof patch;
+      if (Object.keys(changed).length === 0) return true;
+      const { error } = await supabase.from("profiles").upsert({ id: user.id, ...changed });
+      if (error) {
+        toast.error("That didn't save. Try again.");
+        return false;
+      }
+      if (changed.display_name !== undefined) {
+        lastSaved.current.display_name = changed.display_name;
+        rememberProfileName(safeStorage(), user.id, changed.display_name);
+      }
+      if (changed.home_city !== undefined) lastSaved.current.home_city = changed.home_city;
+      setSaved(true);
+      setTimeout(() => setSaved(false), 1600);
+      return true;
+    });
+    saveQueue.current = run.catch(() => false);
+    return run;
   };
 
   useEffect(() => {
@@ -284,7 +310,14 @@ function ProfilePage() {
           className="space-y-3"
           onSubmit={(e) => {
             e.preventDefault();
-            void saveProfile({ display_name: displayName, home_city: homeCity }).then(close);
+            if (savingProfile) return;
+            setSavingProfile(true);
+            void saveProfile({ display_name: displayName, home_city: homeCity })
+              .then((ok) => {
+                // A failed save keeps the page open, to try again.
+                if (ok) close();
+              })
+              .finally(() => setSavingProfile(false));
           }}
         >
           <LabelledField label="Your name" id="profile-name">
@@ -294,7 +327,7 @@ function ProfilePage() {
               onChange={(e) => setDisplayName(e.target.value)}
               onBlur={() => saveProfile({ display_name: displayName })}
               placeholder="Your name"
-              className="w-full bg-transparent text-[16px] outline-none"
+              className="min-h-11 w-full bg-transparent text-[16px] outline-none"
             />
           </LabelledField>
           <LabelledField label="Home city" id="profile-city">
@@ -304,7 +337,7 @@ function ProfilePage() {
               onChange={(e) => setHomeCity(e.target.value)}
               onBlur={() => saveProfile({ home_city: homeCity })}
               placeholder="Home city"
-              className="w-full bg-transparent text-[16px] outline-none"
+              className="min-h-11 w-full bg-transparent text-[16px] outline-none"
             />
           </LabelledField>
           {/* Travel tags are chosen on Travel preferences; the box shows them and goes there. */}
@@ -328,7 +361,8 @@ function ProfilePage() {
           )}
           <button
             type="submit"
-            className="btn-primary flex w-full items-center justify-center px-4"
+            disabled={savingProfile}
+            className="btn-primary flex w-full items-center justify-center px-4 disabled:opacity-60"
           >
             Save details
           </button>
