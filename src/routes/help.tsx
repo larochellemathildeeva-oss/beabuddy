@@ -151,7 +151,7 @@ function Groups({
 }
 
 /** Walks, a search through every answer, and the last word: behind "Show me how". */
-function ShowMeHow() {
+function ShowMeHow({ onWalk }: { onWalk: () => void }) {
   const [query, setQuery] = useState("");
   const searching = query.trim().length > 0;
   const groups = useMemo(() => searchHelp(query), [query]);
@@ -161,7 +161,7 @@ function ShowMeHow() {
   const autoOpen = searching && count <= 3;
   return (
     <div className="space-y-6 pb-4">
-      <WalkCards />
+      <WalkCards onPick={onWalk} />
       <section className="space-y-2">
         <p className="text-[14px] leading-[1.4] text-foreground">{HELP_WELCOME.lead}</p>
         <label htmlFor="help-search" className="block text-[12px] text-foreground">
@@ -175,7 +175,7 @@ function ShowMeHow() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="directions, import, offline…"
-            className="min-w-0 flex-1 bg-transparent text-[16px] outline-none placeholder:text-muted-foreground"
+            className="min-h-11 min-w-0 flex-1 bg-transparent text-[16px] outline-none placeholder:text-muted-foreground"
           />
         </div>
       </section>
@@ -187,6 +187,7 @@ function ShowMeHow() {
               : `${count} ${ANSWER_WORD[ANSWER_PLURALS.select(count)] ?? "answers"}`}
           </p>
           <Groups groups={groups} autoOpen={autoOpen} />
+          {groups.some((g) => g.title === "Planning a trip") && <PlanPrompt />}
         </>
       )}
       <section className="border-t border-[var(--rule)] pt-4">
@@ -287,7 +288,7 @@ function HelpPage() {
         title="Show me how"
         crumb="Help"
       >
-        <ShowMeHow />
+        <ShowMeHow onWalk={() => setHowOpen(false)} />
       </Sheet>
     </AppShell>
   );
