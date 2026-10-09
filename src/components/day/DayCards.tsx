@@ -99,8 +99,8 @@ export function DayCards({
                 </span>
               ) : (
                 <>
-                  <span className="text-[13px]">{top}</span>
-                  <span className={small ? "text-[13px]" : "font-display text-[22px] leading-none"}>
+                  <span className="text-[12px]">{top}</span>
+                  <span className={small ? "text-[12px]" : "text-[16px] leading-none tabular-nums"}>
                     {bottom}
                   </span>
                   {today ? <span aria-hidden className="day-pill-dot" /> : null}

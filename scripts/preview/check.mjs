@@ -149,6 +149,14 @@ async function open(sample) {
 const tabNames = async (page) =>
   page.$$eval('[role="tablist"][aria-label="How to look at this trip"] [role="tab"]', (els) => els.map((e) => e.getAttribute("aria-label") ?? e.textContent.trim()));
 
+/** The Timeline shows each stop as a row; a few checks need the full cards back. */
+async function fullCards(page) {
+  await page.getByRole("button", { name: "Timeline options", exact: true }).first().click();
+  await page.getByRole("group", { name: "Cards", exact: true }).getByRole("button", { name: "Full", exact: true }).click();
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(300);
+}
+
 async function goTab(page, name) {
   if (name === "Companion") {
     // Companion is the live side of the Map tab, reached by its switch.
@@ -1263,6 +1271,7 @@ await flow("trip shell: day tracker opens a stop from every day view", async (pa
 
 await flow("booking: mark booked with a reference", async (page) => {
   await goTab(page, "Timeline");
+  await fullCards(page);
   await page.getByRole("button", { name: /tap to edit$/ }).first().click();
   await page.getByRole("button", { name: /^Booking for / }).first().click();
   await page.getByRole("switch").first().click();
@@ -1343,6 +1352,7 @@ await flow("trip header: every action is on screen at 390px, with the back butto
 
 await flow("locate on map: opens Map Split on that stop", async (page) => {
   await goTab(page, "Timeline");
+  await fullCards(page);
   await page.getByRole("button", { name: /Peace Memorial Museum.*tap to edit$/ }).click();
   await page.getByRole("dialog").getByRole("button", { name: "Locate Peace Memorial Museum on the map", exact: true }).click();
   await page.waitForTimeout(700);
@@ -1418,6 +1428,7 @@ await flow("companion: swipe to All days asks which day to follow", async (page)
 
 await flow("stop card: one editor opens, saves and closes", async (page) => {
   await goTab(page, "Timeline");
+  await fullCards(page);
   const front = page.getByRole("button", { name: /tap to edit$/ }).first();
   const box = await front.boundingBox();
   // Names wrap rather than cut off, so a long one takes a second or third line.
@@ -1484,6 +1495,7 @@ await flow("timeline editor: move a stop later and save its order", async (page)
 
 await flow("timeline: Not visited hides done stops, All brings them back", async (page) => {
   await goTab(page, "Timeline");
+  await fullCards(page);
   const cards = () => page.getByRole("button", { name: /tap to edit$/ }).count();
   const all = await cards();
   await page.getByRole("button", { name: "Timeline options", exact: true }).first().click();
@@ -1506,6 +1518,7 @@ await flow("timeline: Not visited hides done stops, All brings them back", async
 
 await flow("timeline: paws between stops open directions to the next one", async (page) => {
   await goTab(page, "Timeline");
+  await fullCards(page);
   if ((await page.getByRole("button", { name: /Add stop between/ }).count()) > 0) throw new Error("Add stop between is still there");
   const paws = page.getByRole("link", { name: /^Directions from .* to / });
   if ((await paws.count()) < 2) throw new Error("no paw between stops");
@@ -1518,6 +1531,7 @@ await flow("timeline: paws between stops open directions to the next one", async
 
 await flow("timeline: the map and directions sit under each stop's ⋯, Edit stops turns every card over", async (page) => {
   await goTab(page, "Timeline");
+  await fullCards(page);
   // The master moved Map and Directions off the card's front into ⋯.
   if ((await page.getByRole("button", { name: /^Locate .* on the map$/ }).count()) !== 0) throw new Error("Map is still on the card's front");
   await page.getByRole("button", { name: "Actions for Peace Memorial Museum", exact: true }).click();
@@ -1527,14 +1541,24 @@ await flow("timeline: the map and directions sit under each stop's ⋯, Edit sto
   await page.getByRole("button", { name: "Locate Peace Memorial Museum on the map", exact: true }).click();
   if ((await page.getByRole("tab", { name: "Map", exact: true }).getAttribute("aria-selected")) !== "true") throw new Error("Show on the map did not open Map");
   await goTab(page, "Timeline");
-  await page.getByRole("button", { name: "Edit stops", exact: true }).first().click();
+  // Edit stops is in the Timeline's ⋯ now; the day header draws no buttons.
+  await page.getByRole("button", { name: "Timeline options", exact: true }).first().click();
+  await page.getByRole("button", { name: /^Edit stops/ }).click();
   if ((await page.getByRole("button", { name: /^Move .* later$/ }).count()) === 0) throw new Error("Edit stops did not turn the cards over");
   await page.screenshot({ path: join(out, `${previewTheme}-timeline-edit.png`), fullPage: true });
-  await page.getByRole("button", { name: "Done", exact: true }).first().click();
-  if ((await page.getByRole("button", { name: "Edit stops", exact: true }).count()) === 0) throw new Error("Done did not end editing");
-  // The tip is dismissed once and stays dismissed.
-  await page.getByRole("button", { name: "Dismiss the tip", exact: true }).click();
-  if ((await page.getByText("Tap ⋯ on a stop", { exact: false }).count()) !== 0) throw new Error("the tip stayed");
+  await page.getByRole("button", { name: "Done editing", exact: true }).first().click();
+  if ((await page.getByRole("button", { name: /^Move .* later$/ }).count()) !== 0) throw new Error("Done did not end editing");
+  if ((await page.getByText("Tap ⋯ on a stop", { exact: false }).count()) !== 0) throw new Error("the old tip is back");
+});
+
+await flow("timeline: rows as the design draws them, Add stop under the day", async (page) => {
+  await goTab(page, "Timeline");
+  if ((await page.getByRole("button", { name: /show the whole card$/ }).count()) < 2) throw new Error("the stops are not rows");
+  if ((await page.getByRole("button", { name: /^Add a stop to / }).first().innerText()).trim() !== "Add stop") throw new Error("no Add stop under the day");
+  for (const gone of ["Edit stops", "Directions between stops"])
+    if ((await page.getByRole("button", { name: gone, exact: true }).count()) !== 0) throw new Error(`${gone} is still on the day header`);
+  await page.getByRole("button", { name: /show the whole card$/ }).first().click();
+  if ((await page.getByRole("button", { name: "Less", exact: true }).count()) !== 1) throw new Error("a row did not open to its card");
 });
 
 await flow("import: places, times and stays reach the timeline; doubtful pins are held back", async (page) => {
@@ -1649,9 +1673,10 @@ await flow("timeline editor: neighbourhood groups the day by area", async (page)
   if ((await heading("Naka Ward").count()) !== 0) throw new Error("Timeline did not ungroup");
 });
 
-await flow("timeline: directions between stops open from the day heading", async (page) => {
+await flow("timeline: directions between stops open from the Timeline's ⋯", async (page) => {
   await goTab(page, "Timeline");
-  await page.getByRole("button", { name: "Directions between stops", exact: true }).first().click();
+  await page.getByRole("button", { name: "Timeline options", exact: true }).first().click();
+  await page.getByRole("button", { name: /^Directions/ }).first().click();
   await page.waitForTimeout(400);
   if ((await page.getByRole("dialog").count()) !== 1) throw new Error("directions did not open");
   await page.getByRole("dialog").getByRole("button", { name: "Get directions", exact: true }).click();
@@ -1702,6 +1727,7 @@ if (flowSelected("a stop pinned far from the trip is flagged, and only that one"
   const { page, errors } = await open("stray");
   try {
     await goTab(page, "Timeline");
+    await fullCards(page);
     const flagged = page.getByText("Pinned far from the rest of this trip", { exact: false });
     if ((await flagged.count()) !== 1) throw new Error(`${await flagged.count()} cards flagged, expected 1`);
     const card = page.getByRole("button", { name: /Motoyasubashi.*tap to edit$/ });
@@ -1711,7 +1737,8 @@ if (flowSelected("a stop pinned far from the trip is flagged, and only that one"
       throw new Error("the back does not explain the flag");
     await page.getByRole("dialog").getByRole("button", { name: "Done", exact: true }).click();
     // Directions between same-day stops hundreds of km apart are a warning, not a drive.
-    await page.getByRole("button", { name: "Directions between stops", exact: true }).first().click();
+    await page.getByRole("button", { name: "Timeline options", exact: true }).first().click();
+    await page.getByRole("button", { name: /^Directions/ }).first().click();
     await page.getByRole("dialog").getByRole("button", { name: "Get directions", exact: true }).click();
     await page.waitForTimeout(600);
     await page.keyboard.press("Escape");
@@ -1752,6 +1779,7 @@ if (flowSelected("place details: hours on the stop, and a warning when the visit
   const { page, errors } = await open("default");
   try {
     await goTab(page, "Timeline");
+    await fullCards(page);
     await page.getByRole("button", { name: /Peace Memorial Museum.*tap to edit$/ }).click();
     await page.waitForTimeout(400);
     if ((await page.getByText("Mo-Su 10:00-18:00").count()) === 0) throw new Error("no hours shown");
@@ -1793,6 +1821,7 @@ if (flowSelected("a journey saved as a stop becomes a note on the stop it leads 
   const { page, errors } = await open("legs");
   try {
     await goTab(page, "Timeline");
+    await fullCards(page);
     await page.getByRole("button", { name: /Head to Motoyasubashi Pier.*tap to edit$/ }).click();
     await page.getByRole("button", { name: "Make it a note on Motoyasubashi Pier ferry" }).click();
     await page.waitForTimeout(600);
