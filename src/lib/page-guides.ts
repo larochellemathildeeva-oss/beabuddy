@@ -35,7 +35,7 @@ export const guides: Record<string, Guide> = {
       "Get directions to one, or snooze it when it's not the moment",
       "Tick a few nearby places and let Béa arrange a day trip",
       "Check the weather where you are",
-      "Choose what Home shows under You → Appearance",
+      "Choose what Home shows with Customize home, at the foot of Home",
     ],
     steps: [
       {
@@ -314,8 +314,8 @@ export const guides: Record<string, Guide> = {
       "Packing lists, Data & imports, Privacy & legal, Help & FAQ, Feedback and About Béa, each a row",
       "Work travel: receipts and an expense spreadsheet",
       "Trip documents: bookings, confirmations and private files",
-      "Choose Béa's personality and how much she suggests (Appearance)",
-      "Change the theme and what Home shows (Appearance)",
+      "Choose Béa's personality and how much she suggests (About Béa)",
+      "Change the theme, text size, motion and pictures (Appearance)",
       "Import photos (Photos & memories)",
       "Sign out is in the Menu",
     ],
@@ -341,8 +341,8 @@ export const guides: Record<string, Guide> = {
         selector: "[data-guide='trip-documents']",
       },
       {
-        title: "Appearance and your Béa",
-        body: "Your theme and reading options, and Béa's personality: how much she suggests and helps.",
+        title: "Appearance",
+        body: "Calm, Colorful or Dark; text size and motion; how stops are pictured. Béa's personality is under About Béa.",
         selector: "[data-guide='your-bea']",
       },
     ],

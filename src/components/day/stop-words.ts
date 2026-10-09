@@ -1,6 +1,6 @@
 import type { RouteLeg } from "@/lib/directions.functions";
 import type { LegMode } from "@/lib/travel-mode";
-import { dayDistance } from "@/lib/day-map";
+import { dayDistance, legEstimate } from "@/lib/day-map";
 import { formatMetres } from "@/lib/geo";
 import { placed as hasPosition } from "@/lib/trip-map";
 
@@ -76,4 +76,27 @@ export function dayLengthLabel<T extends Placeable>(
   }
   const metres = dayDistance(items.filter((item) => hasPosition(item)));
   return metres > 0 ? `about ${formatMetres(metres)}` : "";
+}
+
+/** A measured leg from the page, when it has one for these two stops. */
+export type LegFor<S> = (from: S, to: S) => RouteLeg | undefined;
+
+/** The journey between two stops: the measured leg, else "about" as the crow flies. */
+export function between<S extends { title: string; lat?: number | null; lon?: number | null }>(
+  from: S,
+  to: S,
+  legFor: LegFor<S> | undefined,
+): { walking: boolean; mode?: LegMode; text: string } | null {
+  const leg = legFor?.(from, to);
+  if (measured(leg)) {
+    const words = legWords(leg);
+    return {
+      walking: words.walking,
+      mode: words.mode,
+      text: `${words.time}${words.mode === "driving" ? "" : ` ${words.how}`} · ${words.distance}`,
+    };
+  }
+  if (!hasPosition(from) || !hasPosition(to)) return null;
+  const guess = legEstimate(from, to);
+  return { walking: guess.walkMinutes !== null, text: guess.label };
 }

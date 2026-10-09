@@ -6,6 +6,7 @@ import { PlanCards, PlanExamples } from "@/components/PlanWithBea";
 import { BeaRunning } from "@/components/BeaRunning";
 import { SearchGroundingNote } from "@/components/SearchGroundingNote";
 import { useServerFn } from "@tanstack/react-start";
+import { useNavigate } from "@tanstack/react-router";
 import {
   CalendarDays,
   FileText,
@@ -289,6 +290,7 @@ export function ItineraryImport({
     n: 0,
   });
 
+  const navigate = useNavigate();
   const openPlan = (mode: "build" | "import", text = "") => {
     setStart((cur) => ({ mode, text, n: cur.n + 1 }));
     setTab("import");
@@ -380,9 +382,13 @@ export function ItineraryImport({
               onOptimize={() => setTab("optimize")}
               onCompare={() => setTab("compare")}
             />
+            {/* A new plan is a new trip, as on the Plan page: Build above adds to this one. */}
             <button
               type="button"
-              onClick={() => openPlan("build")}
+              onClick={() => {
+                onClose();
+                void navigate({ to: "/trips", search: { new: true, plan: "build" } });
+              }}
               className="btn-primary flex w-full items-center justify-center px-4"
             >
               Start a new plan

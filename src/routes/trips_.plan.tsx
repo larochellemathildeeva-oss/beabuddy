@@ -79,18 +79,27 @@ function PlanPage() {
     setAsking(null);
     setPicked(null);
   };
-  /** Continue with the row picked: a new trip, or one of yours. */
-  const go = () => {
-    const ask = asking;
-    if (!ask || !picked) return;
-    const trip = choices.find((c) => c.id === picked);
-    close();
-    if (picked === NEW_TRIP) newTrip(ask);
-    else if (picked === NEW_IMPORT) newTrip({ tab: "import" });
-    else if (picked === NEW_BUILD) newTrip({ tab: "build" });
-    else if (trip) openTrip(trip, ask);
-  };
   const noTrips = asking && !t.loading && !startsNewTrip(asking.tab) && choices.length === 0;
+  /**
+   * Where Continue goes for the row picked: a new trip, or one of yours. Null
+   * when the pick is no longer on offer (the list refreshed under it), so
+   * Continue stays off rather than closing the sheet on nothing.
+   */
+  const destination = (): (() => void) | null => {
+    const ask = asking;
+    if (!ask || !picked) return null;
+    if (picked === NEW_TRIP) return startsNewTrip(ask.tab) ? () => newTrip(ask) : null;
+    if (picked === NEW_IMPORT) return noTrips ? () => newTrip({ tab: "import" }) : null;
+    if (picked === NEW_BUILD) return noTrips ? () => newTrip({ tab: "build" }) : null;
+    const trip = choices.find((c) => c.id === picked);
+    return trip ? () => openTrip(trip, ask) : null;
+  };
+  const target = destination();
+  const go = () => {
+    if (!target) return;
+    close();
+    target();
+  };
 
   return (
     <AppShell eyebrow="Build / import / optimize / compare" title="Plan with Béa.">
@@ -182,7 +191,7 @@ function PlanPage() {
         <button
           type="button"
           onClick={go}
-          disabled={!picked}
+          disabled={!target}
           className="btn-primary mt-3 flex w-full items-center justify-center px-4 disabled:opacity-60"
         >
           Continue

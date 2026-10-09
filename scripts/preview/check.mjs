@@ -162,8 +162,8 @@ async function goTab(page, name) {
     // Companion is the live side of the Map tab, reached by its switch.
     await page.getByRole("tab", { name: "Map", exact: true }).click();
     await page.waitForTimeout(300);
-    const sw = page.getByRole("button", { name: "Companion", exact: true });
-    if (!(await sw.count())) throw new Error("the Companion switch is missing under the Map tab");
+    const sw = page.getByRole("button", { name: "Live", exact: true });
+    if (!(await sw.count())) throw new Error("the Live switch is missing under the Map tab");
     await sw.first().click();
     await page.waitForTimeout(500);
     const firstDay = page.getByRole("tab", { name: /Day 1/ });
@@ -891,7 +891,7 @@ await flow("save sheet: lists are Recommendation, Bucket list, Been there; Next 
   if ((await page.getByText(/Next time|Wishlist/).count()) !== 0) throw new Error("the page still says Next time or Wishlist");
 }, "recs");
 
-await flow("you: the settings rows, Profile settings, Appearance with Béa and Customize Home", async (page) => {
+await flow("you: the settings rows, Profile settings, Appearance and its pages, About with the tour", async (page) => {
   const text = async () => page.locator("body").innerText();
   for (const word of ["Your settings.", "Profile settings", "Travel preferences", "Packing lists", "Photos & memories", "Work travel", "Trip documents", "Appearance", "Data & imports", "Privacy & legal", "Help & FAQ", "Feedback", "About Béa", "Done"])
     if (!(await text()).includes(word)) throw new Error(`You lost "${word}"`);
@@ -903,11 +903,23 @@ await flow("you: the settings rows, Profile settings, Appearance with Béa and C
   await page.keyboard.press("Escape");
   await page.waitForTimeout(300);
   await page.getByRole("button", { name: /^Appearance/ }).click();
-  await page.getByRole("dialog").getByText("Theme", { exact: true }).waitFor();
-  if ((await page.getByRole("dialog").getByRole("link", { name: /^Béa's personality/ }).getAttribute("href")) !== "/profile/bea") throw new Error("Béa's personality lost its route");
-  await page.getByRole("button", { name: /Customize home/ }).first().click();
+  // Appearance: the looks as rows, then Reading and motion, then Stop pictures.
+  await page.getByRole("radiogroup", { name: "Theme" }).waitFor();
+  if ((await page.getByRole("radio", { name: /^Dark/ }).count()) !== 1) throw new Error("no Dark row");
+  await page.getByRole("button", { name: /^Font and size/ }).click();
+  await page.getByText("Comfort comes first", { exact: false }).first().waitFor();
+  await page.getByRole("button", { name: "Done", exact: true }).last().click();
   await page.waitForTimeout(300);
-  if ((await page.getByRole("dialog").count()) === 0) throw new Error("Customize home opened nothing");
+  await page.getByRole("button", { name: /^Stop pictures/ }).click();
+  await page.getByRole("radiogroup", { name: "Trip banner" }).waitFor();
+  await page.getByRole("button", { name: "Done", exact: true }).last().click();
+  await page.waitForTimeout(300);
+  await page.getByRole("button", { name: "Done", exact: true }).last().click();
+  await page.waitForTimeout(300);
+  // About Béa keeps the tour and Béa's personality.
+  await page.getByRole("button", { name: /^About Béa/ }).click();
+  if ((await page.getByRole("dialog").getByRole("link", { name: /^Béa's personality/ }).getAttribute("href")) !== "/profile/bea") throw new Error("Béa's personality lost its route");
+  if ((await page.getByRole("dialog").getByRole("button", { name: /^Show me around/ }).count()) !== 1) throw new Error("the tour is gone from About");
   await page.keyboard.press("Escape");
 }, "you");
 
@@ -1256,8 +1268,9 @@ await flow("trip shell: Bookings stays inside Overview with filters and booking 
   if (await page.getByRole("tab", { name: "Overview", exact: true }).getAttribute("aria-selected") !== "true" || !await bookings.getByRole("button", { name: "All", exact: true }).isVisible()) throw new Error("legacy booking preference was lost");
 });
 
+// Split (the Map's other side) has no tracker: its numbered rows pick the stops.
 await flow("trip shell: day tracker opens a stop from every day view", async (page) => {
-  for (const name of ["Companion", "Map", "Timeline"]) {
+  for (const name of ["Companion", "Timeline"]) {
     await goTab(page, name);
     const day = page.getByRole("tab", { name: /Day 1/ });
     if (await day.count()) await day.first().click();
@@ -1391,22 +1404,22 @@ await flow("companion: restored All days and city changes keep following today",
   await page.clock.setFixedTime(new Date("2026-10-07T10:30:00"));
   await page.evaluate(() => localStorage.setItem("bea-trip-page-t1", JSON.stringify({perspective:"companion",day:"__all__"})));
   await page.reload({waitUntil:"domcontentloaded",timeout:30000});
-  await page.getByRole("button", {name:"Companion",exact:true,pressed:true}).waitFor();
+  await page.getByRole("button", {name:"Live",exact:true,pressed:true}).waitFor();
   if (await page.getByText("Pick a day to follow.").count()) throw new Error("Restoring All days stopped automatic today-following");
   await page.getByRole("tab", {name:"All days",exact:true}).first().click();
   await page.getByText("Pick a day to follow.").waitFor();
   await page.reload({waitUntil:"domcontentloaded",timeout:30000});
-  await page.getByRole("button", {name:"Companion",exact:true,pressed:true}).waitFor();
+  await page.getByRole("button", {name:"Live",exact:true,pressed:true}).waitFor();
   if (await page.getByText("Pick a day to follow.").count()) throw new Error("An in-session opt-out persisted across reload");
   await page.getByRole("tab",{name:"Timeline",exact:true}).click();
   const all = page.getByRole("tab",{name:"All days",exact:true});
   if (await all.count()) await all.first().click();
   await page.getByRole("tab",{name:"Map",exact:true}).click();
-  await page.getByRole("button",{name:"Companion",exact:true}).click();
+  await page.getByRole("button",{name:"Live",exact:true}).click();
   if (await page.getByText("Pick a day to follow.").count()) throw new Error("Timeline's All days stopped Companion following today");
   await page.evaluate(() => {const url = new URL(location.href);url.searchParams.set("route","1");history.replaceState(null,"",url);});
   await page.reload({waitUntil:"domcontentloaded",timeout:30000});
-  await page.getByRole("button",{name:"Companion",exact:true,pressed:true}).waitFor();
+  await page.getByRole("button",{name:"Live",exact:true,pressed:true}).waitFor();
   await page.getByRole("tab",{name:"All days",exact:true}).first().click();
   await page.getByText("Pick a day to follow.").waitFor();
   await page.locator('select:has(option[value="r1"])').selectOption("r1");
@@ -1569,17 +1582,32 @@ await flow("plan: four rows, Start a new plan, and Which journey? picks then con
   await sheet.getByRole("heading", { name: /Which journey/ }).waitFor();
   const go = sheet.getByRole("button", { name: "Continue", exact: true });
   if (!(await go.isDisabled())) throw new Error("Continue works before a journey is picked");
-  const first = sheet.getByRole("radio").first();
+  const first = sheet.getByRole("radio", { name: /^Import a plan/ });
   await first.click();
   if ((await first.getAttribute("aria-checked")) !== "true") throw new Error("the picked journey is not checked");
   if (await go.isDisabled()) throw new Error("Continue stays off after a pick");
   await go.click();
   await sheet.waitFor({ state: "hidden" });
+  // The sample has no trip with stops to optimize, so the first choice starts one by import.
+  const toFirst = await page.evaluate(() => window.__lastNavigate);
+  if (toFirst?.to !== "/trips" || toFirst?.search?.new !== true || toFirst?.search?.plan !== "import")
+    throw new Error(`Import a plan did not start an import: ${JSON.stringify(toFirst)}`);
+  // With no trip ahead, Build goes straight to a new trip's Build, no question asked.
+  await page.getByRole("button", { name: /^Build a new trip/ }).click();
+  const toNew = await page.evaluate(() => window.__lastNavigate);
+  if (toNew?.to !== "/trips" || toNew?.search?.new !== true || toNew?.search?.plan !== "build")
+    throw new Error(`Build did not start a new trip: ${JSON.stringify(toNew)}`);
+  if (await sheet.isVisible()) throw new Error("Build asked which journey with no trip to add to");
 }, "page-plan");
 
-await flow("planner: Start a new plan opens Build, whose examples fill its box", async (page) => {
+await flow("planner: Start a new plan starts a new trip; Build's examples fill its box", async (page) => {
   await page.getByRole("button", { name: /Plan with Béa/ }).click();
   await page.getByRole("button", { name: "Start a new plan", exact: true }).click();
+  const to = await page.evaluate(() => window.__lastNavigate);
+  if (to?.to !== "/trips" || to?.search?.new !== true || to?.search?.plan !== "build")
+    throw new Error(`Start a new plan did not start a new trip: ${JSON.stringify(to)}`);
+  await page.getByRole("button", { name: /Plan with Béa/ }).click();
+  await page.getByRole("button", { name: /^Build a new trip/ }).click();
   await page.getByRole("button", { name: "A cultural trip in 3 days" }).click();
   const box = page.getByRole("textbox", { name: /^(Must include|What would you like to add\?)$/ });
   if (!(await box.inputValue()).startsWith("A cultural trip")) throw new Error("the example did not fill Build's box");
