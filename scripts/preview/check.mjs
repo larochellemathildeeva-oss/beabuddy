@@ -138,7 +138,9 @@ async function open(sample) {
   // A full navigation of the large preview bundle, with three themes running
   // in parallel, can take longer than the 5s interaction default; give it room
   // so a slow reload does not crash the worker.
-  if (["legs", "unpinned"].includes(sample)) await page.clock.setFixedTime(new Date("2026-10-07T10:30:00"));
+  // The sample trip runs Oct 7–8, 2026: read "now" inside it, so the flows
+  // that need a trip under way do not change with the day they are run.
+  await page.clock.setFixedTime(new Date(["legs", "unpinned"].includes(sample) ? "2026-10-07T10:30:00" : "2026-10-08T10:30:00"));
   await page.goto(`https://preview.test/?sample=${sample}`, { waitUntil: "domcontentloaded", timeout: 30000 });
   await page.waitForTimeout(1200);
   return { page, errors };
