@@ -260,7 +260,7 @@ export const WALKS: Walk[] = [
       },
       {
         title: "No signal? Keep it offline",
-        body: "In a trip's menu (•••), Offline maps keeps the plan, the directions and the map on this phone. Profile settings → Data & imports lists them.",
+        body: "In a trip's menu (•••), Offline maps keeps the plan, the directions and the map on this phone. You → Data & imports lists them.",
         to: "/profile",
         selector: "[data-guide='profile-settings']",
       },
