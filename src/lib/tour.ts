@@ -188,7 +188,7 @@ export const WALKS: Walk[] = [
       },
       {
         title: "Planning somewhere else?",
-        body: "Copy this prompt into the assistant you use. It asks for the shape Béa reads best, so the plan comes in cleanly when you paste the answer back.",
+        body: "Plan a trip, in Help, has a prompt to copy into the assistant you use. It asks for the shape Béa reads best, so the plan comes in cleanly when you paste the answer back.",
         to: "/help",
         selector: "[data-guide='plan-prompt']",
       },
