@@ -38,7 +38,18 @@ function tellOtherPickers(key: string, newValue: string) {
  * palette in styles.css paints each one no matter which theme is on — they
  * are the real tokens, not a copy of them that could drift.
  */
-export function ThemePicker() {
+/** The Figma Appearance frame's lines under each look. */
+const ROW_NOTES: Record<ThemeName, string> = {
+  calm: "A quiet, neutral look",
+  colorful: "Available in Béa",
+  dark: "Available in Béa",
+};
+
+/**
+ * `rows`: the minimalist Appearance page draws the looks as three rows, a
+ * check on the one in use, and Colorful's accents under it when it is on.
+ */
+export function ThemePicker({ variant = "tiles" }: { variant?: "tiles" | "rows" } = {}) {
   const [theme, setTheme] = useState<ThemeName>(DEFAULT_THEME);
   const [accent, setAccent] = useState<AccentName>(DEFAULT_ACCENT);
 
@@ -58,6 +69,72 @@ export function ThemePicker() {
     window.addEventListener("storage", onStorage);
     return () => window.removeEventListener("storage", onStorage);
   }, []);
+
+  const chooseTheme = (name: ThemeName) => {
+    applyTheme(name);
+    saveAccountSetting("theme", name);
+    setTheme(name);
+    tellOtherPickers(THEME_KEY, name);
+  };
+  const chooseAccent = (name: AccentName) => {
+    applyAccent(name);
+    saveAccountSetting("accent", name);
+    setAccent(name);
+    tellOtherPickers(ACCENT_KEY, name);
+  };
+
+  if (variant === "rows") {
+    return (
+      <div>
+        <div role="radiogroup" aria-label="Theme">
+          {THEMES.map((name) => {
+            const on = name === theme;
+            return (
+              <button
+                key={name}
+                type="button"
+                role="radio"
+                aria-checked={on}
+                onClick={() => chooseTheme(name)}
+                className="flex min-h-16 w-full items-center justify-between gap-3 border-b border-border py-3 text-left"
+              >
+                <span className="min-w-0">
+                  <span className="block text-[16px] leading-[22px]">{LABELS[name].name}</span>
+                  <span className="mt-1 block text-[14px] leading-[20px] text-muted-foreground">
+                    {ROW_NOTES[name]}
+                  </span>
+                </span>
+                {on ? <Check className="size-5 shrink-0" aria-hidden /> : null}
+              </button>
+            );
+          })}
+        </div>
+        {theme === "colorful" && (
+          <div role="radiogroup" aria-label="Accent" className="flex flex-wrap gap-2 py-3">
+            {ACCENT_OPTIONS.map(({ name, label }) => (
+              <button
+                key={name}
+                type="button"
+                role="radio"
+                aria-checked={accent === name}
+                onClick={() => chooseAccent(name)}
+                className={`flex min-h-11 items-center gap-2 rounded-[var(--r-card)] border px-3 text-[14px] ${accent === name ? "border-foreground" : "border-border"}`}
+              >
+                <span
+                  data-accent={name}
+                  aria-hidden
+                  className="grid size-5 shrink-0 place-items-center rounded-full bg-[var(--acc)] text-[var(--primary-foreground)]"
+                >
+                  {accent === name && <Check className="size-3.5" />}
+                </span>
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="rounded-xl bg-elevated p-3">

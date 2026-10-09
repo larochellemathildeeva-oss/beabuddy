@@ -3,8 +3,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { friendlyError } from "@/lib/friendly-error";
 import { formatTripLocation } from "@/lib/place-label";
 import { useQueryClient } from "@tanstack/react-query";
-import { useEffect, useRef, useState, type ComponentType, type ReactNode } from "react";
-import { BookOpen, CalendarDays, ChevronRight, type LucideProps } from "@/components/icons";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { rememberedProfileName, rememberProfileName, shownName } from "@/lib/profile-name";
@@ -12,7 +11,6 @@ import { Sheet } from "@/components/Sheet";
 import { ConfirmSheet } from "@/components/ConfirmSheet";
 import { resumeOrReplayTour } from "@/components/Tour";
 import { PackingLists } from "@/components/PackingLists";
-import { CustomizeHome } from "@/components/CustomizeHome";
 import { FeedbackForm } from "@/components/FeedbackForm";
 import { CopyrightNotice } from "@/components/CopyrightNotice";
 import {
@@ -69,19 +67,31 @@ export const Route = createFileRoute("/profile")({
 });
 
 /** The You panels the Menu opens: /profile?panel=appearance and so on. */
+const APP_VERSION = typeof __APP_VERSION__ === "string" ? __APP_VERSION__ : "1.0.0";
+
 const MENU_PANELS = ["appearance", "feedback", "legal", "about", "settings"] as const;
 type MenuPanel = (typeof MENU_PANELS)[number];
 
 /** The panels the You page opens over itself. One at a time. */
-type Panel = "settings" | "packing" | "appearance" | "data" | "legal" | "feedback" | "about";
+type Panel =
+  | "settings"
+  | "packing"
+  | "appearance"
+  | "reading"
+  | "pictures"
+  | "data"
+  | "offline"
+  | "legal"
+  | "erase"
+  | "delete"
+  | "feedback"
+  | "about";
 
 /**
  * A big card or list: plain in every theme, Colorful included. `plain-card`
  * comes from styles.css; the utilities are the same look, for safety.
  */
 const PLAIN = "plain-card rounded-[var(--r-card)] border border-border/55 bg-card shadow-sm";
-
-type Icon = ComponentType<LucideProps>;
 
 /**
  * You: who you are to Béa, and everything she keeps for you.
@@ -108,6 +118,13 @@ function ProfilePage() {
   const [seedMsg, setSeedMsg] = useState("");
   const [sampleCtaDismissed, setSampleCtaDismissed] = useState(false);
   const [panel, setPanel] = useState<Panel | null>(null);
+  /** Where Erase and Delete go back to: the page whose row opened them. */
+  const [confirmFrom, setConfirmFrom] = useState<"data" | "legal">("legal");
+  const openConfirm = (next: "erase" | "delete", from: "data" | "legal") => {
+    setConfirmFrom(from);
+    setPanel(next);
+  };
+  const confirmCrumb = confirmFrom === "data" ? "Data & imports" : "Privacy & legal";
   const close = () => setPanel(null);
   // Opened from the Menu: show that panel, then drop it from the address so
   // going back does not open it again.
@@ -372,11 +389,13 @@ function ProfilePage() {
       <Sheet
         open={panel === "packing"}
         onClose={close}
-        title="Packing lists"
-        hint="Reusable lists you can attach to a new trip"
+        page
+        hint="Packing lists"
+        title="Lists to travel with"
+        crumb="You"
       >
         <div className="space-y-3">
-          <p className="text-[13.5px] text-muted-foreground">
+          <p className="text-[14px] text-foreground">
             Build lists here once. When you create a trip you can attach a copy of one — what you
             tick off or add there stays on that trip only.
           </p>
@@ -387,150 +406,276 @@ function ProfilePage() {
       <Sheet
         open={panel === "appearance"}
         onClose={close}
-        title="Appearance"
-        hint="Saved to your account"
+        page
+        hint="Appearance"
+        title="Pick your look"
+        crumb="You"
       >
-        <div className="space-y-3">
-          <ThemePicker />
-          <TripBannerPicker />
-          <StopPicturesPicker />
-          <AccessibilityPicker />
-          <CustomizeHome variant="row" trips={t} />
-          {/* Béa's personality: the You list in the design has no row of its own for it. */}
-          <YouRow
-            title="Béa's personality"
-            note={`${modeName(bea.mix)} · How much she suggests and helps`}
-            to="/profile/bea"
-          />
-        </div>
+        <ThemePicker variant="rows" />
+        <p className="mt-3 border-t border-[var(--rule)] pt-2 text-[12px] text-foreground">
+          Reading and motion
+        </p>
+        <YouRow
+          title="Font and size"
+          note="Keep things comfortable to read"
+          onClick={() => setPanel("reading")}
+        />
+        <YouRow
+          title="Reduced motion"
+          note="Quiet transitions when preferred"
+          onClick={() => setPanel("reading")}
+        />
+        <YouRow
+          title="Stop pictures"
+          note="Real photos, illustrations or none"
+          onClick={() => setPanel("pictures")}
+        />
+        <button
+          type="button"
+          onClick={close}
+          className="btn-primary mt-4 flex w-full items-center justify-center px-4"
+        >
+          Done
+        </button>
+      </Sheet>
+
+      <Sheet
+        open={panel === "reading"}
+        onClose={() => setPanel("appearance")}
+        page
+        hint="Reading & motion"
+        title="Comfort comes first"
+        crumb="Appearance"
+      >
+        <AccessibilityPicker />
+        <button
+          type="button"
+          onClick={() => setPanel("appearance")}
+          className="btn-primary mt-4 flex w-full items-center justify-center px-4"
+        >
+          Done
+        </button>
+      </Sheet>
+
+      <Sheet
+        open={panel === "pictures"}
+        onClose={() => setPanel("appearance")}
+        page
+        hint="Stop pictures"
+        title="How places are pictured"
+        crumb="Appearance"
+      >
+        <StopPicturesPicker variant="rows" />
+        {/* The trip banner is a picture choice too; the design has no page of its own for it. */}
+        <p className="mt-3 border-t border-[var(--rule)] pt-2 text-[12px] text-foreground">
+          Trip banner
+        </p>
+        <TripBannerPicker variant="rows" />
+        <button
+          type="button"
+          onClick={() => setPanel("appearance")}
+          className="btn-primary mt-4 flex w-full items-center justify-center px-4"
+        >
+          Done
+        </button>
       </Sheet>
 
       <Sheet
         open={panel === "data"}
         onClose={close}
-        title="Data & imports"
-        hint="What comes in, and what is kept on this phone"
+        page
+        hint="Data & imports"
+        title="Bring it together"
+        crumb="You"
       >
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <SheetLink
-              to="/calendar"
-              icon={CalendarDays}
-              title="Trip calendar"
-              hint="Every trip, flight, hotel and reservation on one calendar."
-            />
-          </div>
-
-          {user && !sampleCtaDismissed && (
-            <div className="rounded-2xl border border-border bg-elevated p-3">
-              <p className="text-[14.5px] font-semibold">Sample data</p>
-              <p className="mt-1 text-[13px] text-muted-foreground">
-                Loaded the sample trips and places earlier? Remove deletes only those — never places
-                you added yourself.
-              </p>
-              <div className="mt-3 flex gap-2">
-                <button
-                  type="button"
-                  disabled={seeding}
-                  onClick={() => setConfirmSample(true)}
-                  className="flex-1 rounded-full border border-border px-4 py-2 text-[14.5px] font-semibold disabled:opacity-60"
-                >
-                  Remove sample
-                </button>
-              </div>
-              <ConfirmSheet
-                open={confirmSample}
-                onClose={() => setConfirmSample(false)}
-                title="Remove the sample?"
-                body="The sample trips and places are deleted. Places you added yourself stay."
-                confirmLabel="Remove sample"
-                onConfirm={async () => {
-                  setConfirmSample(false);
-                  setSeeding(true);
-                  setSeedMsg("");
-                  const result = await clearDemoSeed();
-                  setSeeding(false);
-                  // Remove (or empty) opts out of sample prompts — hide this card.
-                  if (result.ok || result.reason === "empty") {
-                    setSampleCtaDismissed(true);
-                    return;
-                  }
-                  setSeedMsg(result.message);
-                }}
-              />
-              {seedMsg && <p className="mt-2 text-[13px] text-muted-foreground">{seedMsg}</p>}
+        <YouRow title="Import photos" note="From your phone" to="/photos" />
+        <YouRow title="Trip calendar" note="Travel dates in one place" to="/calendar" />
+        <YouRow title="Import places" note="A file or pasted list" to="/recommendations" />
+        {/* Not drawn on the frame, and kept: what this phone holds offline. */}
+        <YouRow
+          title="Kept on this phone"
+          note={
+            offlineTrips.length > 0
+              ? `${offlineTrips.length} ${offlineTrips.length === 1 ? "trip" : "trips"} offline`
+              : "Trips kept for no signal"
+          }
+          onClick={() => setPanel("offline")}
+        />
+        {user ? (
+          <YouRow
+            title="Erase account"
+            note="Review before deleting"
+            onClick={() => openConfirm("delete", "data")}
+          />
+        ) : null}
+        {user && !sampleCtaDismissed && (
+          <div className="border-b border-[var(--rule)] py-3">
+            <p className="text-[16px]">Sample data</p>
+            <p className="mt-1 text-[13px] text-muted-foreground">
+              Loaded the sample trips and places earlier? Remove deletes only those — never places
+              you added yourself.
+            </p>
+            <div className="mt-3 flex gap-2">
+              <button
+                type="button"
+                disabled={seeding}
+                onClick={() => setConfirmSample(true)}
+                className="flex min-h-11 flex-1 items-center justify-center rounded-[var(--r-card)] border border-border px-4 text-[14px] disabled:opacity-60"
+              >
+                Remove sample
+              </button>
             </div>
-          )}
-
-          <div>
-            <p className="label-caps text-foreground">What is kept on this phone</p>
-            <p className="mt-1.5 text-[13px] text-muted-foreground">
-              Installed on your home screen, Béa is designed to open without signal. Photos,
-              recommendations, new searches and the vault still need a connection.
-            </p>
-            <p className="mt-2 text-[13px] text-muted-foreground">
-              What is kept locally: open a trip → trip menu (•••) → Offline maps, and download its
-              directions. That keeps the trip's plan, the walk or drive steps, and, where this phone
-              can draw it, the map around each day's stops.
-            </p>
-            {offlineTrips.length > 0 ? (
-              <ul className="mt-3 divide-y divide-border rounded-2xl border border-border">
-                {offlineTrips.map((trip) => (
-                  <li key={trip.id} className="px-3 py-2.5">
-                    <p className="text-[14.5px] font-medium">{trip.title}</p>
-                    <p className="text-[12.5px] text-muted-foreground">
-                      {formatTripLocation(trip.city, trip.country) || "Directions saved here"}
-                    </p>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="mt-3 text-[13px] text-muted-foreground">
-                None yet. Open a trip and download its directions under Offline maps.
-              </p>
-            )}
-            <Link
-              to="/trips"
-              className="mt-3 block rounded-full border border-border px-4 py-2.5 text-center text-[14.5px] font-semibold"
-            >
-              Open trips
-            </Link>
+            <ConfirmSheet
+              open={confirmSample}
+              onClose={() => setConfirmSample(false)}
+              title="Remove the sample?"
+              body="The sample trips and places are deleted. Places you added yourself stay."
+              confirmLabel="Remove sample"
+              onConfirm={async () => {
+                setConfirmSample(false);
+                setSeeding(true);
+                setSeedMsg("");
+                const result = await clearDemoSeed();
+                setSeeding(false);
+                // Remove (or empty) opts out of sample prompts — hide this card.
+                if (result.ok || result.reason === "empty") {
+                  setSampleCtaDismissed(true);
+                  return;
+                }
+                setSeedMsg(result.message);
+              }}
+            />
+            {seedMsg && <p className="mt-2 text-[13px] text-muted-foreground">{seedMsg}</p>}
           </div>
+        )}
+
+        <button
+          type="button"
+          onClick={close}
+          className="btn-primary mt-4 flex w-full items-center justify-center px-4"
+        >
+          Done
+        </button>
+      </Sheet>
+
+      <Sheet
+        open={panel === "offline"}
+        onClose={() => setPanel("data")}
+        page
+        hint="Data & imports"
+        title="Kept on this phone"
+        crumb="Data & imports"
+      >
+        <div>
+          <p className="text-[14px] text-foreground">
+            Installed on your home screen, Béa is designed to open without signal. Photos,
+            recommendations, new searches and the vault still need a connection.
+          </p>
+          <p className="mt-2 text-[14px] text-foreground">
+            What is kept locally: open a trip → trip menu (•••) → Offline maps, and download its
+            directions. That keeps the trip's plan, the walk or drive steps, and, where this phone
+            can draw it, the map around each day's stops.
+          </p>
+          {offlineTrips.length > 0 ? (
+            <ul className="mt-3 divide-y divide-border rounded-2xl border border-border">
+              {offlineTrips.map((trip) => (
+                <li key={trip.id} className="px-3 py-2.5">
+                  <p className="text-[14.5px] font-medium">{trip.title}</p>
+                  <p className="text-[12.5px] text-muted-foreground">
+                    {formatTripLocation(trip.city, trip.country) || "Directions saved here"}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-3 text-[13px] text-muted-foreground">
+              None yet. Open a trip and download its directions under Offline maps.
+            </p>
+          )}
+          <Link
+            to="/trips"
+            className="mt-3 block rounded-full border border-border px-4 py-2.5 text-center text-[14.5px] font-semibold"
+          >
+            Open trips
+          </Link>
         </div>
       </Sheet>
 
       <Sheet
         open={panel === "legal"}
         onClose={close}
-        title="Privacy & legal"
-        hint="Policies, terms and your data"
+        page
+        hint="Privacy & legal"
+        title="Your data. Your choices"
+        crumb="You"
       >
-        <div className="space-y-2">
-          <SheetLink
-            to="/privacy"
-            title="Privacy policy"
-            hint="How your account, photos and documents are stored and protected."
-          />
-          <SheetLink
-            to="/terms"
-            title="Terms of Service"
-            hint="The rules of the road, disclaimers and liability limits you agreed to."
-          />
-          <div className="rounded-2xl bg-elevated p-3">
-            <CopyrightNotice className="px-0 pb-0 pt-0 text-left text-[13px] text-muted-foreground" />
-            <p className="mt-1.5 text-[13px] leading-relaxed text-muted-foreground">
-              Béa — the app, its name, design, features and original ideas — is Mathilde E.
-              Larochelle's work. You keep what you save in it. The Terms spell this out.
-            </p>
-          </div>
-          {user && <EraseDataPanel userId={user.id} />}
-          {user && <DeleteAccountPanel userId={user.id} />}
+        <YouRow title="Privacy policy" note="What Béa keeps" to="/privacy" />
+        <YouRow title="Terms of service" note="Using Béa" to="/terms" />
+        {user ? (
+          <>
+            <YouRow
+              title="Erase my data"
+              note="Start fresh, keep your login"
+              onClick={() => openConfirm("erase", "legal")}
+            />
+            <YouRow
+              title="Delete account"
+              note="Erase your account and data"
+              onClick={() => openConfirm("delete", "legal")}
+            />
+          </>
+        ) : null}
+        <div className="space-y-1.5 pt-3 text-[12px] leading-[1.5] text-foreground">
+          <CopyrightNotice className="px-0 pb-0 pt-0 text-left text-[12px] text-foreground" />
+          <p>
+            Béa — the app, its name, design, features and original ideas — is Mathilde E.
+            Larochelle's work. You keep what you save in it. The Terms spell this out.
+          </p>
         </div>
+        <button
+          type="button"
+          onClick={close}
+          className="btn-primary mt-4 flex w-full items-center justify-center px-4"
+        >
+          Done
+        </button>
       </Sheet>
 
-      <Sheet open={panel === "feedback"} onClose={close} title="Feedback" hint="Tell Béa something">
-        <div className="space-y-2">
-          <p className="text-[14.5px] text-muted-foreground">
+      {user && (
+        <Sheet
+          open={panel === "erase"}
+          onClose={() => setPanel(confirmFrom)}
+          page
+          hint="Confirmation"
+          title="Erase your data?"
+          crumb={confirmCrumb}
+        >
+          <EraseDataPanel userId={user.id} />
+        </Sheet>
+      )}
+      {user && (
+        <Sheet
+          open={panel === "delete"}
+          onClose={() => setPanel(confirmFrom)}
+          page
+          hint="Confirmation"
+          title="Erase your account?"
+          crumb={confirmCrumb}
+        >
+          <DeleteAccountPanel userId={user.id} />
+        </Sheet>
+      )}
+
+      <Sheet
+        open={panel === "feedback"}
+        onClose={close}
+        page
+        hint="Feedback"
+        title="Tell Béa something"
+        crumb="You"
+      >
+        <div className="space-y-3">
+          <p className="text-[14px] text-foreground">
             Béa is here to make you happy. A missing travel stat, a wish, something that broke —
             write it here. It is saved to your account so we can actually read it.
           </p>
@@ -538,17 +683,38 @@ function ProfilePage() {
         </div>
       </Sheet>
 
-      <Sheet open={panel === "about"} onClose={close} title="About Béa" hint="Your travel buddy">
-        <div className="space-y-2">
-          <SheetLink
-            to="/how-it-works"
-            icon={BookOpen}
-            title="How Béa works"
-            hint="What she does with your places, trips and photos."
-          />
-          <TourRow onReplay={replayTour} />
-          <CopyrightNotice className="px-1 pb-0 pt-1 text-left text-[13px] text-muted-foreground" />
-        </div>
+      <Sheet
+        open={panel === "about"}
+        onClose={close}
+        page
+        hint="About Béa"
+        title="Your travel buddy"
+        crumb="You"
+      >
+        <YouRow title="How Béa works" note="Plan, explore and remember" to="/how-it-works" />
+        <YouRow title="Help & FAQ" note="Get a little guidance" to="/help" />
+        <YouRow title="Privacy" note="What Béa keeps" to="/privacy" />
+        <YouRow title="Version" note={`Béa ${APP_VERSION}`} />
+        {/* Not drawn on the About frame, and kept: the tour and Béa's personality. */}
+        <YouRow
+          title="Show me around"
+          note="A step-by-step walk of the app"
+          onClick={replayTour}
+          guide="replay-tour"
+        />
+        <YouRow
+          title="Béa's personality"
+          note={`${modeName(bea.mix)} · How much she suggests and helps`}
+          to="/profile/bea"
+        />
+        <CopyrightNotice className="px-0 pb-0 pt-3 text-left text-[12px] text-foreground" />
+        <Link
+          to="/how-it-works"
+          onClick={close}
+          className="btn-primary mt-4 flex w-full items-center justify-center px-4"
+        >
+          How it works
+        </Link>
       </Sheet>
     </AppShell>
   );
@@ -584,7 +750,17 @@ function YouRow({
 }: {
   title: string;
   note: string;
-  to?: "/preferences" | "/expenses" | "/photos" | "/help" | "/profile/bea";
+  to?:
+    | "/preferences"
+    | "/expenses"
+    | "/photos"
+    | "/help"
+    | "/profile/bea"
+    | "/how-it-works"
+    | "/privacy"
+    | "/terms"
+    | "/calendar"
+    | "/recommendations";
   href?: string;
   onClick?: () => void;
   guide?: string;
@@ -608,54 +784,12 @@ function YouRow({
         {body}
       </a>
     );
+  // A row that only says something (the version) is not a button.
+  if (!onClick) return <div className={cls}>{body}</div>;
   return (
     <button type="button" onClick={onClick} data-guide={guide} className={cls}>
       {body}
     </button>
-  );
-}
-
-/** A link row inside a sheet. */
-function SheetLink({
-  to,
-  title,
-  hint,
-  icon: Glyph,
-}: {
-  to: "/preferences" | "/photos" | "/calendar" | "/privacy" | "/terms" | "/how-it-works";
-  title: string;
-  hint: string;
-  icon?: Icon;
-}) {
-  return (
-    <Link to={to} className="flex items-center gap-3 rounded-2xl bg-elevated p-3">
-      {Glyph && <Glyph className="size-5 shrink-0 text-primary" aria-hidden />}
-      <span className="min-w-0 flex-1">
-        <span className="block text-[15px] font-medium">{title}</span>
-        <span className="block text-[12.5px] text-muted-foreground">{hint}</span>
-      </span>
-      <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
-    </Link>
-  );
-}
-
-function TourRow({ onReplay }: { onReplay: () => void }) {
-  return (
-    <div className="flex items-center justify-between gap-3 rounded-2xl bg-elevated p-3">
-      <div>
-        <p className="text-[14.5px] font-medium">Show me around</p>
-        <p className="text-[12.5px] text-muted-foreground">
-          A step-by-step walk for planning, importing, saving places, the trip itself, or your map.
-        </p>
-      </div>
-      <button
-        type="button"
-        onClick={onReplay}
-        className="shrink-0 rounded-full border border-border bg-card px-3.5 py-2 text-[14.5px] font-semibold"
-      >
-        Start
-      </button>
-    </div>
   );
 }
 
@@ -685,9 +819,8 @@ function EraseDataPanel({ userId }: { userId: string }) {
   }
 
   return (
-    <div className="rounded-xl border border-destructive/30 p-3">
-      <p className="text-[15px] font-medium">Erase all my data</p>
-      <p className="mt-1 text-[13px] leading-relaxed text-muted-foreground">
+    <div>
+      <p className="text-[14px] leading-[1.5] text-foreground">
         Start fresh without closing your account. This is designed to remove your trips,
         recommendations, photos, receipts, vault documents, and travel preferences. Shared trips
         hand off to another member when someone else is on them. Your login stays. Backups and the
@@ -705,7 +838,7 @@ function EraseDataPanel({ userId }: { userId: string }) {
           setError("");
           setConfirmStep(1);
         }}
-        className="mt-3 w-full rounded-xl border border-destructive px-4 py-2 text-[14.5px] font-semibold text-destructive disabled:opacity-50"
+        className="btn-primary mt-4 flex w-full items-center justify-center px-4 disabled:opacity-50"
       >
         {busy ? "Erasing…" : "Erase all my data"}
       </button>
@@ -768,21 +901,26 @@ function DeleteAccountPanel({ userId }: { userId: string }) {
   const ready = phrase.trim() === "DELETE";
 
   return (
-    <div className="rounded-xl border border-destructive/30 p-3">
-      <p className="text-[15px] font-medium">Delete my account</p>
-      <p className="mt-1 text-[13px] leading-relaxed text-muted-foreground">
-        Close the account entirely — login and all. Type DELETE to confirm. Prefer starting fresh
-        without closing the account? Use Erase all my data above. Backups and the AI provider may
-        still hold traces for a short time.
+    <div>
+      <div className="rounded-[var(--r-card)] border border-[var(--field-border)] bg-card px-4 py-3 focus-within:border-primary">
+        <label htmlFor="delete-confirm" className="block text-[12px] text-foreground">
+          Confirm deletion
+        </label>
+        <input
+          id="delete-confirm"
+          value={phrase}
+          onChange={(e) => setPhrase(e.target.value)}
+          placeholder="Type DELETE"
+          autoComplete="off"
+          className="mt-1 min-h-11 w-full bg-transparent text-[16px] outline-none"
+          aria-label="Type DELETE to confirm account deletion"
+        />
+      </div>
+      <p className="mt-3 text-[14px] leading-[1.5] text-foreground">
+        Review what will be erased before confirming: the account itself, login and all. Prefer
+        starting fresh without closing it? Erase my data, in Privacy & legal. Backups and the AI
+        provider may still hold traces for a short time.
       </p>
-      <input
-        value={phrase}
-        onChange={(e) => setPhrase(e.target.value)}
-        placeholder="Type DELETE"
-        autoComplete="off"
-        className="mt-3 w-full rounded-xl border border-[var(--field-border)] bg-card px-3 py-2.5 text-[15px]"
-        aria-label="Type DELETE to confirm account deletion"
-      />
       {error && (
         <p role="alert" className="mt-2 text-[14px] text-destructive">
           {error}
@@ -808,9 +946,9 @@ function DeleteAccountPanel({ userId }: { userId: string }) {
             }
           })()
         }
-        className="mt-3 w-full rounded-xl border border-destructive px-4 py-2 text-[14.5px] font-semibold text-destructive disabled:opacity-50"
+        className="btn-primary mt-4 flex w-full items-center justify-center px-4 disabled:opacity-50"
       >
-        {busy ? "Deleting…" : "Delete my account forever"}
+        {busy ? "Deleting…" : "Delete account"}
       </button>
     </div>
   );
