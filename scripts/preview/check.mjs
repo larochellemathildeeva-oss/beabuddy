@@ -1569,17 +1569,32 @@ await flow("plan: four rows, Start a new plan, and Which journey? picks then con
   await sheet.getByRole("heading", { name: /Which journey/ }).waitFor();
   const go = sheet.getByRole("button", { name: "Continue", exact: true });
   if (!(await go.isDisabled())) throw new Error("Continue works before a journey is picked");
-  const first = sheet.getByRole("radio").first();
+  const first = sheet.getByRole("radio", { name: /^Import a plan/ });
   await first.click();
   if ((await first.getAttribute("aria-checked")) !== "true") throw new Error("the picked journey is not checked");
   if (await go.isDisabled()) throw new Error("Continue stays off after a pick");
   await go.click();
   await sheet.waitFor({ state: "hidden" });
+  // The sample has no trip with stops to optimize, so the first choice starts one by import.
+  const toFirst = await page.evaluate(() => window.__lastNavigate);
+  if (toFirst?.to !== "/trips" || toFirst?.search?.new !== true || toFirst?.search?.plan !== "import")
+    throw new Error(`Import a plan did not start an import: ${JSON.stringify(toFirst)}`);
+  // With no trip ahead, Build goes straight to a new trip's Build, no question asked.
+  await page.getByRole("button", { name: /^Build a new trip/ }).click();
+  const toNew = await page.evaluate(() => window.__lastNavigate);
+  if (toNew?.to !== "/trips" || toNew?.search?.new !== true || toNew?.search?.plan !== "build")
+    throw new Error(`Build did not start a new trip: ${JSON.stringify(toNew)}`);
+  if (await sheet.isVisible()) throw new Error("Build asked which journey with no trip to add to");
 }, "page-plan");
 
-await flow("planner: Start a new plan opens Build, whose examples fill its box", async (page) => {
+await flow("planner: Start a new plan starts a new trip; Build's examples fill its box", async (page) => {
   await page.getByRole("button", { name: /Plan with Béa/ }).click();
   await page.getByRole("button", { name: "Start a new plan", exact: true }).click();
+  const to = await page.evaluate(() => window.__lastNavigate);
+  if (to?.to !== "/trips" || to?.search?.new !== true || to?.search?.plan !== "build")
+    throw new Error(`Start a new plan did not start a new trip: ${JSON.stringify(to)}`);
+  await page.getByRole("button", { name: /Plan with Béa/ }).click();
+  await page.getByRole("button", { name: /^Build a new trip/ }).click();
   await page.getByRole("button", { name: "A cultural trip in 3 days" }).click();
   const box = page.getByRole("textbox", { name: /^(Must include|What would you like to add\?)$/ });
   if (!(await box.inputValue()).startsWith("A cultural trip")) throw new Error("the example did not fill Build's box");
