@@ -2,7 +2,7 @@ import { useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { ConfirmSheet } from "@/components/ConfirmSheet";
 import { Sheet } from "@/components/Sheet";
-import { Camera, ImageIcon, Trash2 } from "@/components/icons";
+import { Camera, ImageIcon } from "@/components/icons";
 import { useSignedPhoto } from "@/hooks/useTripPhotos";
 import { STOP_PHOTOS_PER_PICK, type StopPhoto, type StopPhotosAdded } from "@/hooks/useStopPhotos";
 import { isNetworkFailure } from "@/lib/ai-errors";
@@ -269,7 +269,7 @@ export function StopPhotos({
       )}
 
       {viewing && (
-        <Sheet open onClose={() => setViewing(null)} title="Photo" hint={title} above>
+        <Sheet open onClose={() => setViewing(null)} title="This photo." hint="Photo options" above>
           <FullPhoto photo={viewing} alt={`Photo of ${title}`} />
           {uid && viewing.user_id === uid && onHide && (
             <button
@@ -293,21 +293,35 @@ export function StopPhotos({
                   })
                   .finally(() => setHiding(false));
               }}
-              className="mt-3 inline-flex min-h-11 w-full items-center justify-center rounded-full border border-border bg-card text-[14px] font-semibold disabled:opacity-60"
+              className="menu-row mt-3 w-full disabled:opacity-60"
             >
-              {viewing.hidden_from_links ? "Allow on shared links" : "Keep off shared links"}
+              <span className="menu-row-title">
+                {viewing.hidden_from_links ? "Allow on shared links" : "Keep off shared links"}
+              </span>
+              <span className="menu-row-note">
+                {viewing.hidden_from_links
+                  ? "Links with photos on can show it"
+                  : "Links never show this one"}
+              </span>
             </button>
           )}
           {uid && viewing.user_id === uid && (
             <button
               type="button"
               onClick={() => setConfirming(viewing)}
-              className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-full border border-destructive/20 bg-destructive/10 text-[14px] font-semibold text-destructive"
+              className="menu-row w-full"
             >
-              <Trash2 className="size-4" aria-hidden />
-              Delete photo
+              <span className="menu-row-title">Delete photo</span>
+              <span className="menu-row-note">Review before deleting</span>
             </button>
           )}
+          <button
+            type="button"
+            onClick={() => setViewing(null)}
+            className="btn-primary mt-4 flex w-full items-center justify-center px-4"
+          >
+            Done
+          </button>
         </Sheet>
       )}
       <ConfirmSheet
