@@ -1,5 +1,5 @@
 import { CustomizeModules, type CustomizeVariant } from "@/components/CustomizeModules";
-import { HOME_SECTIONS, useHomeLayout } from "@/hooks/useHomeLayout";
+import { HOME_SECTIONS, useHomeLayout, useHomeTripMoment } from "@/hooks/useHomeLayout";
 
 export function CustomizeHome({
   variant = "icon",
@@ -8,6 +8,8 @@ export function CustomizeHome({
   variant?: CustomizeVariant;
   onArrange?: () => void;
 }) {
+  // Opened from You as well as Home: the switches show the same defaults.
+  useHomeTripMoment();
   const { modules, fixed, toggle, move, reset } = useHomeLayout();
   return (
     <CustomizeModules

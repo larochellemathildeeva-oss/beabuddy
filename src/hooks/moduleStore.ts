@@ -32,10 +32,30 @@ export function createModuleStore<K extends string>(config: {
   fixed?: readonly K[];
   /** Modules a layout saved before they existed gets switched on. */
   newOn?: readonly K[];
+  /**
+   * The defaults right now, when they depend on the moment (Home with or
+   * without a trip). Read whenever nothing is saved, so Customize shows them
+   * and the first change starts from them.
+   */
+  defaultsNow?: (userId: string | undefined) => readonly K[];
 }) {
   const fixed: ReadonlySet<K> = new Set(config.fixed ?? []);
   const keys = config.modules.map((m) => m.key);
   const normalize = config.normalize ?? ((layout: ModuleLayout<K>) => layout);
+  const defaultsNow = (userId: string | undefined) =>
+    config.defaultsNow?.(userId) ?? config.defaults;
+  const fallbacks = new Map<string, ModuleLayout<K>>();
+  /** The default layout for now, the same object each time it is asked. */
+  const fallbackNow = (userId: string | undefined): ModuleLayout<K> => {
+    const list = defaultsNow(userId);
+    const sig = list.join(",");
+    let hit = fallbacks.get(sig);
+    if (!hit) {
+      hit = normalize(defaultModules(keys, list));
+      fallbacks.set(sig, hit);
+    }
+    return hit;
+  };
   const fallback = normalize(defaultModules(keys, config.defaults));
   const listeners = new Set<() => void>();
   const cache = new Map<string, { raw: string | null; layout: ModuleLayout<K> }>();
@@ -43,6 +63,7 @@ export function createModuleStore<K extends string>(config: {
   function current(userId: string | undefined): ModuleLayout<K> {
     const key = config.keyFor(userId);
     const raw = getStored(key);
+    if (raw === null) return fallbackNow(userId);
     const hit = cache.get(key);
     if (hit && hit.raw === raw) return hit.layout;
     const layout = normalize(readModules(raw, keys, config.defaults, config.newOn));
@@ -54,8 +75,12 @@ export function createModuleStore<K extends string>(config: {
     const key = config.keyFor(userId);
     const raw = next ? writeModules(next) : null;
     setStored(key, raw);
-    cache.set(key, { raw, layout: next ?? fallback });
+    if (next) cache.set(key, { raw, layout: next });
     if (userId) saveAccountSetting(config.setting, raw);
+    notify();
+  }
+
+  function notify(): void {
     for (const listener of listeners) listener();
   }
 
@@ -71,7 +96,11 @@ export function createModuleStore<K extends string>(config: {
     };
   }
 
-  return function useModules() {
+  /** Tell every screen the defaults may have changed (`defaultsNow`). */
+  useModules.refresh = notify;
+  return useModules;
+
+  function useModules() {
     const { user } = useAuth();
     const userId = user?.id;
     const modules = useSyncExternalStore(
@@ -108,8 +137,8 @@ export function createModuleStore<K extends string>(config: {
       [userId],
     );
     const reset = useCallback(() => write(userId, null), [userId]);
-    // Still the defaults: nothing saved for this account on this phone.
-    const customized = useSyncExternalStore(
+    // Whether this account has a layout of its own on this phone, or the defaults.
+    const saved = useSyncExternalStore(
       subscribe,
       () => getStored(config.keyFor(userId)) !== null,
       () => false,
@@ -122,7 +151,7 @@ export function createModuleStore<K extends string>(config: {
       layout,
       modules,
       shown: shownModules(modules),
-      customized,
+      saved,
       fixed,
       toggle,
       move,
@@ -130,5 +159,5 @@ export function createModuleStore<K extends string>(config: {
       resize,
       reorder,
     };
-  };
+  }
 }

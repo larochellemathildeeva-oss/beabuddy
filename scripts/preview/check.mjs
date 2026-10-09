@@ -614,6 +614,9 @@ await flow("home: trip ahead is the design's modules; the rest are in Customize 
   // Customize home brings back every other module, in the order chosen.
   await page.getByRole("button", { name: /^Customize home/ }).last().click();
   await page.waitForTimeout(400);
+  // The switches say what Home shows: the no-trip modules are off with a trip ahead.
+  for (const name of ["Weather here", "Saved places", "Future me note"])
+    if ((await page.getByRole("switch", { name: `Show ${name}` }).getAttribute("aria-checked")) !== "false") throw new Error(`${name} reads as on but is not shown`);
   for (const name of ["Suggested for your trip", "Trip tools", "Right now there", "Worth a detour"])
     await page.getByRole("switch", { name: `Show ${name}` }).click();
   await page.getByRole("button", { name: "Move Notes from Béa up" }).click();
@@ -625,6 +628,7 @@ await flow("home: trip ahead is the design's modules; the rest are in Customize 
     if (!shown.includes(guide)) throw new Error(`Customize home did not add ${guide}: ${shown.join()}`);
   if (shown.indexOf("home-module-notes") > shown.indexOf("home-module-weather")) throw new Error(`Notes did not move up: ${shown.join()}`);
   if ((await page.getByRole("link", { name: /Iconic Landmarks/ }).count()) !== 1) throw new Error("Suggested ideas did not come back");
+  if ((await text()).includes("Future me note")) throw new Error("a change brought back a module that was not on");
   for (const word of ["Currency", "Transport", "Translate", "Offline", "Live from Los Angeles"])
     if (!(await text()).includes(word)) throw new Error(`Home modules lost "${word}"`);
   if (!/\d+°[CF]/.test(await text())) throw new Error("the weather modules show no temperature");
