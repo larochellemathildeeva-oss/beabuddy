@@ -25,7 +25,7 @@ export function AiPromptCopy() {
     <div className="space-y-3">
       <p className="text-[14px] leading-relaxed text-muted-foreground">
         Copy this into ChatGPT, Gemini, Claude or whichever you use, fill in the brackets, and paste
-        its answer into Plan with Béa → Import a plan.
+        its answer into Plan with Béa → Import your plan.
       </p>
       <p className="text-[14px] leading-relaxed text-muted-foreground">
         It asks for one place per line with a time and a street address, and no travel lines — the

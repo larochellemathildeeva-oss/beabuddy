@@ -37,12 +37,12 @@ export const HELP_FAQ_GROUPS: { title: string; items: Faq[] }[] = [
       },
       {
         q: "Where should I start?",
-        a: "Most people start with a trip. On Trips, Plan with Béa → Build my trip drafts the days; Import a plan reads one you already have.\n\nNo trip yet? Save a few places a friend told you about on Recs, or add the cities you've been to on World. Every walk under Show me how to… points at the real buttons, one step at a time.",
+        a: "Most people start with a trip. On Trips, Plan with Béa → Build a new trip drafts the days; Import your plan reads one you already have.\n\nNo trip yet? Save a few places a friend told you about on Recs, or add the cities you've been to on World. Every walk under Show me how to… points at the real buttons, one step at a time.",
         walk: "plan",
       },
       {
         q: "What's the difference between the ? button and Plan with Béa?",
-        a: "The ? at the top right of a page is help: it says what that page is for and what you can do there, and Show me around highlights each part of the screen.\n\nPlan with Béa is the planner, at the top of Trips and on every trip: Build my trip, Import a plan, Optimize my trip or Compare options.",
+        a: "The ? at the top right of a page is help: it says what that page is for and what you can do there, and Show me around highlights each part of the screen.\n\nPlan with Béa is the planner, at the top of Trips and on every trip: Build a new trip, Import your plan, Optimize my trip or Compare options.",
       },
       {
         q: "Do I need an account?",
@@ -55,7 +55,7 @@ export const HELP_FAQ_GROUPS: { title: string; items: Faq[] }[] = [
     items: [
       {
         q: "How do I plan my first trip?",
-        a: "On Trips, tap Plan with Béa, then Build my trip. Tell Béa where and when, and anything that matters: a pace, a budget, who is coming. She drafts the days from your saved places and Travel preferences, and shows you the plan before anything saves.\n\nPrefer to start empty? The + on Trips makes a trip with a name, a city and dates; add stops as you go.",
+        a: "On Trips, tap Plan with Béa, then Build a new trip. Tell Béa where and when, and anything that matters: a pace, a budget, who is coming. She drafts the days from your saved places and Travel preferences, and shows you the plan before anything saves.\n\nPrefer to start empty? The + on Trips makes a trip with a name, a city and dates; add stops as you go.",
         walk: "plan",
       },
       {
@@ -65,12 +65,12 @@ export const HELP_FAQ_GROUPS: { title: string; items: Faq[] }[] = [
       },
       {
         q: "Can I bring in a plan I already have?",
-        a: "Yes. Plan with Béa → Import a plan reads pasted text, a photo, a PDF or a calendar file and turns it into a trip. Each stop she can find is pinned on the map; any she can't place, or isn't sure about, is marked so you can check it.",
+        a: "Yes. Plan with Béa → Import your plan reads pasted text, a photo, a PDF or a calendar file and turns it into a trip. Each stop she can find is pinned on the map; any she can't place, or isn't sure about, is marked so you can check it.",
         walk: "import",
       },
       {
         q: "Can I bring in a plan from another assistant?",
-        a: 'Yes. Help → Plan a trip, and Get the prompt on Plan with Béa, both have a prompt to copy into whichever one you use. Fill in the city, dates and what you\'d like, then paste its answer into Plan with Béa → Import a plan.\n\nThe prompt asks for one place per line, each with a time and a street address, and no "walk to…" lines. That is the shape Béa reads most precisely: each stop lands on the map on its own, and trips between them stay out of your timeline.',
+        a: 'Yes. Help → Plan a trip, and Get the AI prompt under Plan with Béa → Import your plan, both have a prompt to copy into whichever one you use. Fill in the city, dates and what you\'d like, then paste its answer into Plan with Béa → Import your plan.\n\nThe prompt asks for one place per line, each with a time and a street address, and no "walk to…" lines. That is the shape Béa reads most precisely: each stop lands on the map on its own, and trips between them stay out of your timeline.',
         walk: "import",
       },
       {

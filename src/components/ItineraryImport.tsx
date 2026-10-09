@@ -2,10 +2,11 @@ import { SaveAttempt } from "@/lib/save-attempt";
 import { Sheet } from "@/components/Sheet";
 import { friendlyError } from "@/lib/friendly-error";
 import { AiPromptButton } from "@/components/AiPromptSheet";
-import { PlanAsk, PlanCards, PlanExamples, PlanHero } from "@/components/PlanWithBea";
+import { PlanCards, PlanExamples } from "@/components/PlanWithBea";
 import { BeaRunning } from "@/components/BeaRunning";
 import { SearchGroundingNote } from "@/components/SearchGroundingNote";
 import { useServerFn } from "@tanstack/react-start";
+import { useNavigate } from "@tanstack/react-router";
 import {
   CalendarDays,
   FileText,
@@ -288,6 +289,7 @@ export function ItineraryImport({
     n: 0,
   });
 
+  const navigate = useNavigate();
   const openPlan = (mode: "build" | "import", text = "") => {
     setStart((cur) => ({ mode, text, n: cur.n + 1 }));
     setTab("import");
@@ -350,10 +352,10 @@ export function ItineraryImport({
     <Sheet
       open={open}
       onClose={onClose}
-      title="Ask Béa"
+      title={tab === "start" ? "Plan with Béa" : "Ask Béa"}
       hint={
         tab === "start"
-          ? [tripTitle, "make the trip better"].filter(Boolean).join(" · ")
+          ? [tripTitle, "build / import / optimize / compare"].filter(Boolean).join(" · ")
           : (tripTitle ?? undefined)
       }
       page
@@ -365,8 +367,7 @@ export function ItineraryImport({
     >
       <PlannerBusy.Provider value={setPanelBusy}>
         {tab === "start" ? (
-          <div className="space-y-5">
-            <PlanHero compact />
+          <div className="space-y-3">
             <PlanCards
               optimizeNote={existingItems.length >= 2 ? "" : "Add two stops first"}
               onBuild={() => openPlan("build")}
@@ -374,9 +375,17 @@ export function ItineraryImport({
               onOptimize={() => setTab("optimize")}
               onCompare={() => setTab("compare")}
             />
-            <AiPromptButton />
-            <PlanExamples onPick={(ask) => openPlan("build", ask)} />
-            <PlanAsk onSend={(ask) => openPlan("build", ask)} />
+            {/* A new plan is a new trip, as on the Plan page: Build above adds to this one. */}
+            <button
+              type="button"
+              onClick={() => {
+                onClose();
+                void navigate({ to: "/trips", search: { new: true, plan: "build" } });
+              }}
+              className="btn-primary flex w-full items-center justify-center px-4"
+            >
+              Start a new plan
+            </button>
           </div>
         ) : null}
 
@@ -1330,6 +1339,7 @@ function ImportPanel({
             }
             className={`${PLAN_FIELD} resize-none`}
           />
+          {!text.trim() && <PlanExamples onPick={setText} />}
         </PlanPanel>
       ) : (
         <PlanPanel
