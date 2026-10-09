@@ -156,7 +156,7 @@ export function PriorityPicker({
               type="button"
               aria-pressed={on}
               onClick={() => onToggle(p.id)}
-              className={`flex min-h-9 items-center gap-1.5 rounded-full border px-3 text-[14px] leading-none transition-colors ${
+              className={`flex min-h-11 items-center gap-1.5 rounded-full border px-3 text-[14px] leading-none transition-colors ${
                 on
                   ? "border-foreground bg-foreground text-background"
                   : "border-[var(--field-border)] bg-card text-foreground"

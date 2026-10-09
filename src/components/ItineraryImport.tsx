@@ -364,7 +364,8 @@ export function ItineraryImport({
           ? [tripTitle, "build / import / optimize / compare"].filter(Boolean).join(" · ")
           : head.label
       }
-      {...(tab === "start" ? {} : { crumb: "Plan with Béa" })}
+      // While a form is busy its arrow closes the planner, so it says so rather than "Plan with Béa".
+      {...(tab === "start" || panelBusy ? {} : { crumb: "Plan with Béa" })}
       page
       tone={5}
       onBack={tab === "start" || panelBusy ? undefined : () => setTab("start")}
@@ -401,6 +402,7 @@ export function ItineraryImport({
             // A new city is a new plan: nothing read or placed for the last one is kept.
             key={`${start.n}:${planCity?.id ?? ""}`}
             initialMode={start.mode}
+            onModeChange={(mode) => setStart((cur) => ({ ...cur, mode }))}
             initialText={start.text}
             existingItems={existingItems}
             cities={planRoute}
@@ -458,6 +460,7 @@ function ImportPanel({
   tripPreferences = [],
   travel,
   initialMode = "build",
+  onModeChange,
   initialText = "",
   existingItems,
   cities,
@@ -482,6 +485,8 @@ function ImportPanel({
   cityPicker?: ReactNode;
   /** Which job the panel opens on, chosen on the start screen. */
   initialMode?: "build" | "import";
+  /** Told when the panel switches itself between Build and Import, so the page title follows. */
+  onModeChange?: (mode: "build" | "import") => void;
   /** Words typed on the start screen, carried into the box. */
   initialText?: string;
   existingItems: OptimizeSourceItem[];
@@ -1466,6 +1471,7 @@ function ImportPanel({
             type="button"
             onClick={() => {
               setMode("import");
+              onModeChange?.("import");
               setIncludeCosts(false);
             }}
             className="mt-2 min-h-11 w-full rounded-xl bg-primary px-3 py-2 text-[14px] font-semibold text-primary-foreground"
