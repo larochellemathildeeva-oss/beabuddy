@@ -40,6 +40,7 @@ export function TripPageBanner({
   tracker,
   viewTransitionName,
   card,
+  kicker,
 }: {
   title: string;
   city?: string | null;
@@ -65,6 +66,8 @@ export function TripPageBanner({
    * the places and dates, the picture, and one ink button. Any look.
    */
   card?: { kicker: string; tripId: string };
+  /** Above the name on the trip page: "Trip / overview". */
+  kicker?: string;
 }) {
   const mine = look !== "illustration" && look !== "stock" && own.length > 0;
   const [turn, setTurn] = useState(0);
@@ -224,19 +227,19 @@ export function TripPageBanner({
     );
   }
 
+  // The minimalist trip head (Figma "trip-overview"): which view, the name,
+  // a hairline, the places, the dates, then the picture, 12px apart.
   return (
-    <section className="trip-strip editorial-strip" aria-label={title}>
-      <div className="px-4 pb-3 pt-2">
-        <p className="label-caps truncate">{[pill, where].filter(Boolean).join(" · ")}</p>
-        <h1 className="mt-1.5 line-clamp-2 break-words font-display text-[44px] font-bold leading-[0.98] tracking-[-2px]">
-          {title}
-        </h1>
-        <p className="label-caps mt-2 truncate">
-          {[dates, tentative ? "tentative" : "", companions ?? ""].filter(Boolean).join(" · ")}
-        </p>
-      </div>
+    <section className="trip-head" aria-label={title}>
+      {kicker ? <p className="trip-head-kicker">{kicker}</p> : null}
+      <h1 className="trip-head-title line-clamp-2 break-words">{title}</h1>
+      <span className="trip-head-rule" aria-hidden />
+      {where ? <p className="trip-head-where truncate">{where}</p> : null}
+      <p className="trip-head-dates truncate">
+        {[dates, tentative ? "tentative" : "", pill, companions ?? ""].filter(Boolean).join(" / ")}
+      </p>
       <div
-        className="trip-strip-photo"
+        className="trip-strip-photo trip-head-photo"
         style={viewTransitionName ? { viewTransitionName } : undefined}
       >
         {imageUrl ? (
@@ -250,13 +253,13 @@ export function TripPageBanner({
         {credited ? (
           <p
             title={photoCredit(credited)}
-            className="absolute start-3 top-2 max-w-[60%] truncate bg-black/70 px-2.5 py-0.5 text-[13px] text-white"
+            className="absolute start-3 top-2 max-w-[60%] truncate bg-black/70 px-2.5 py-0.5 text-[12px] text-white"
           >
             {photoCredit(credited)}
           </p>
         ) : null}
       </div>
-      <div className="px-4 pb-1 pt-2">{tracker}</div>
+      {tracker ? <div>{tracker}</div> : null}
     </section>
   );
 }
