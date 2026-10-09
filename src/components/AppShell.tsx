@@ -311,7 +311,7 @@ export function AppShell({
               {!user && (
                 <Link
                   to="/auth"
-                  className="flex min-h-11 items-center rounded-xl bg-primary px-3 py-1.5 text-[16px] font-semibold text-primary-foreground"
+                  className="flex min-h-11 items-center px-2 text-[14px] text-foreground"
                 >
                   Sign in
                 </Link>
