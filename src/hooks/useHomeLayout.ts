@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useTrips } from "@/hooks/useTrips";
+import type { TripRow } from "@/hooks/useTrips";
 import { pickActiveTrip } from "@/lib/home-trip";
 import { toLocalISODate } from "@/lib/trip-dates";
 import { normalizeHomeWidgets } from "@/lib/home-widget-grid";
@@ -133,13 +133,17 @@ export function setHomeNoTrip(userId: string, noTrip: boolean): void {
 
 /**
  * Wherever Home's modules are shown or chosen (Home, Customize home under
- * You), tell the defaults whether this account has a trip ahead.
+ * You), tell the defaults whether this account has a trip ahead. Given the
+ * screen's own trips, so they are not loaded twice.
  */
-export function useHomeTripMoment(): void {
-  const trips = useTrips();
+export function useHomeTripMoment(
+  trips: { uid: string | null; loading: boolean; trips: TripRow[] } | undefined,
+): void {
   const today = toLocalISODate(new Date());
-  const noTrip = !trips.loading && !pickActiveTrip(trips.trips, today);
+  const uid = trips?.uid ?? null;
+  const ready = Boolean(trips && !trips.loading);
+  const noTrip = ready && !pickActiveTrip(trips?.trips ?? [], today);
   useEffect(() => {
-    if (trips.uid && !trips.loading) setHomeNoTrip(trips.uid, noTrip);
-  }, [trips.uid, trips.loading, noTrip]);
+    if (uid && ready) setHomeNoTrip(uid, noTrip);
+  }, [uid, ready, noTrip]);
 }

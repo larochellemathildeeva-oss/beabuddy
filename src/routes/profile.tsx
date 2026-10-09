@@ -374,7 +374,7 @@ function ProfilePage() {
           <TripBannerPicker />
           <StopPicturesPicker />
           <AccessibilityPicker />
-          <CustomizeHome variant="row" />
+          <CustomizeHome variant="row" trips={t} />
         </div>
       </Sheet>
 
