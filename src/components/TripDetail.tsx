@@ -1586,7 +1586,7 @@ export function TripDetail({
                   type="button"
                   onClick={() => setPinReviewOpen(true)}
                   title="Places to confirm"
-                  aria-label={`${toCheck.length} ${toCheck.length === 1 ? "pin" : "pins"} to check`}
+                  aria-label={`${toCheck.length} ${toCheck.length === 1 ? "place" : "places"} to confirm`}
                   className="relative grid size-11 place-items-center rounded-full border border-destructive/40 bg-destructive/10 text-[20px] font-bold text-destructive"
                 >
                   !

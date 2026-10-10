@@ -1355,11 +1355,11 @@ await flow("trip header: every action is on screen at 390px, with the back butto
   }
   const slot = await page.locator("#app-header-slot").evaluate((el) => ({ scroll: el.scrollWidth, width: el.clientWidth }));
   if (slot.scroll > slot.width + 1) throw new Error(`header actions scroll sideways (${slot.scroll} > ${slot.width})`);
-  // Room for the "pins to check" button (44px and a 6px gap) when that setting is on.
+  // Room for the "places to confirm" button (44px and a 6px gap) when that setting is on.
   const used = await page.locator("#app-header-slot > div").evaluate((row) =>
     [...row.children].reduce((sum, group) => sum + group.getBoundingClientRect().width, 0) + 6,
   );
-  if (used + 50 > slot.width) throw new Error(`no room for pins to check (${Math.round(used)} + 50 > ${slot.width})`);
+  if (used + 50 > slot.width) throw new Error(`no room for places to confirm (${Math.round(used)} + 50 > ${slot.width})`);
 }, "default&path=/trips/demo");
 
 await flow("locate on map: opens Map Split on that stop", async (page) => {

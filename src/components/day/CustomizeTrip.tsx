@@ -17,7 +17,7 @@ export function CustomizeTrip({
     <>
       <button
         type="button"
-        aria-label="Customize trip view"
+        aria-label="View options"
         title="View options"
         onClick={() => setOpen(true)}
         className="inline-flex shrink-0 items-center gap-1 rounded-xl border border-border bg-elevated px-2.5 py-1.5 text-xs font-semibold text-muted-foreground shadow-2xs transition-all active:scale-95 sm:px-3"
