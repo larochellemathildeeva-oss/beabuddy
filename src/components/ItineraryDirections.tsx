@@ -257,98 +257,88 @@ export function ItineraryDirections({
       : `${savedAgoLabel(savedAt)} on this phone.`;
   const canRemove = (timelineCount > 0 && onRemoveFromTimeline) || (savedAt && onForgetOffline);
 
+  const transitNote = travel === "transit" || rules?.mid === "transit" || rules?.far === "transit";
+
+  // As Figma "Get directions" (118:2091): one column of choices with a dot,
+  // the two "once they're worked out" boxes, Get directions and Cancel, then
+  // what is kept (118:2185) with its own buttons.
   return (
-    <Sheet
-      open={open}
-      onClose={onClose}
-      title="Directions between stops"
-      hint="How to get from each stop to the next, every day of the trip."
-      width="sm"
-    >
-      <div data-guide="itinerary-directions" className="space-y-4">
+    <Sheet open={open} onClose={onClose} title="Get directions" width="sm">
+      <div data-guide="itinerary-directions" className="dir-sheet">
         {onTravel && (
-          <fieldset className="space-y-2">
-            <legend className="label-caps mb-1 text-foreground">Getting around</legend>
-            <div role="radiogroup" className="grid grid-cols-2 gap-2">
-              {TRAVEL_CHOICES.map((option) => {
-                const on = option.id === travel;
-                return (
-                  <button
-                    key={option.id}
-                    type="button"
-                    role="radio"
-                    aria-checked={on}
-                    onClick={() => onTravel(option.id)}
-                    className={`rounded-xl border p-2.5 text-left ${
-                      on ? "border-primary bg-primary-soft" : "border-border bg-elevated"
-                    }`}
-                  >
-                    <span className="block text-[13.5px] font-semibold">{option.label}</span>
-                    <span className="block text-[12px] leading-snug text-muted-foreground">
-                      {option.detail}
-                    </span>
-                  </button>
-                );
-              })}
-              <button
-                type="button"
-                role="radio"
-                aria-checked={Boolean(rules)}
+          <fieldset className="dir-group">
+            <legend className="sr-only">Getting around</legend>
+            <div role="radiogroup" aria-label="Getting around" className="dir-group">
+              {TRAVEL_CHOICES.map((option) => (
+                <ChoiceRow
+                  key={option.id}
+                  on={option.id === travel}
+                  label={option.label}
+                  detail={option.detail}
+                  onClick={() => onTravel(option.id)}
+                />
+              ))}
+              <ChoiceRow
+                on={Boolean(rules)}
+                label="Your own rules"
+                detail={
+                  rules
+                    ? travelRulesSummary(rules)
+                    : "Choose by distance: walk under one, ride or drive past it."
+                }
                 onClick={() => {
                   if (!rules) onTravel(travelRulesKey(readLastTravelRules()));
                 }}
-                className={`col-span-2 rounded-xl border p-2.5 text-left ${
-                  rules ? "border-primary bg-primary-soft" : "border-border bg-elevated"
-                }`}
-              >
-                <span className="block text-[13.5px] font-semibold">Your own rules</span>
-                <span className="block text-[12px] leading-snug text-muted-foreground">
-                  {rules
-                    ? travelRulesSummary(rules)
-                    : "Choose by distance: walk under one, ride or drive past it."}
-                </span>
-              </button>
+              />
             </div>
             {rules && (
               <TravelRulesEditor rules={rules} onChange={(r) => onTravel(travelRulesKey(r))} />
             )}
-            {(travel === "transit" || rules?.mid === "transit" || rules?.far === "transit") && (
-              <p className="text-[12px] text-muted-foreground">
-                Transit times are typical ones, not a timetable. Each journey opens in Maps for the
-                lines and departures.
-              </p>
+          </fieldset>
+        )}
+
+        {(onAddToTimeline || onKeepOffline) && (
+          <fieldset className="dir-group">
+            <legend className="trip-rule-label mb-3 w-full">Once they're worked out</legend>
+            {onAddToTimeline && (
+              <Choice
+                checked={choice.timeline}
+                onChange={(on) => pick("timeline", on)}
+                label="Add to timeline"
+                detail="Each journey sits between its two stops, steps folded under it."
+              />
+            )}
+            {onKeepOffline && (
+              <Choice
+                checked={choice.phone}
+                onChange={(on) => pick("phone", on)}
+                label="Keep on this phone"
+                detail="With the map around each day's stops, for when the signal drops."
+              />
             )}
           </fieldset>
         )}
 
-        <fieldset className="space-y-2">
-          <legend className="label-caps mb-1 text-foreground">Once they're worked out</legend>
-          {onAddToTimeline && (
-            <Choice
-              checked={choice.timeline}
-              onChange={(on) => pick("timeline", on)}
-              label="Add to timeline"
-              detail="Each journey sits between its two stops, steps folded under it."
-            />
-          )}
-          {onKeepOffline && (
-            <Choice
-              checked={choice.phone}
-              onChange={(on) => pick("phone", on)}
-              label="Keep on this phone"
-              detail="With the map around each day's stops, for when the signal drops."
-            />
-          )}
-        </fieldset>
+        <div className="dir-group">
+          <button
+            type="button"
+            onClick={() => void load()}
+            disabled={busy}
+            className="trip-primary"
+          >
+            {busy ? "Working…" : "Get directions"}
+          </button>
+          <button type="button" onClick={onClose} className="trip-secondary">
+            Cancel
+          </button>
+        </div>
 
-        <button
-          type="button"
-          onClick={() => void load()}
-          disabled={busy}
-          className="w-full rounded-xl bg-primary px-3 py-2.5 text-[14.5px] font-semibold text-primary-foreground disabled:opacity-50"
-        >
-          {busy ? "Working…" : "Get directions"}
-        </button>
+        {transitNote && (
+          <p className="dir-note">
+            Transit estimates are not timetables. Each journey opens in Maps for the lines and
+            departures.
+          </p>
+        )}
 
         {busy && <BeaRunning moment="plan.locating" status="Working out the journeys" />}
 
@@ -359,56 +349,93 @@ export function ItineraryDirections({
         )}
 
         {found === 0 && !busy && (
-          <p className="text-[13px] text-muted-foreground">
-            Béa couldn't place these stops on the map yet — add an address to them and try again.
+          <p className="dir-note">
+            Béa couldn't place these stops on the map yet. Add an address to them and try again.
           </p>
         )}
         {unresolved.length > 0 && !busy && (
-          <p className="text-[12.5px] text-muted-foreground">
+          <p className="dir-note">
             Couldn't find: {unresolved.join(", ")}. Add an address to them and try again.
           </p>
         )}
         {deferred.length > 0 && !busy && (
-          <p className="text-[12.5px] text-muted-foreground">
+          <p className="dir-note">
             Later stretches open in maps — Béa stops looking after a long list so the rest of the
             trip stays usable.
           </p>
         )}
 
         {canRemove && (
-          <div className="space-y-2 border-t border-border pt-3">
-            <p className="label-caps text-foreground">Remove directions</p>
+          <section className="dir-group" aria-label="Directions you kept">
+            <h3 className="trip-rule-label">Directions you kept</h3>
+            {timelineCount > 0 && (
+              <div className="dir-row">
+                <span className="dir-row-title">On the timeline</span>
+                <span className="dir-row-note">
+                  {timelineCount} {timelineCount === 1 ? "journey" : "journeys"}
+                </span>
+              </div>
+            )}
+            {savedAt && offlineNote ? (
+              <div className="dir-row">
+                <span className="dir-row-title">On this phone</span>
+                <span className="dir-row-note">{offlineNote}</span>
+              </div>
+            ) : null}
             {timelineCount > 0 && onRemoveFromTimeline && (
               <button
                 type="button"
                 disabled={removing || busy}
                 onClick={() => void removeFromTimeline()}
-                className="w-full rounded-xl border border-border px-3 py-2 text-left text-[13.5px] font-semibold disabled:opacity-50"
+                className="trip-secondary"
               >
-                {removing
-                  ? "Removing…"
-                  : `Remove from timeline (${timelineCount} ${timelineCount === 1 ? "journey" : "journeys"})`}
+                {removing ? "Removing…" : "Remove from timeline"}
               </button>
             )}
             {savedAt && onForgetOffline && (
-              <div>
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={onForgetOffline}
-                  className="w-full rounded-xl border border-border px-3 py-2 text-left text-[13.5px] font-semibold disabled:opacity-50"
-                >
-                  Delete from this phone
-                </button>
-                {offlineNote && (
-                  <p className="mt-1 text-[12px] text-muted-foreground">{offlineNote}</p>
-                )}
-              </div>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={onForgetOffline}
+                className="trip-secondary"
+              >
+                Forget offline copy
+              </button>
             )}
-          </div>
+          </section>
         )}
       </div>
     </Sheet>
+  );
+}
+
+/** One way of getting around: a dot and a word, as the design's choice rows. */
+function ChoiceRow({
+  on,
+  label,
+  detail,
+  onClick,
+}: {
+  on: boolean;
+  label: string;
+  detail: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      role="radio"
+      aria-checked={on}
+      title={detail}
+      onClick={onClick}
+      className="dir-choice"
+    >
+      <span aria-hidden className="dir-dot" />
+      <span className="min-w-0">
+        <span className="block">{label}</span>
+        {on ? <span className="dir-choice-note">{detail}</span> : null}
+      </span>
+    </button>
   );
 }
 
@@ -424,7 +451,7 @@ function Choice({
   detail: string;
 }) {
   return (
-    <label className="flex cursor-pointer items-start gap-3 rounded-xl bg-elevated p-3">
+    <label className="dir-check">
       <input
         type="checkbox"
         checked={checked}
@@ -433,15 +460,15 @@ function Choice({
       />
       <span
         aria-hidden
-        className={`mt-0.5 grid size-5 shrink-0 place-items-center rounded-md border peer-focus-visible:ring-2 peer-focus-visible:ring-primary ${
-          checked ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card"
+        className={`dir-box peer-focus-visible:ring-2 peer-focus-visible:ring-primary ${
+          checked ? "is-on" : ""
         }`}
       >
         {checked ? <Check className="size-3.5" /> : null}
       </span>
       <span>
-        <span className="block text-[14px] font-medium">{label}</span>
-        <span className="block text-[12.5px] text-muted-foreground">{detail}</span>
+        <span className="dir-row-title block">{label}</span>
+        <span className="dir-row-note block">{detail}</span>
       </span>
     </label>
   );
@@ -465,30 +492,32 @@ function TravelRulesEditor({
   rules: TravelRules;
   onChange: (rules: TravelRules) => void;
 }) {
-  const select = "min-w-0 flex-1 rounded-lg border border-border bg-card px-2 py-1.5 text-[13.5px]";
+  // As Figma "Your travel rules" (118:2125): four labelled fields.
   return (
-    <div className="space-y-2 rounded-xl bg-elevated p-3 text-[13.5px]">
-      <div className="flex items-center gap-2">
-        <span className="w-16 shrink-0 text-muted-foreground">Under</span>
+    <div className="dir-rules">
+      <label className="dir-field">
+        <span>Walk for distances under</span>
         <KmInput
           label="Walk under this many kilometres"
           value={rules.walkKm}
           onCommit={(walkKm) => onChange({ ...rules, walkKm })}
         />
-        <span className="flex-1 font-medium">Walk</span>
-      </div>
-      <div className="flex items-center gap-2">
-        <span className="w-16 shrink-0 text-muted-foreground">Up to</span>
+      </label>
+      <label className="dir-field">
+        <span>For distances up to</span>
         <KmInput
           label="Up to this many kilometres"
           value={rules.farKm}
           onCommit={(farKm) => onChange({ ...rules, farKm })}
         />
+      </label>
+      <label className="dir-field">
+        <span>Intermediate travel mode</span>
         <select
           aria-label="How to go up to that distance"
           value={rules.mid}
           onChange={(e) => onChange({ ...rules, mid: e.target.value as LegMode })}
-          className={select}
+          className="dir-input"
         >
           {(["transit", "driving", "walking"] as const).map((mode) => (
             <option key={mode} value={mode}>
@@ -496,15 +525,14 @@ function TravelRulesEditor({
             </option>
           ))}
         </select>
-      </div>
-      <div className="flex items-center gap-2">
-        <span className="w-16 shrink-0 text-muted-foreground">Beyond</span>
-        <span className="w-[5.5rem] shrink-0" aria-hidden />
+      </label>
+      <label className="dir-field">
+        <span>Beyond that</span>
         <select
           aria-label="How to go further than that"
           value={rules.far}
           onChange={(e) => onChange({ ...rules, far: e.target.value as TravelRules["far"] })}
-          className={select}
+          className="dir-input"
         >
           {(["transit", "driving"] as const).map((mode) => (
             <option key={mode} value={mode}>
@@ -512,8 +540,8 @@ function TravelRulesEditor({
             </option>
           ))}
         </select>
-      </div>
-      <p className="text-[12px] leading-snug text-muted-foreground">
+      </label>
+      <p className="dir-note">
         Distances are straight lines between two stops. Walking stops at 15 km; set both to the same
         number for a single cut-off.
       </p>
@@ -539,7 +567,7 @@ function KmInput({
     if (!typing.current) setText(String(value));
   }, [value]);
   return (
-    <label className="flex w-[5.5rem] shrink-0 items-center gap-1 rounded-lg border border-border bg-card px-2 py-1.5">
+    <span className="dir-input flex items-center gap-1">
       <input
         type="number"
         inputMode="decimal"
@@ -559,9 +587,9 @@ function KmInput({
           typing.current = false;
           setText(String(value));
         }}
-        className="w-full min-w-0 bg-transparent text-right outline-none"
+        className="w-full min-w-0 bg-transparent outline-none"
       />
-      <span className="text-muted-foreground">km</span>
-    </label>
+      <span>km</span>
+    </span>
   );
 }

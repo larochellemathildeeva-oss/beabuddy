@@ -4763,3 +4763,125 @@ main [class*="rounded-2xl"] {
   font-size: 20px;
   font-weight: 500;
 }
+
+/* ===== Directions sheet, as Figma "Get directions" (118:2091) ===== */
+.dir-sheet {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+.dir-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+.dir-choice {
+  display: flex;
+  min-height: 44px;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 11px 12px;
+  border: 0.5px solid var(--border);
+  border-radius: var(--r-card);
+  background: var(--card);
+  color: var(--foreground);
+  text-align: start;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.4;
+}
+.dir-choice[aria-checked="true"] {
+  border-color: var(--foreground);
+  background: var(--elevated);
+  font-weight: 600;
+}
+.dir-dot {
+  flex-shrink: 0;
+  width: 10px;
+  height: 10px;
+  margin: 5px 0 0;
+  border: 1px solid var(--foreground);
+  border-radius: 999px;
+}
+.dir-choice[aria-checked="true"] .dir-dot {
+  background: var(--foreground);
+}
+.dir-choice-note {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--muted-foreground);
+}
+.dir-check,
+.dir-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 13px 16px;
+  border: 0.5px solid var(--border);
+  border-radius: var(--r-card);
+  background: var(--card);
+  cursor: pointer;
+}
+.dir-row {
+  flex-direction: column;
+  gap: 4px;
+  cursor: default;
+}
+.dir-row-title {
+  font-family: var(--font-sans);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+.dir-row-note,
+.dir-note {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--muted-foreground);
+}
+.dir-box {
+  display: grid;
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  margin-top: 2px;
+  place-items: center;
+  border: 1px solid var(--foreground);
+  border-radius: 4px;
+  background: var(--card);
+}
+.dir-box.is-on {
+  background: var(--foreground);
+  color: var(--background);
+}
+.dir-rules {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 8px;
+}
+.dir-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  line-height: 1.4;
+}
+.dir-input {
+  width: 100%;
+  min-height: 48px;
+  padding: 0 13px;
+  border: 0.5px solid var(--border);
+  border-radius: var(--r-card);
+  background: var(--card);
+  color: var(--foreground);
+  font-size: 14px;
+}
