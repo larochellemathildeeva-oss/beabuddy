@@ -1268,9 +1268,10 @@ await flow("trip shell: Bookings stays inside Overview with filters and booking 
   if (await page.getByRole("tab", { name: "Overview", exact: true }).getAttribute("aria-selected") !== "true" || !await bookings.getByRole("button", { name: "All", exact: true }).isVisible()) throw new Error("legacy booking preference was lost");
 });
 
-// Split (the Map's other side) has no tracker: its numbered rows pick the stops.
+// Only Live keeps a tracker under the picture: Split's numbered rows and the
+// Timeline's own day head pick the stops there (Figma 116:1060, 116:1135).
 await flow("trip shell: day tracker opens a stop from every day view", async (page) => {
-  for (const name of ["Companion", "Timeline"]) {
+  for (const name of ["Companion"]) {
     await goTab(page, name);
     const day = page.getByRole("tab", { name: /Day 1/ });
     if (await day.count()) await day.first().click();

@@ -114,7 +114,6 @@ import type { TravelLeg } from "@/lib/itinerary-change";
 import { changeSetForMoves, changeSetForSchedulePatch } from "@/lib/itinerary-review";
 import type { SchedulePatch, ScheduleUpdate } from "@/lib/itinerary-schedule-write";
 import { toLocalISODate } from "@/lib/trip-dates";
-import { beaTripNote } from "@/lib/trip-note";
 import { dayTightnessNote, minutesUntilLabel, nextUp, nowDivider } from "@/lib/day-shape";
 import { runLabelsByIndex, walkableRuns } from "@/lib/stop-grouping";
 import { rowsToPlace, stopLookupTitle, stopsToPlace, tripLookupArea } from "@/lib/stop-placing";
@@ -1448,16 +1447,6 @@ export function TripDetail({
     setAddingTimeline(true);
   };
 
-  const tripNote = beaTripNote(
-    {
-      startDate: trip.start_date,
-      endDate: trip.end_date,
-      stopCount: cities.stops.length,
-      plannedCount: stopItems.length,
-    },
-    toLocalISODate(new Date()),
-  );
-
   /**
    * Trip checkup, worked out only while the menu is open: pure arithmetic on
    * the stops, reusing routes already measured, so it costs no lookups. Null
@@ -1624,7 +1613,13 @@ export function TripDetail({
         )}
       <TripPageBanner
         art={perspective === "overview" ? tripArt : companionArt}
-        title={trip.title}
+        // The Timeline's head names the day it shows ("Day four.", Figma
+        // 116:1135); the whole trip keeps the trip's name.
+        title={
+          perspective === "timeline"
+            ? timelineHeadTitle(chips.find((chip) => chip.key === chosenDay)?.ordinal) || trip.title
+            : trip.title
+        }
         city={trip.city}
         country={trip.country}
         cities={cityNames}
@@ -1649,31 +1644,11 @@ export function TripDetail({
         }}
         viewTransitionName={`trip-photo-${trip.id}`}
         kicker={`Trip / ${TRIP_PERSPECTIVES.find((p) => p.id === tabOf(perspective))!.label.toLowerCase()}`}
-        // Overview draws no day strip (Figma "trip-overview"): its itinerary
-        // rows open each stretch of days instead.
-        // Overview and the Map draw no day strip here: the overview's rows and
-        // the Map's day tabs (under its map) choose the days instead.
-        tracker={
-          perspective === "timeline" || (perspective === "companion" && view.prefs.journey)
-            ? bannerTracker
-            : null
-        }
+        // No day strip under the picture on Overview, the Map or the Timeline
+        // (Figma 116:892, 116:1060, 116:1135): their own rows and day tabs
+        // choose the days. Live keeps the Journey tracker while it is on.
+        tracker={perspective === "companion" && view.prefs.journey ? bannerTracker : null}
       />
-      {/* Béa's line scrolls away with the page; only the bar above stays.
-          The trip's actions moved up into the banner. */}
-      {perspective === "timeline" && (
-        <div className="flex items-baseline justify-between gap-3 px-3 pb-1 pt-2.5 text-[13px] text-muted-foreground">
-          <p>{tripNote}</p>
-          <span className="shrink-0">
-            {[
-              stopItems.length ? `${stopItems.length} entries` : "",
-              cities.stops.length ? `${cities.stops.length} stops` : "",
-            ]
-              .filter(Boolean)
-              .join(" · ")}
-          </span>
-        </div>
-      )}
 
       <TripViews position={barPosition} value={perspective} onChange={setPerspective} />
       <div className="trip-content section-stagger px-5 pb-4 pt-3">
@@ -3401,4 +3376,35 @@ function NowLine({ done = false }: { done?: boolean }) {
       <span className="h-px flex-1 bg-primary/40" />
     </li>
   );
+}
+
+const NUMBER_WORDS = [
+  "",
+  "one",
+  "two",
+  "three",
+  "four",
+  "five",
+  "six",
+  "seven",
+  "eight",
+  "nine",
+  "ten",
+  "eleven",
+  "twelve",
+  "thirteen",
+  "fourteen",
+  "fifteen",
+  "sixteen",
+  "seventeen",
+  "eighteen",
+  "nineteen",
+  "twenty",
+];
+
+/** "Day 4" → "Day four.", as the Timeline's head reads; "" when no single day. */
+function timelineHeadTitle(ordinal: string | undefined): string {
+  const n = Number(/^Day (\d+)$/.exec(ordinal ?? "")?.[1] ?? 0);
+  if (!n) return "";
+  return `Day ${NUMBER_WORDS[n] ?? n}.`;
 }
