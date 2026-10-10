@@ -1677,7 +1677,11 @@ export function TripDetail({
             ? timelineHeadTitle(chips.find((chip) => chip.key === chosenDay)?.ordinal) || trip.title
             : perspective === "companion" && companionDay?.key === todayKey && nowStops.length > 0
               ? `${companionPlace}, right now.`
-              : perspective === "map" && chosenDay !== ALL_DAYS
+              : // A dated day only: not All days, "No date" or a day gone stale.
+                perspective === "map" &&
+                  chosenDay &&
+                  chosenDay !== ALL_DAYS &&
+                  splitChips.some((chip) => chip.key === chosenDay)
                 ? "The day, on the map."
                 : trip.title
         }
