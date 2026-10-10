@@ -81,7 +81,8 @@ import { legMiniMap, stepTurn, type LatLon, type StepTurn } from "@/lib/leg-mini
  * The Timeline's left column: the hour beside each card, and the dashed line
  * of the journey beside each leg. Shared so the two always line up.
  */
-const TIME_COLUMN = "grid-cols-[3.25rem_minmax(0,1fr)]";
+// Figma "trip-timeline": a 48px hour, 16px from the stop.
+const TIME_COLUMN = "grid-cols-[48px_minmax(0,1fr)] gap-x-4";
 
 const TIME_MODES: { value: TimeMode; label: string }[] = [
   { value: "fixed", label: "Fixed" },
@@ -639,7 +640,7 @@ export function TimelineEntry({
     // A row as the Figma timeline draws it: the name, one line under it, a
     // hairline. The hour sits in the column to its left.
     <article
-      className={`flex items-start gap-1.5 border-b border-[var(--rule)] py-3 ${
+      className={`flex items-start gap-1.5 py-3 ${
         current ? "bg-primary-soft/40" : hereNow ? "bg-primary-soft/25" : ""
       }`}
     >
@@ -1071,14 +1072,19 @@ export function TimelineEntry({
       style={liStyle}
       className="relative min-w-0 scroll-mt-16 list-none"
     >
-      <div className={`grid gap-x-2 ${TIME_COLUMN}`}>
+      <div
+        className={`grid ${TIME_COLUMN} ${
+          // A folded row's hairline runs under the hour too, the full width.
+          folded && !back ? "border-b border-[var(--rule)]" : ""
+        }`}
+      >
         {/* The hour, outside the card on the left, as the master draws the
             day. The stop's number is on its kind tile. An open card takes
             the whole width instead; its # says it. */}
         {!back && (
           <span
             aria-hidden
-            className={`tabular-nums text-foreground ${folded ? "pt-3.5 text-[16px] leading-[1.4]" : "pt-4 text-[14px] font-semibold"}`}
+            className={`tabular-nums text-foreground ${folded ? "pt-[14px] text-[14px] leading-[1.4]" : "pt-4 text-[14px] font-semibold"}`}
           >
             {rail}
           </span>
@@ -1566,7 +1572,7 @@ export function TravelConnector({
   // between the rows, so the rows stay the places and the line the travel.
   return (
     <li className="list-none">
-      <div className={`grid gap-x-2 ${TIME_COLUMN}`}>
+      <div className={`grid ${TIME_COLUMN}`}>
         <span aria-hidden />
         <div className="min-w-0">
           <div className="flex min-h-11 items-center gap-1.5">
