@@ -3205,12 +3205,12 @@ html:not(.dark)
   margin-top: 12px;
 }
 
+/* "Day 2 · Thu, Oct 8" over Live's map: a rule label, as the design's
+   "Right now" and "Next" are. */
 .now-day-line {
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--muted-foreground);
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--foreground);
 }
 
 /* Haze behind the Earth globe in Calm and Colorful (Dark has none). Colours are tokens so a mood is changed in one place. */
