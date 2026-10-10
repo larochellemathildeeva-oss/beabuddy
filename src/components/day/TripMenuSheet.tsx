@@ -1,4 +1,4 @@
-import type { ComponentType, CSSProperties, ReactNode } from "react";
+import { useEffect, useRef, type ComponentType, type CSSProperties, type ReactNode } from "react";
 import { Sheet } from "@/components/Sheet";
 import {
   Backpack,
@@ -296,6 +296,18 @@ export function TripMenuSheet({
     },
   ];
 
+  // Back on the menu from a section (its arrow, Escape or a Done inside it):
+  // focus returns to that section's row, not to a button that is gone.
+  const lastSection = useRef<TripMenuSection | null>(null);
+  useEffect(() => {
+    const was = lastSection.current;
+    lastSection.current = section;
+    if (section || !was || !open) return;
+    requestAnimationFrame(() =>
+      document.querySelector<HTMLElement>(`[data-menu-row="${was}"]`)?.focus(),
+    );
+  }, [section, open]);
+
   return (
     <Sheet
       open={open}
@@ -354,7 +366,13 @@ function Group({ name, rows }: { name: string; rows: Row[] }) {
       <h2 className="mono-caps menu-group-label">{name}</h2>
       <div>
         {rows.map((row) => (
-          <button key={row.key} type="button" onClick={row.onClick} className="menu-row">
+          <button
+            key={row.key}
+            type="button"
+            data-menu-row={row.key}
+            onClick={row.onClick}
+            className="menu-row"
+          >
             <span className="menu-row-title">{row.title}</span>
             <span className="menu-row-note">{row.note}</span>
           </button>

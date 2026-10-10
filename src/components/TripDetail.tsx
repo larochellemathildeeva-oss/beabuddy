@@ -3016,24 +3016,44 @@ export function TripDetail({
           </div>
         )}
 
+        {/* As Figma "offline" (116:1628): what is kept, as rows, then one button. */}
         {sheetSection === "offline" && (
-          <div className="plain-card p-3.5">
-            <p className="text-[13px] text-muted-foreground">
-              Download the journeys between stops and Béa keeps the steps on this phone, so you
-              never work them out twice. The trip's plan is kept on this phone too, so once Béa has
-              been opened here with a connection, this trip opens with no signal. Adding directions
-              to the timeline saves the summary only.
-            </p>
-            <p className="mt-1 text-[13px] text-muted-foreground">
-              {cities.stops.length >= 2
-                ? `Covers your ${cities.stops.length} cities, in order.`
-                : "Covers the timeline stops that have a place on the map."}{" "}
-              You can also keep the legs from “Directions between stops” on the trip itself.
+          <div className="trip-overview">
+            <div className="trip-row">
+              <span className="trip-row-title">
+                {cities.stops.length >= 2
+                  ? `Your ${cities.stops.length} cities, in order`
+                  : "Your stops with a place on the map"}
+              </span>
+              <span className="trip-row-note">
+                {dir.saved ? "Directions kept" : "Directions ready to keep"}
+              </span>
+            </div>
+            <div className="trip-row">
+              <span className="trip-row-title">On this phone</span>
+              {/* Only what is really kept: the map is saved by "Keep on this
+                  phone" in Get directions, not by the button below. */}
+              <span className="trip-row-note">
+                {!dir.saved
+                  ? "Nothing kept yet. Download directions to keep them and the plan"
+                  : offlineMap.saved
+                    ? "Directions, the map and the plan, so the trip opens with no signal"
+                    : "Directions and the plan. Keep on this phone in Get directions saves the map too"}
+              </span>
+            </div>
+            <div className="trip-row">
+              <span className="trip-row-title">In your account</span>
+              <span className="trip-row-note">Restore on another device after signing in</span>
+            </div>
+            <p className="dir-note">
+              Béa keeps the steps between stops so you never work them out twice. Adding directions
+              to the timeline saves the summary only; you can also keep the legs from “Get
+              directions” on the trip itself.
             </p>
             <button
               disabled={dir.busy || routeStops.length < 2}
               onClick={() => void dir.download(routeStops, directionArea, travel)}
-              className="btn-primary mt-3 w-full disabled:opacity-50"
+              className="trip-primary disabled:opacity-50"
             >
               {dir.busy ? "Saving…" : dir.saved ? "Refresh directions" : "Download directions"}
             </button>
@@ -3053,9 +3073,9 @@ export function TripDetail({
               </p>
             )}
             {dir.saved && (
-              <div className="mt-3 space-y-2">
+              <div className="dir-group">
                 {dir.saved.legs.map((l, i) => (
-                  <details key={i} className="rounded-xl bg-elevated px-3 py-2">
+                  <details key={i} className="dir-row">
                     <summary className="cursor-pointer text-[14.5px] font-medium">
                       {l.from} → {l.to}
                       <span className="ml-2 text-[12px] font-normal text-muted-foreground">
@@ -3131,7 +3151,7 @@ export function TripDetail({
                 <button
                   type="button"
                   onClick={() => setConfirmForget(true)}
-                  className="min-h-11 text-[14px] text-muted-foreground underline"
+                  className="trip-secondary"
                 >
                   Delete saved directions
                 </button>
@@ -3217,9 +3237,12 @@ export function TripDetail({
         )}
 
         {sheetSection === "customize" && (
-          <div className="plain-card px-3.5 py-1">
+          <div className="dir-sheet">
             <TripBarOptions value={barPosition} onChange={setBarPosition} />
             <CustomizeOptions prefs={view.prefs} onToggle={view.toggle} />
+            <button type="button" onClick={() => setSheetSection(null)} className="trip-primary">
+              Done
+            </button>
           </div>
         )}
 
