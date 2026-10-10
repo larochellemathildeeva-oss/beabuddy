@@ -33,7 +33,9 @@ export type TripMenuSection =
   | "checkup"
   | "again"
   | "preferences"
-  | "photos";
+  | "photos"
+  | "print"
+  | "calendar";
 
 export type BookingTile = "flight" | "stay" | "transport" | "activity";
 
@@ -51,6 +53,14 @@ const SECTION_TITLES: Record<TripMenuSection, string> = {
   again: "Copy this trip",
   preferences: "Just for this trip",
   photos: "Trip photos",
+  print: "Print or PDF",
+  calendar: "Add to calendar",
+};
+
+/** Pages the design heads with a line of their own, the row's name above it. */
+const SECTION_HEADLINES: Partial<Record<TripMenuSection, string>> = {
+  print: "A paper companion",
+  calendar: "On your calendar",
 };
 
 /**
@@ -79,8 +89,8 @@ export function TripMenuSheet({
   offlineNote,
   budgetOn,
   checkupNote,
-  onPrint,
-  onCalendar,
+  canPrint,
+  canCalendar,
   preferencesCount,
   photosCount,
   footer,
@@ -110,10 +120,10 @@ export function TripMenuSheet({
   budgetOn: boolean;
   /** "3 to check" or "All clear"; the row is hidden when empty (nothing planned). */
   checkupNote: string;
-  /** Print the plan, or save it as a PDF from the print dialog. */
-  onPrint?: (() => void) | undefined;
-  /** Download the trip as a calendar file. */
-  onCalendar?: (() => void) | undefined;
+  /** Offer Print or PDF: its page says what goes on paper, then prints. */
+  canPrint?: boolean | undefined;
+  /** Offer Add to calendar: its page says what the file holds, then saves it. */
+  canCalendar?: boolean | undefined;
   /** How many "just for this trip" preferences are set. */
   preferencesCount?: number | undefined;
   /** How many photos are on the trip, its stops' included. */
@@ -250,7 +260,7 @@ export function TripMenuSheet({
       tone: 3,
       onClick: () => onSection("again"),
     },
-    ...(onCalendar
+    ...(canCalendar
       ? [
           {
             key: "calendar",
@@ -258,11 +268,11 @@ export function TripMenuSheet({
             title: "Add to calendar",
             note: "Every stop, as a calendar file",
             tone: 2,
-            onClick: onCalendar,
+            onClick: () => onSection("calendar"),
           },
         ]
       : []),
-    ...(onPrint
+    ...(canPrint
       ? [
           {
             key: "print",
@@ -270,7 +280,7 @@ export function TripMenuSheet({
             title: "Print or PDF",
             note: "A paper copy of the plan",
             tone: 4,
-            onClick: onPrint,
+            onClick: () => onSection("print"),
           },
         ]
       : []),
@@ -317,8 +327,14 @@ export function TripMenuSheet({
       crumb={`${title} / Trip menu`}
       {...(section ? { backLabel: "Back to the trip menu" } : {})}
       tone={section ? 4 : 1}
-      title={section ? SECTION_TITLES[section] : "Trip settings"}
-      hint={section ? title : [title, subtitle].filter(Boolean).join(" · ")}
+      title={section ? (SECTION_HEADLINES[section] ?? SECTION_TITLES[section]) : "Trip settings"}
+      hint={
+        section
+          ? SECTION_HEADLINES[section]
+            ? SECTION_TITLES[section]
+            : title
+          : [title, subtitle].filter(Boolean).join(" · ")
+      }
       actions={
         section ? (
           <button

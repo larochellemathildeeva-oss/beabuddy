@@ -1532,6 +1532,57 @@ export function TripDetail({
     <JourneyTracker bare stops={nowStops} selectedId={peekStop?.id ?? null} onSelect={setPeekId} />
   ) : null;
 
+  // Trip menu → Add to calendar / Print or PDF: each page says what goes in
+  // the file, and its button does the rest.
+  const printLine = [
+    formatTripLocation(trip.city?.split(",")[0], trip.country),
+    tripDateLine(trip.start_date, trip.end_date),
+  ]
+    .filter(Boolean)
+    .join(" · ");
+  const bookedCount = Object.values(bookingCounts).reduce((sum, n) => sum + n, 0);
+  const saveCalendar = () => {
+    setSettingsOpen(false);
+    const blob = new Blob([tripCalendar(trip, stopItems)], {
+      type: "text/calendar;charset=utf-8",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = calendarFileName(trip.title);
+    a.click();
+    URL.revokeObjectURL(url);
+    toast("Calendar file saved", {
+      description: "Open it to add the trip to your calendar. Times are the place's own.",
+    });
+  };
+  const printTrip = () => {
+    setSettingsOpen(false);
+    printHtml(
+      itineraryPrintHtml(
+        {
+          title: trip.title,
+          subtitle: printLine,
+          start_date: trip.start_date,
+          end_date: trip.end_date,
+          // The owner's membership carries no display name; this device knows its own.
+          travellers: members.map(
+            (m) => m.display_name || (m.user_id === me.id ? me.name : "") || "Traveller",
+          ),
+          link: `${window.location.origin}/trips/${trip.id}`,
+          printedAt: new Date(),
+        },
+        // Places to confirm go on paper too, when the traveller shows them.
+        view.prefs.pinChecks
+          ? stopItems.map((item) => ({
+              ...item,
+              pin_check: pinCheckFor(item, strayIds.has(item.id)),
+            }))
+          : stopItems.map((item) => ({ ...item, pin_check: null })),
+      ),
+    );
+  };
+
   return (
     // Edge to edge on a phone, a card from tablet width up. `overflow-clip`,
     // not hidden: hidden makes this the scroll box and the pinned banner would
@@ -2884,52 +2935,8 @@ export function TripDetail({
         checkupNote={checkup ? checkupPill(checkup) : ""}
         preferencesCount={tripPrefs.list.length}
         photosCount={stopPhotos.photos.length}
-        onCalendar={() => {
-          setSettingsOpen(false);
-          const blob = new Blob([tripCalendar(trip, stopItems)], {
-            type: "text/calendar;charset=utf-8",
-          });
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement("a");
-          a.href = url;
-          a.download = calendarFileName(trip.title);
-          a.click();
-          URL.revokeObjectURL(url);
-          toast("Calendar file saved", {
-            description: "Open it to add the trip to your calendar. Times are the place's own.",
-          });
-        }}
-        onPrint={() => {
-          setSettingsOpen(false);
-          printHtml(
-            itineraryPrintHtml(
-              {
-                title: trip.title,
-                subtitle: [
-                  formatTripLocation(trip.city?.split(",")[0], trip.country),
-                  tripDateLine(trip.start_date, trip.end_date),
-                ]
-                  .filter(Boolean)
-                  .join(" · "),
-                start_date: trip.start_date,
-                end_date: trip.end_date,
-                // The owner's membership carries no display name; this device knows its own.
-                travellers: members.map(
-                  (m) => m.display_name || (m.user_id === me.id ? me.name : "") || "Traveller",
-                ),
-                link: `${window.location.origin}/trips/${trip.id}`,
-                printedAt: new Date(),
-              },
-              // Places to confirm go on paper too, when the traveller shows them.
-              view.prefs.pinChecks
-                ? stopItems.map((item) => ({
-                    ...item,
-                    pin_check: pinCheckFor(item, strayIds.has(item.id)),
-                  }))
-                : stopItems.map((item) => ({ ...item, pin_check: null })),
-            ),
-          );
-        }}
+        canCalendar
+        canPrint
         footer={
           // Only the owner can delete (the "Owner deletes trips" policy). For
           // anyone else the delete matched no rows, said nothing, and sent
@@ -3242,6 +3249,60 @@ export function TripDetail({
             <CustomizeOptions prefs={view.prefs} onToggle={view.toggle} />
             <button type="button" onClick={() => setSheetSection(null)} className="trip-primary">
               Done
+            </button>
+          </div>
+        )}
+
+        {sheetSection === "print" && (
+          <div className="trip-overview">
+            <div className="trip-row">
+              <span className="trip-row-title">{trip.title}</span>
+              <span className="trip-row-note">{printLine || "Your trip"}</span>
+            </div>
+            <div className="trip-row">
+              <span className="trip-row-title">Itinerary</span>
+              <span className="trip-row-note">Days, times and addresses</span>
+            </div>
+            <div className="trip-row">
+              <span className="trip-row-title">Bookings</span>
+              <span className="trip-row-note">
+                {bookedCount > 0 ? "References included" : "None booked yet"}
+              </span>
+            </div>
+            <div className="trip-row">
+              <span className="trip-row-title">Notes</span>
+              <span className="trip-row-note">
+                {view.prefs.pinChecks
+                  ? "Places to confirm included"
+                  : "Places to confirm included when on in View options"}
+              </span>
+            </div>
+            <button type="button" onClick={printTrip} className="trip-primary">
+              Print or save PDF
+            </button>
+          </div>
+        )}
+
+        {sheetSection === "calendar" && (
+          <div className="trip-overview">
+            <div className="trip-row">
+              <span className="trip-row-title">
+                {moveDays.length === 1 ? "1 travel day" : `${moveDays.length} travel days`}
+              </span>
+              <span className="trip-row-note">
+                {tripDateLine(trip.start_date, trip.end_date) || "No dates yet"}
+              </span>
+            </div>
+            <div className="trip-row">
+              <span className="trip-row-title">Itinerary events</span>
+              <span className="trip-row-note">Local times and locations</span>
+            </div>
+            <div className="trip-row">
+              <span className="trip-row-title">Calendar file</span>
+              <span className="trip-row-note">Works with your calendar app</span>
+            </div>
+            <button type="button" onClick={saveCalendar} className="trip-primary">
+              Download calendar file
             </button>
           </div>
         )}

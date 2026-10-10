@@ -1358,6 +1358,25 @@ await flow("trip actions: To do, Add stop to the itinerary, Offline and Customiz
   if ((await page.getByRole("switch").count()) === 0) throw new Error("Customize switches missing in Settings");
 });
 
+await flow("trip menu: Print or PDF and Add to calendar open their own pages", async (page) => {
+  await page.getByRole("button", { name: "Trip menu", exact: true }).first().click();
+  await page.waitForTimeout(400);
+  await page.getByRole("button", { name: /^Print or PDF/ }).click();
+  await page.waitForTimeout(300);
+  for (const row of ["Itinerary", "Bookings", "Notes"])
+    if ((await page.getByText(row, { exact: true }).count()) === 0) throw new Error(`Print page has no ${row} row`);
+  if ((await page.getByRole("button", { name: "Print or save PDF" }).count()) !== 1) throw new Error("no Print or save PDF button");
+  await page.getByRole("button", { name: "Back to the trip menu" }).click();
+  await page.waitForTimeout(300);
+  await page.getByRole("button", { name: /^Add to calendar/ }).click();
+  await page.waitForTimeout(300);
+  if ((await page.getByText(/travel days?$/).count()) === 0) throw new Error("Calendar page has no travel days row");
+  const download = page.waitForEvent("download", { timeout: 3000 });
+  await page.getByRole("button", { name: "Download calendar file" }).click();
+  const file = await download;
+  if (!file.suggestedFilename().endsWith(".ics")) throw new Error(`calendar saved as ${file.suggestedFilename()}`);
+});
+
 await flow("trip header: every action is on screen at 390px, with the back button", async (page) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.waitForTimeout(400);
