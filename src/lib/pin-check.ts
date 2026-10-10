@@ -7,7 +7,7 @@ import type { Confidence } from "./match-confidence.ts";
  * ("Béa's best guess", "Check this one — not pinned"). That used to be
  * dropped on saving, so a guess looked like a certainty on the trip. It is
  * kept as `pin_check` (see the pin_check migration), shown on the timeline
- * and in the printed itinerary when the traveller asks for "Pins to check",
+ * and in the printed itinerary when the traveller asks for "Places to confirm",
  * and let go once they set the place themselves.
  *
  * Pure, so every wording is tested without a database.

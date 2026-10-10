@@ -275,7 +275,7 @@ export const HELP_FAQ_GROUPS: { title: string; items: Faq[] }[] = [
       },
       {
         q: "A stop is pinned in the wrong place",
-        a: "Open the stop and tap Change place to pick the right spot. Béa remembers your pick for next time. With Pins to check on (trip view settings), the trip header lists every pin Béa was unsure of, so you can approve or fix them in one go.",
+        a: "Open the stop and tap Change place to pick the right spot. Béa remembers your pick for next time. With Places to confirm on (trip view settings), the trip header lists every pin Béa was unsure of, so you can approve or fix them in one go.",
       },
       {
         q: "Something looks wrong",

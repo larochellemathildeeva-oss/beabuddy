@@ -35,7 +35,7 @@ export const TRIP_VIEW_OPTIONS: { key: TripViewKey; label: string; hint: string 
   },
   {
     key: "pinChecks",
-    label: "Pins to check",
+    label: "Places to confirm",
     hint: "A note on stops whose place Béa was unsure of, and why, here and in the printed itinerary.",
   },
 ];
