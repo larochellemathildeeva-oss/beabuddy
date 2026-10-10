@@ -1282,6 +1282,20 @@ await flow("trip shell: day tracker opens a stop from every day view", async (pa
   }
 });
 
+await flow("timeline: the head names the chosen day, the trip on All days", async (page) => {
+  await goTab(page, "Timeline");
+  const head = page.locator(".trip-head-title");
+  await page.getByRole("tab", { name: /^Day 1/ }).first().click();
+  await page.waitForTimeout(300);
+  if ((await head.innerText()).trim() !== "Day one.") throw new Error(`Day 1 head reads "${await head.innerText()}"`);
+  if ((await page.locator("[data-guide='trip-timeline']").getByText("Shukkeien Garden").count()) !== 0)
+    throw new Error("Day 1 still lists a Day 2 stop");
+  await page.getByRole("tab", { name: "All days", exact: true }).first().click();
+  await page.waitForTimeout(300);
+  if (/^Day /.test((await head.innerText()).trim())) throw new Error("All days still names a day");
+  if ((await page.locator(".trip-strip-photo + div [role='region']").count()) !== 0) throw new Error("a strip is back under the picture");
+});
+
 await flow("booking: mark booked with a reference", async (page) => {
   await goTab(page, "Timeline");
   await fullCards(page);

@@ -1616,7 +1616,8 @@ export function TripDetail({
         // The Timeline's head names the day it shows ("Day four.", Figma
         // 116:1135); the whole trip keeps the trip's name.
         title={
-          perspective === "timeline"
+          // Only while the list is by day: "All entries" is the whole trip.
+          perspective === "timeline" && timelineByDay
             ? timelineHeadTitle(chips.find((chip) => chip.key === chosenDay)?.ordinal) || trip.title
             : trip.title
         }
