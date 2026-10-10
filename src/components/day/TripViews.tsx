@@ -110,14 +110,32 @@ export function TripBarOptions({
   // as rows with a dot, the chosen one darker.
   return (
     <div role="radiogroup" aria-label="Views bar position" className="dir-group">
-      {BAR_POSITIONS.map((p) => (
+      {BAR_POSITIONS.map((p, i) => (
         <button
           key={p}
           type="button"
           role="radio"
           aria-checked={value === p}
+          // One stop in the tab order; the arrows move between the three.
+          tabIndex={value === p ? 0 : -1}
           title="Position on this device"
           onClick={() => onChange(p)}
+          onKeyDown={(event) => {
+            const step =
+              event.key === "ArrowDown" || event.key === "ArrowRight"
+                ? 1
+                : event.key === "ArrowUp" || event.key === "ArrowLeft"
+                  ? -1
+                  : 0;
+            if (!step) return;
+            event.preventDefault();
+            const next = (i + step + BAR_POSITIONS.length) % BAR_POSITIONS.length;
+            onChange(BAR_POSITIONS[next]!);
+            const group = event.currentTarget.parentElement;
+            requestAnimationFrame(() =>
+              group?.querySelectorAll<HTMLElement>('[role="radio"]')[next]?.focus(),
+            );
+          }}
           className="dir-choice"
         >
           <span aria-hidden className="dir-dot" />

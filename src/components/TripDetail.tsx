@@ -3031,8 +3031,14 @@ export function TripDetail({
             </div>
             <div className="trip-row">
               <span className="trip-row-title">On this phone</span>
+              {/* Only what is really kept: the map is saved by "Keep on this
+                  phone" in Get directions, not by the button below. */}
               <span className="trip-row-note">
-                Maps, directions and the plan, so the trip opens with no signal
+                {!dir.saved
+                  ? "Nothing kept yet. Download directions to keep them and the plan"
+                  : offlineMap.saved
+                    ? "Directions, the map and the plan, so the trip opens with no signal"
+                    : "Directions and the plan. Keep on this phone in Get directions saves the map too"}
               </span>
             </div>
             <div className="trip-row">
