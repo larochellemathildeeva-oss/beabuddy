@@ -55,9 +55,13 @@ export function HomeOnTrip({
   return (
     <section className="flex flex-col">
       <HomeTripBanner trip={trip} photos={photos} cities={cityNames} kicker="Happening now" />
-      <div className="trip-panel -mx-4 space-y-3 px-4 pt-4">
-        {showStops && <NowCards trip={trip} glance={glance} day={tags.when} />}
-      </div>
+      {/* With the stops off (their own tile) there is no panel: an empty one
+          still rose over the photo and sat on View trip. */}
+      {showStops ? (
+        <div className="trip-panel -mx-4 space-y-3 px-4 pt-4">
+          <NowCards trip={trip} glance={glance} day={tags.when} />
+        </div>
+      ) : null}
     </section>
   );
 }
