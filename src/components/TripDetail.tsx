@@ -1574,8 +1574,8 @@ export function TripDetail({
                 <button
                   type="button"
                   onClick={() => setPinReviewOpen(true)}
-                  title="Pins to check"
-                  aria-label={`${toCheck.length} ${toCheck.length === 1 ? "pin" : "pins"} to check`}
+                  title="Places to confirm"
+                  aria-label={`${toCheck.length} ${toCheck.length === 1 ? "place" : "places"} to confirm`}
                   className="relative grid size-11 place-items-center rounded-full border border-destructive/40 bg-destructive/10 text-[20px] font-bold text-destructive"
                 >
                   !
@@ -2920,7 +2920,7 @@ export function TripDetail({
                 link: `${window.location.origin}/trips/${trip.id}`,
                 printedAt: new Date(),
               },
-              // Pins to check go on paper too, when the traveller shows them.
+              // Places to confirm go on paper too, when the traveller shows them.
               view.prefs.pinChecks
                 ? stopItems.map((item) => ({
                     ...item,

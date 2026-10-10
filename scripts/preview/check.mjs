@@ -1229,7 +1229,7 @@ await flow("trip shell: four views, device positions and sticky bars keep the ma
   if (JSON.stringify(await tabNames(page)) !== JSON.stringify(["Overview", "Map", "Timeline"])) throw new Error("wrong trip views");
   for (const position of ["top", "bottom", "side"]) {
     await page.getByRole("button", { name: "Trip menu", exact: true }).click();
-    await page.getByRole("button", { name: /Customize view/ }).click();
+    await page.getByRole("button", { name: /View options/ }).click();
     await page.getByRole("group", { name: "Views bar position" }).getByRole("button", { name: new RegExp(`^${position}$`, "i") }).click();
     await page.getByRole("button", { name: "Close the trip menu" }).click();
     if (await page.evaluate(() => localStorage.getItem("bea-trip-tabs")) !== position) throw new Error("position did not save");
@@ -1350,10 +1350,10 @@ await flow("trip actions: To do, Add stop to the itinerary, Offline and Customiz
   await page.waitForTimeout(300);
   await page.getByRole("button", { name: "Trip menu", exact: true }).first().click();
   await page.waitForTimeout(400);
-  for (const label of ["Offline maps", "Destinations", "Customize view"]) {
+  for (const label of ["Offline maps", "Destinations", "View options"]) {
     if ((await page.getByRole("button", { name: new RegExp(label) }).count()) === 0) throw new Error(`Settings has no ${label}`);
   }
-  await page.getByRole("button", { name: /Customize view/ }).click();
+  await page.getByRole("button", { name: /View options/ }).click();
   await page.waitForTimeout(300);
   if ((await page.getByRole("switch").count()) === 0) throw new Error("Customize switches missing in Settings");
 });
@@ -1370,11 +1370,11 @@ await flow("trip header: every action is on screen at 390px, with the back butto
   }
   const slot = await page.locator("#app-header-slot").evaluate((el) => ({ scroll: el.scrollWidth, width: el.clientWidth }));
   if (slot.scroll > slot.width + 1) throw new Error(`header actions scroll sideways (${slot.scroll} > ${slot.width})`);
-  // Room for the "pins to check" button (44px and a 6px gap) when that setting is on.
+  // Room for the "places to confirm" button (44px and a 6px gap) when that setting is on.
   const used = await page.locator("#app-header-slot > div").evaluate((row) =>
     [...row.children].reduce((sum, group) => sum + group.getBoundingClientRect().width, 0) + 6,
   );
-  if (used + 50 > slot.width) throw new Error(`no room for pins to check (${Math.round(used)} + 50 > ${slot.width})`);
+  if (used + 50 > slot.width) throw new Error(`no room for places to confirm (${Math.round(used)} + 50 > ${slot.width})`);
 }, "default&path=/trips/demo");
 
 await flow("locate on map: opens Map Split on that stop", async (page) => {
@@ -1700,7 +1700,7 @@ await flow("background lookup: a doubtful match is not pinned onto a stop", asyn
 
 await flow("companion: tapping the ribbon or the tracker shows that stop, current stop stays", async (page) => {
   await page.getByRole("button", { name: "Trip menu", exact: true }).click();
-  await page.getByRole("button", { name: /Customize view/ }).click();
+  await page.getByRole("button", { name: /View options/ }).click();
   const ribbonSwitch = page.getByRole("switch", { name: /Itinerary ribbon/ });
   if ((await ribbonSwitch.getAttribute("aria-checked")) !== "true") await ribbonSwitch.click();
   await page.keyboard.press("Escape");

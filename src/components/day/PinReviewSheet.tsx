@@ -37,7 +37,7 @@ export function PinReviewSheet({
     <Sheet
       open={open}
       onClose={onClose}
-      title="Pins to check"
+      title="Places to confirm"
       hint={
         stops.length
           ? `${stops.length} ${stops.length === 1 ? "stop" : "stops"} Béa was unsure of`

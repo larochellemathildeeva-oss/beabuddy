@@ -15,7 +15,7 @@ function dayLabel(day: string): string {
 }
 
 /**
- * "Do it again", in the trip menu: the whole trip copied onto new dates, or
+ * "Copy this trip", in the trip menu: the whole trip copied onto new dates, or
  * one of its days copied onto a day of any trip. Bookings, confirmation
  * numbers and the record of what happened stay with this trip.
  */
