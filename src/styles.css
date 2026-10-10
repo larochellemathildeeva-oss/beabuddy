@@ -3730,7 +3730,8 @@ a.bg-primary {
   justify-content: center;
   text-align: center;
 }
-.home-widget :is(h2, h3, p) {
+/* Balanced lines, except where a line is meant to stay one and truncate. */
+.home-widget :is(h2, h3, p):not(.truncate) {
   text-wrap: balance;
 }
 /* Labels in the grid are ink, as the design sets every word on Home. */
