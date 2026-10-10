@@ -312,7 +312,15 @@ export function TripMenuSheet({
   useEffect(() => {
     const was = lastSection.current;
     lastSection.current = section;
-    if (section || !was || !open) return;
+    if (!open) return;
+    // Into a section: focus its back arrow, since the row tapped is gone.
+    if (section && section !== was) {
+      requestAnimationFrame(() =>
+        document.querySelector<HTMLElement>('[aria-label="Back to the trip menu"]')?.focus(),
+      );
+      return;
+    }
+    if (section || !was) return;
     requestAnimationFrame(() =>
       document.querySelector<HTMLElement>(`[data-menu-row="${was}"]`)?.focus(),
     );

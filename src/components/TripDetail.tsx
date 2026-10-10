@@ -1540,7 +1540,10 @@ export function TripDetail({
   ]
     .filter(Boolean)
     .join(" · ");
-  const bookedCount = Object.values(bookingCounts).reduce((sum, n) => sum + n, 0);
+  // What the printer really prints: a confirmation number only where a stop has one.
+  const printedRefs = stopItems.filter((item) => item.booking_ref?.trim()).length;
+  // The days the calendar file spans, from the trip's own dates when it has them.
+  const calendarDays = spanDays(trip.start_date, trip.end_date) ?? moveDays.length;
   const saveCalendar = () => {
     setSettingsOpen(false);
     const blob = new Blob([tripCalendar(trip, stopItems)], {
@@ -3266,7 +3269,7 @@ export function TripDetail({
             <div className="trip-row">
               <span className="trip-row-title">Bookings</span>
               <span className="trip-row-note">
-                {bookedCount > 0 ? "References included" : "None booked yet"}
+                {printedRefs > 0 ? "References included" : "No booking references yet"}
               </span>
             </div>
             <div className="trip-row">
@@ -3287,7 +3290,7 @@ export function TripDetail({
           <div className="trip-overview">
             <div className="trip-row">
               <span className="trip-row-title">
-                {moveDays.length === 1 ? "1 travel day" : `${moveDays.length} travel days`}
+                {calendarDays === 1 ? "1 travel day" : `${calendarDays} travel days`}
               </span>
               <span className="trip-row-note">
                 {tripDateLine(trip.start_date, trip.end_date) || "No dates yet"}
@@ -3313,6 +3316,14 @@ export function TripDetail({
       </TripMenuSheet>
     </article>
   );
+}
+
+/** Days from start to end, both counted; null without two valid dates. */
+function spanDays(start: string | null | undefined, end: string | null | undefined): number | null {
+  const from = start ? Date.parse(`${start}T00:00:00Z`) : NaN;
+  const to = end ? Date.parse(`${end}T00:00:00Z`) : NaN;
+  if (!Number.isFinite(from) || !Number.isFinite(to) || to < from) return null;
+  return Math.round((to - from) / 86_400_000) + 1;
 }
 
 /** "Day 4" → "04", for the timeline's large day number; "" when there is none. */

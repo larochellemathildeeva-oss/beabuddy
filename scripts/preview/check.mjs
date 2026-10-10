@@ -1363,6 +1363,8 @@ await flow("trip menu: Print or PDF and Add to calendar open their own pages", a
   await page.waitForTimeout(400);
   await page.getByRole("button", { name: /^Print or PDF/ }).click();
   await page.waitForTimeout(300);
+  if ((await page.evaluate(() => document.activeElement?.getAttribute("aria-label"))) !== "Back to the trip menu")
+    throw new Error("focus did not move into the Print page");
   for (const row of ["Itinerary", "Bookings", "Notes"])
     if ((await page.getByText(row, { exact: true }).count()) === 0) throw new Error(`Print page has no ${row} row`);
   if ((await page.getByRole("button", { name: "Print or save PDF" }).count()) !== 1) throw new Error("no Print or save PDF button");
