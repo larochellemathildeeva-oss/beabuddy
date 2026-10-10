@@ -3683,20 +3683,43 @@ a.bg-primary {
 .home-widget :is([data-guide="home-suggested"], [data-guide="home-near"]) {
   padding: 16px;
 }
-/* The design's cells: Small and Wide 175px tall, Large 350, at a 350px grid. */
+/*
+ * Home's tiles size to their content, with a floor that grows with the
+ * traveller's text size (--text-scale), never with the screen's width: a
+ * width-based height left a short reading in a big empty box on a phone and
+ * cut text off at the largest size. A tile's content sits in its middle.
+ */
 .home-widget[data-size="small"],
 .home-widget[data-size="wide"] {
-  min-height: 50cqw;
+  min-height: calc(112px * var(--text-scale, 1));
 }
 .home-widget[data-size="large"] {
-  min-height: 100cqw;
+  min-height: calc(176px * var(--text-scale, 1));
 }
 .home-widget .home-widget-content {
   display: flex;
   flex-direction: column;
+  justify-content: center;
+  text-align: center;
 }
 .home-widget .home-widget-content > * {
   flex: 1;
+}
+.home-widget-content > .module-card,
+.home-widget [data-guide^="home-module"] {
+  min-height: calc(112px * var(--text-scale, 1));
+}
+/* A module's words: centred on the tile, one column, its picture kept beside them. */
+.home-widget [data-guide^="home-module"] {
+  align-items: center;
+}
+.home-widget [data-guide^="home-module"] > span:first-child {
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+.home-widget :is(h2, h3, p) {
+  text-wrap: balance;
 }
 /* Labels in the grid are ink, as the design sets every word on Home. */
 .home-widget .label-caps {
@@ -3719,7 +3742,7 @@ a.bg-primary {
   flex-direction: column;
 }
 /* A Small Travellers cell is the figure alone, as drawn; Wide and Large keep the faces. */
-.home-widget[data-size="small"] [data-guide="home-module-group"] .\-space-x-2 {
+.home-widget[data-size="small"] [data-guide="home-module-group"] :is(.\-space-x-2, span:has(> .\-space-x-2)) {
   display: none;
 }
 .home-trip-card > .home-trip-photo {
@@ -3854,7 +3877,6 @@ main [class*="rounded-\\[var(--r-"] {
 }
 .home-widget-content > .module-card,
 .home-widget [data-guide^="home-module"] {
-  min-height: 175px;
   border-color: var(--border);
 }
 
