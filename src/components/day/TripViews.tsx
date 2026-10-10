@@ -106,28 +106,25 @@ export function TripBarOptions({
   value: TripBarPosition;
   onChange: (value: TripBarPosition) => void;
 }) {
+  // As Figma "trip-customize" (116:1667): "Views bar: Top" and the others
+  // as rows with a dot, the chosen one darker.
   return (
-    <fieldset className="py-3">
-      <legend className="text-[16px] font-semibold">Views bar</legend>
-      <p className="mb-2 text-[13px] text-muted-foreground">Position on this device.</p>
-      <div
-        role="group"
-        aria-label="Views bar position"
-        className="flex gap-1 rounded-full bg-elevated p-1"
-      >
-        {BAR_POSITIONS.map((p) => (
-          <button
-            key={p}
-            type="button"
-            aria-pressed={value === p}
-            onClick={() => onChange(p)}
-            className={`min-h-11 flex-1 rounded-full px-3 text-[16px] ${value === p ? "bg-primary text-primary-foreground font-semibold" : "text-muted-foreground"}`}
-          >
-            {p.charAt(0).toUpperCase() + p.slice(1)}
-          </button>
-        ))}
-      </div>
-    </fieldset>
+    <div role="radiogroup" aria-label="Views bar position" className="dir-group">
+      {BAR_POSITIONS.map((p) => (
+        <button
+          key={p}
+          type="button"
+          role="radio"
+          aria-checked={value === p}
+          title="Position on this device"
+          onClick={() => onChange(p)}
+          className="dir-choice"
+        >
+          <span aria-hidden className="dir-dot" />
+          <span>Views bar: {p.charAt(0).toUpperCase() + p.slice(1)}</span>
+        </button>
+      ))}
+    </div>
   );
 }
 

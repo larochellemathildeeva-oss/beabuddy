@@ -52,7 +52,10 @@ export function CustomizeTrip({
   );
 }
 
-/** The same switches, laid out inline — for the Settings sheet. */
+/**
+ * The same switches, laid out inline for the trip menu: one bordered row a
+ * switch, as Figma "trip-customize" (116:1667) draws them.
+ */
 export function CustomizeOptions({
   prefs,
   onToggle,
@@ -61,12 +64,14 @@ export function CustomizeOptions({
   onToggle: (key: TripViewKey) => void;
 }) {
   return (
-    <div className="divide-y divide-border">
+    <div className="dir-group">
       {TRIP_VIEW_OPTIONS.map((option) => (
-        <div key={option.key} className="flex items-center justify-between gap-4 py-2.5">
-          <div>
-            <p className="text-[14px] font-medium">{option.label}</p>
-            <p className="text-[12px] text-muted-foreground">{option.hint}</p>
+        <div key={option.key} className="dir-check items-center">
+          <div className="min-w-0 flex-1">
+            <p className="dir-row-title">{option.label}</p>
+            <p className="dir-row-note">
+              {prefs[option.key] ? "On" : "Off"} / {option.hint}
+            </p>
           </div>
           <Switch
             checked={prefs[option.key]}

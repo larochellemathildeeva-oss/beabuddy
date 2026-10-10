@@ -1230,7 +1230,7 @@ await flow("trip shell: four views, device positions and sticky bars keep the ma
   for (const position of ["top", "bottom", "side"]) {
     await page.getByRole("button", { name: "Trip menu", exact: true }).click();
     await page.getByRole("button", { name: /View options/ }).click();
-    await page.getByRole("group", { name: "Views bar position" }).getByRole("button", { name: new RegExp(`^${position}$`, "i") }).click();
+    await page.getByRole("radiogroup", { name: "Views bar position" }).getByRole("radio", { name: new RegExp(`^Views bar: ${position}$`, "i") }).click();
     await page.getByRole("button", { name: "Close the trip menu" }).click();
     if (await page.evaluate(() => localStorage.getItem("bea-trip-tabs")) !== position) throw new Error("position did not save");
     if ((await writes(page)).some((w) => w.payload?.patch?.tripTabs)) throw new Error("device position uploaded to account");
