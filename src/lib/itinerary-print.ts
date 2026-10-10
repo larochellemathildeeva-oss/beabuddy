@@ -262,7 +262,7 @@ export function pinText(lat: number, lon: number): string {
 function locationHtml(row: PrintRow): string {
   const address = row.address?.trim();
   const where = address ? `<div class="address">${escapeHtml(address)}</div>` : "";
-  if (row.kind === "note") return where;
+  if (row.kind === "note") return `${where}${checkHtml(row)}`;
   if (!hasPin(row)) {
     return `${where}<div class="pin nopin">Not on the map yet${address ? "" : " · no address"}</div>${checkHtml(row)}`;
   }

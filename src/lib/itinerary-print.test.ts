@@ -338,3 +338,10 @@ test("a pin to check is printed under its pin, only when passed", () => {
   const plain = itineraryPrintHtml({ title: "Japan" }, [row({ lat: 35.0, lon: 135.7 })]);
   assert.doesNotMatch(plain, /Pin to check/);
 });
+
+test("a note keeps its pin to check on paper too", () => {
+  const html = itineraryPrintHtml({ title: "Japan" }, [
+    row({ kind: "note", title: "Meet by the gate", pin_check: "Check this one — not pinned" }),
+  ]);
+  assert.match(html, /Pin to check: Check this one — not pinned/);
+});
