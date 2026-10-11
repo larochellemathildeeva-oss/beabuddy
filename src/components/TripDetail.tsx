@@ -1667,13 +1667,23 @@ export function TripDetail({
         )}
       <TripPageBanner
         art={perspective === "overview" ? tripArt : companionArt}
-        // The Timeline's head names the day it shows ("Day four.", Figma
-        // 116:1135); the whole trip keeps the trip's name.
+        // Each view's head says what it shows, as the Figma frames do: the
+        // Timeline its day ("Day four.", 116:1135), Live today's town
+        // ("Kyoto, right now.", 116:988), Split the map (116:1060). The
+        // Overview, and any view of the whole trip, keeps the trip's name.
         title={
           // Only while the list is by day: "All entries" is the whole trip.
           perspective === "timeline" && timelineByDay
             ? timelineHeadTitle(chips.find((chip) => chip.key === chosenDay)?.ordinal) || trip.title
-            : trip.title
+            : perspective === "companion" && companionDay?.key === todayKey && nowStops.length > 0
+              ? `${companionPlace}, right now.`
+              : // A dated day only: not All days, "No date" or a day gone stale.
+                perspective === "map" &&
+                  chosenDay &&
+                  chosenDay !== ALL_DAYS &&
+                  splitChips.some((chip) => chip.key === chosenDay)
+                ? "The day, on the map."
+                : trip.title
         }
         city={trip.city}
         country={trip.country}
