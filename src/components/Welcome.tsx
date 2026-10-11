@@ -12,7 +12,6 @@ import {
   Route,
   X,
 } from "@/components/icons";
-import { ThemePicker } from "@/components/ThemePicker";
 import { startWalk } from "@/lib/tour-start";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -35,7 +34,7 @@ const GOAL_LOOK: Record<string, { Icon: typeof Plane; tile: string }> = {
   map: { Icon: Map, tile: "var(--mint)" },
 };
 
-const STEPS = ["intro", "goal", "style", "look", "ready"] as const;
+const STEPS = ["intro", "goal", "style", "ready"] as const;
 
 /** Tell the account the welcome is done, for every other device. */
 async function markAccountDone(): Promise<boolean> {
@@ -391,16 +390,6 @@ export function Welcome() {
                   ))}
                 </div>
               </div>
-            </div>
-          )}
-
-          {step === "look" && (
-            <div className="space-y-3">
-              <h2 className="font-display text-[24px] leading-tight">Pick a look</h2>
-              <p className="text-[14.5px] text-muted-foreground">
-                It follows you to every device you sign in on. You → Appearance changes it later.
-              </p>
-              <ThemePicker />
             </div>
           )}
 
