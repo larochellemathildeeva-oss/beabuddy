@@ -15,7 +15,6 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as HelpRouteImport } from './routes/help'
 import { Route as HowItWorksRouteImport } from './routes/how-it-works'
-import { Route as NextRouteImport } from './routes/next'
 import { Route as OpportunitiesRouteImport } from './routes/opportunities'
 import { Route as PreferencesRouteImport } from './routes/preferences'
 import { Route as PrivacyRouteImport } from './routes/privacy'
@@ -34,7 +33,6 @@ import { Route as ProfileBeaRouteImport } from './routes/profile_.bea'
 import { Route as ProfileDocumentsRouteImport } from './routes/profile_.documents'
 import { Route as SharedTokenRouteImport } from './routes/shared.$token'
 import { Route as TripsTripIdRouteImport } from './routes/trips_.$tripId'
-import { Route as TripsNextRouteImport } from './routes/trips_.next'
 import { Route as TripsPlanRouteImport } from './routes/trips_.plan'
 import { Route as WorldNextRouteImport } from './routes/world_.next'
 
@@ -65,11 +63,6 @@ const HelpRoute = HelpRouteImport.update({
 const HowItWorksRoute = HowItWorksRouteImport.update({
   id: '/how-it-works',
   path: '/how-it-works',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const NextRoute = NextRouteImport.update({
-  id: '/next',
-  path: '/next',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OpportunitiesRoute = OpportunitiesRouteImport.update({
@@ -162,11 +155,6 @@ const TripsTripIdRoute = TripsTripIdRouteImport.update({
   path: '/trips/$tripId',
   getParentRoute: () => rootRouteImport,
 } as any)
-const TripsNextRoute = TripsNextRouteImport.update({
-  id: '/trips_/next',
-  path: '/trips/next',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const TripsPlanRoute = TripsPlanRouteImport.update({
   id: '/trips_/plan',
   path: '/trips/plan',
@@ -184,7 +172,6 @@ export interface FileRoutesByFullPath {
   '/forgot-password': typeof ForgotPasswordRoute
   '/help': typeof HelpRoute
   '/how-it-works': typeof HowItWorksRoute
-  '/next': typeof NextRoute
   '/opportunities': typeof OpportunitiesRoute
   '/preferences': typeof PreferencesRoute
   '/privacy': typeof PrivacyRoute
@@ -203,7 +190,6 @@ export interface FileRoutesByFullPath {
   '/profile/documents': typeof ProfileDocumentsRoute
   '/shared/$token': typeof SharedTokenRoute
   '/trips/$tripId': typeof TripsTripIdRoute
-  '/trips/next': typeof TripsNextRoute
   '/trips/plan': typeof TripsPlanRoute
   '/world/next': typeof WorldNextRoute
 }
@@ -213,7 +199,6 @@ export interface FileRoutesByTo {
   '/forgot-password': typeof ForgotPasswordRoute
   '/help': typeof HelpRoute
   '/how-it-works': typeof HowItWorksRoute
-  '/next': typeof NextRoute
   '/opportunities': typeof OpportunitiesRoute
   '/preferences': typeof PreferencesRoute
   '/privacy': typeof PrivacyRoute
@@ -232,7 +217,6 @@ export interface FileRoutesByTo {
   '/profile/documents': typeof ProfileDocumentsRoute
   '/shared/$token': typeof SharedTokenRoute
   '/trips/$tripId': typeof TripsTripIdRoute
-  '/trips/next': typeof TripsNextRoute
   '/trips/plan': typeof TripsPlanRoute
   '/world/next': typeof WorldNextRoute
 }
@@ -244,7 +228,6 @@ export interface FileRoutesById {
   '/forgot-password': typeof ForgotPasswordRoute
   '/help': typeof HelpRoute
   '/how-it-works': typeof HowItWorksRoute
-  '/next': typeof NextRoute
   '/opportunities': typeof OpportunitiesRoute
   '/preferences': typeof PreferencesRoute
   '/privacy': typeof PrivacyRoute
@@ -263,7 +246,6 @@ export interface FileRoutesById {
   '/profile_/documents': typeof ProfileDocumentsRoute
   '/shared/$token': typeof SharedTokenRoute
   '/trips_/$tripId': typeof TripsTripIdRoute
-  '/trips_/next': typeof TripsNextRoute
   '/trips_/plan': typeof TripsPlanRoute
   '/world_/next': typeof WorldNextRoute
 }
@@ -275,7 +257,6 @@ export interface FileRouteTypes {
     | '/forgot-password'
     | '/help'
     | '/how-it-works'
-    | '/next'
     | '/opportunities'
     | '/preferences'
     | '/privacy'
@@ -294,7 +275,6 @@ export interface FileRouteTypes {
     | '/profile/documents'
     | '/shared/$token'
     | '/trips/$tripId'
-    | '/trips/next'
     | '/trips/plan'
     | '/world/next'
   fileRoutesByTo: FileRoutesByTo
@@ -304,7 +284,6 @@ export interface FileRouteTypes {
     | '/forgot-password'
     | '/help'
     | '/how-it-works'
-    | '/next'
     | '/opportunities'
     | '/preferences'
     | '/privacy'
@@ -323,7 +302,6 @@ export interface FileRouteTypes {
     | '/profile/documents'
     | '/shared/$token'
     | '/trips/$tripId'
-    | '/trips/next'
     | '/trips/plan'
     | '/world/next'
   id:
@@ -334,7 +312,6 @@ export interface FileRouteTypes {
     | '/forgot-password'
     | '/help'
     | '/how-it-works'
-    | '/next'
     | '/opportunities'
     | '/preferences'
     | '/privacy'
@@ -353,7 +330,6 @@ export interface FileRouteTypes {
     | '/profile_/documents'
     | '/shared/$token'
     | '/trips_/$tripId'
-    | '/trips_/next'
     | '/trips_/plan'
     | '/world_/next'
   fileRoutesById: FileRoutesById
@@ -365,7 +341,6 @@ export interface RootRouteChildren {
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   HelpRoute: typeof HelpRoute
   HowItWorksRoute: typeof HowItWorksRoute
-  NextRoute: typeof NextRoute
   OpportunitiesRoute: typeof OpportunitiesRoute
   PreferencesRoute: typeof PreferencesRoute
   PrivacyRoute: typeof PrivacyRoute
@@ -379,7 +354,6 @@ export interface RootRouteChildren {
   ProfileDocumentsRoute: typeof ProfileDocumentsRoute
   SharedTokenRoute: typeof SharedTokenRoute
   TripsTripIdRoute: typeof TripsTripIdRoute
-  TripsNextRoute: typeof TripsNextRoute
   TripsPlanRoute: typeof TripsPlanRoute
   WorldNextRoute: typeof WorldNextRoute
 }
@@ -426,13 +400,6 @@ declare module '@tanstack/react-router' {
       path: '/how-it-works'
       fullPath: '/how-it-works'
       preLoaderRoute: typeof HowItWorksRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/next': {
-      id: '/next'
-      path: '/next'
-      fullPath: '/next'
-      preLoaderRoute: typeof NextRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/opportunities': {
@@ -561,13 +528,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TripsTripIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/trips_/next': {
-      id: '/trips_/next'
-      path: '/trips/next'
-      fullPath: '/trips/next'
-      preLoaderRoute: typeof TripsNextRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/trips_/plan': {
       id: '/trips_/plan'
       path: '/trips/plan'
@@ -611,7 +571,6 @@ const rootRouteChildren: RootRouteChildren = {
   ForgotPasswordRoute: ForgotPasswordRoute,
   HelpRoute: HelpRoute,
   HowItWorksRoute: HowItWorksRoute,
-  NextRoute: NextRoute,
   OpportunitiesRoute: OpportunitiesRoute,
   PreferencesRoute: PreferencesRoute,
   PrivacyRoute: PrivacyRoute,
@@ -625,7 +584,6 @@ const rootRouteChildren: RootRouteChildren = {
   ProfileDocumentsRoute: ProfileDocumentsRoute,
   SharedTokenRoute: SharedTokenRoute,
   TripsTripIdRoute: TripsTripIdRoute,
-  TripsNextRoute: TripsNextRoute,
   TripsPlanRoute: TripsPlanRoute,
   WorldNextRoute: WorldNextRoute,
 }

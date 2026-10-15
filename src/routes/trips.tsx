@@ -13,17 +13,29 @@ import { friendlyError } from "@/lib/friendly-error";
 import type { PlannerTab } from "@/components/ItineraryImport";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { Plus, X } from "@/components/icons";
+import { ChevronRight, FileText, Plus, Sparkles, Users, X } from "@/components/icons";
 import { Sheet } from "@/components/Sheet";
 import { AppShell } from "@/components/AppShell";
 import { DateRangeField } from "@/components/DateRangeField";
 import { PlaceSearchInput } from "@/components/PlaceSearchInput";
-import { TripFeature, TripListRow, TripsHero, TripsSection } from "@/components/TripsList";
+import { LayoutSwitch, PictureSwitch } from "@/components/TripsList";
+import {
+  PastNextTiles,
+  TripNextFeature,
+  TripNextRow,
+  TripsActionTile,
+  TripsNextHero,
+  TripsNextSection,
+} from "@/components/next/TripsNext";
+import { useTripPicture } from "@/hooks/useTripPicture";
+import { useTripsLayout } from "@/hooks/useTripsLayout";
+import { heroTrips } from "@/lib/trips-page";
 import { FollowedTripList } from "@/components/FollowedTripList";
 import { listFollowedTrips } from "@/lib/trip-follow.functions";
 import type { FollowedTrip } from "@/lib/trip-follow";
 import { knownToFollow, rememberFollows } from "@/lib/follow-hint";
-import { tripTabs } from "@/lib/home-trip";
+import { useTripGlances } from "@/hooks/useTripGlances";
+import { peopleOnTrip, tripTabs } from "@/lib/home-trip";
 import { toLocalISODate } from "@/lib/trip-dates";
 import { TripListSkeleton } from "@/components/Skeletons";
 import { useTripPhotos } from "@/hooks/useTripPhotos";
@@ -61,13 +73,6 @@ type TripsSearch = {
 };
 
 const PLAN_AFTER_CREATE: readonly PlannerTab[] = ["build", "import"];
-
-/** How many past trips All shows before "See all". */
-const PAST_ON_ALL = 5;
-
-/** A secondary way in under the trips: a hairline box, words in the middle. */
-const moreWay =
-  "flex min-h-[52px] w-full items-center justify-center rounded-[var(--r-button)] border border-border bg-card px-4 text-[14px] font-medium";
 
 export const Route = createFileRoute("/trips")({
   staticData: { plane: "tab" },
@@ -122,6 +127,8 @@ function TripsPage() {
   useEffect(() => {
     setView(search.view ?? "upcoming");
   }, [search.view]);
+  const [layout, setLayout] = useTripsLayout();
+  const [picture, setPicture] = useTripPicture();
   const {
     trips: followed,
     failed: followedFailed,
@@ -283,7 +290,10 @@ function TripsPage() {
     "Traveller";
   const { photos } = useTripPhotos(t.uid);
   const today = toLocalISODate(new Date());
+  const { glances } = useTripGlances(t.trips.map((trip) => trip.id));
   const lists = tripTabs(t.trips, today);
+  // The same array until the trips change, so the header map is not redrawn on every render.
+  const hero = useMemo(() => heroTrips(tripTabs(t.trips, today)), [t.trips, today]);
   const beaSettings = useBeaSettings();
   // Picked once per visit, in the traveller's mix.
   const [emptyTrips] = useState(() => emptyLine({ kind: "noTrips", settings: beaSettings }));
@@ -322,61 +332,127 @@ function TripsPage() {
     setCreating(true);
     setJoining(false);
   };
-  // As the design draws Upcoming: the next trip as a card, the rest as rows.
-  const featured = lists.upcoming[0];
-  const rest = lists.upcoming.slice(1);
-  const row = (trip: TripRow) => <TripListRow key={trip.id} trip={trip} />;
-  // All shows the latest few past trips; Past shows every one. Each row reads
-  // its own stops, so a long history is not opened all at once on All.
+  const featured = layout === "big" ? lists.upcoming[0] : undefined;
+  const rest = featured ? lists.upcoming.slice(1) : lists.upcoming;
+  const live = !!(featured?.start_date && featured.start_date <= today);
+  const row = (trip: TripRow) => (
+    <TripNextRow
+      key={trip.id}
+      trip={trip}
+      photos={photos}
+      glance={glances[trip.id]}
+      peopleCount={peopleOnTrip(t.members, trip.id, t.uid)}
+      people={t.members.filter((m) => m.trip_id === trip.id)}
+      me={{ id: t.uid, name: myName }}
+      picture={picture}
+    />
+  );
+  const switches = (withLayout: boolean) => (
+    <div className="flex flex-wrap items-center gap-2">
+      {withLayout ? <LayoutSwitch layout={layout} onLayout={setLayout} /> : null}
+      <PictureSwitch picture={picture} onPicture={setPicture} />
+    </div>
+  );
   const pastSection = (all: boolean) =>
     lists.past.length > 0 ? (
-      <TripsSection title="Past trips">
-        {(all ? lists.past : lists.past.slice(0, PAST_ON_ALL)).map(row)}
-        {!all && lists.past.length > PAST_ON_ALL ? (
-          <button
-            type="button"
-            onClick={() => setView("past")}
-            className="flex min-h-12 w-full items-center text-[14px] font-medium"
-          >
-            See all {lists.past.length} past trips
-          </button>
-        ) : null}
-      </TripsSection>
+      <TripsNextSection
+        title="Past trips"
+        aside={
+          all ? (
+            switches(false)
+          ) : (
+            <button
+              type="button"
+              onClick={() => setView("past")}
+              className="flex min-h-11 shrink-0 items-center gap-0.5 text-[15px] font-semibold text-foreground"
+            >
+              See all
+              <ChevronRight className="size-4 text-primary" aria-hidden />
+            </button>
+          )
+        }
+      >
+        {all ? (
+          <div className="space-y-3">{lists.past.map(row)}</div>
+        ) : (
+          <PastNextTiles trips={lists.past.slice(0, 3)} photos={photos} picture={picture} />
+        )}
+      </TripsNextSection>
     ) : null;
-  const draftsSection =
+  const draftsSection = (withSwitch: boolean) =>
     lists.drafts.length > 0 ? (
-      <TripsSection title="Dates to set">{lists.drafts.map(row)}</TripsSection>
+      <TripsNextSection title="Drafts" aside={withSwitch ? switches(false) : undefined}>
+        <div className="space-y-3">{lists.drafts.map(row)}</div>
+      </TripsNextSection>
     ) : null;
   const ahead = (
     <>
-      {featured ? (
-        <TripFeature trip={featured} photos={photos} />
+      {lists.upcoming.length > 0 ? (
+        featured ? (
+          <TripsNextSection title={live ? "Happening now" : "Next up"} aside={switches(true)}>
+            <TripNextFeature
+              trip={featured}
+              photos={photos}
+              glance={glances[featured.id]}
+              peopleCount={peopleOnTrip(t.members, featured.id, t.uid)}
+              picture={picture}
+            />
+          </TripsNextSection>
+        ) : (
+          <TripsNextSection title="Upcoming trips" aside={switches(true)}>
+            <div className="space-y-3">{rest.map(row)}</div>
+          </TripsNextSection>
+        )
       ) : !t.loading && t.trips.length > 0 ? (
-        <NothingAhead
-          title="No trip on the calendar."
-          body="Nothing ahead yet. Béa keeps the next one here once it has dates."
-          onPlan={openNew}
-        />
+        <TripsNextSection title="Upcoming trips" aside={switches(true)}>
+          <NothingAhead
+            title="No trip on the calendar."
+            body="Nothing ahead yet. Béa keeps the next one here once it has dates."
+            onPlan={openNew}
+          />
+        </TripsNextSection>
       ) : null}
-      {rest.length > 0 ? <TripsSection title="Later">{rest.map(row)}</TripsSection> : null}
+      {featured && rest.length > 0 ? (
+        <TripsNextSection
+          title="Later"
+          aside={
+            <span className="text-[14px] text-muted-foreground">
+              {rest.length} {rest.length === 1 ? "trip" : "trips"}
+            </span>
+          }
+        >
+          <div className="space-y-3">{rest.map(row)}</div>
+        </TripsNextSection>
+      ) : null}
     </>
   );
 
   return (
     <AppShell>
-      <div className="space-y-3">
-        <TripsHero section={t.signedIn ? view : undefined} />
+      <div className="space-y-6">
+        <TripsNextHero
+          trips={hero}
+          today={today}
+          actions={
+            t.signedIn ? (
+              <span className="pt-2 text-[14px] font-semibold">
+                {t.trips.length} {t.trips.length === 1 ? "trip" : "trips"}
+              </span>
+            ) : null
+          }
+        />
         {t.signedIn ? (
           <>
             <div
               role="tablist"
               aria-label="Which trips"
-              className="trips-tabs trips-tabs--minimal relative z-[1]"
+              className="trips-tabs tn-tabs relative z-[3] -mt-2"
             >
               {(
                 [
                   ["upcoming", "Upcoming"],
                   ["past", "Past"],
+                  ["drafts", "Drafts"],
                   ...(showFollowing ? ([["following", "Following"]] as const) : []),
                   ["all", "All"],
                 ] as const
@@ -394,17 +470,62 @@ function TripsPage() {
             </div>
 
             {view !== "past" && view !== "following" ? (
+              <div className="grid grid-cols-2 gap-2.5">
+                {/* Plan with Béa: build, import, optimize or compare, from one place. */}
+                <TripsActionTile
+                  icon={Sparkles}
+                  title="Plan with Béa"
+                  sub="Build, import, optimize or compare"
+                  tone={1}
+                >
+                  {(content, className) => (
+                    <Link to="/trips/plan" data-guide="plan-with-bea" className={className}>
+                      {content}
+                    </Link>
+                  )}
+                </TripsActionTile>
+                <TripsActionTile
+                  icon={Users}
+                  title="Join with a code"
+                  sub="Trips with friends"
+                  tone={3}
+                >
+                  {(content, className) => (
+                    <button
+                      type="button"
+                      data-guide="join-trip"
+                      aria-expanded={joining}
+                      onClick={() => {
+                        setError("");
+                        setJoining(true);
+                        setCreating(false);
+                      }}
+                      className={`${className} text-left`}
+                    >
+                      {content}
+                    </button>
+                  )}
+                </TripsActionTile>
+              </div>
+            ) : null}
+
+            <div className="grid grid-cols-3 gap-2.5">
               <button
                 type="button"
                 data-guide="new-trip"
-                aria-label="New trip"
                 aria-expanded={creating}
                 onClick={openNew}
-                className="trips-create"
+                className="tn-chip"
               >
                 Create trip
               </button>
-            ) : null}
+              <Link to="/calendar" className="tn-chip">
+                Calendar
+              </Link>
+              <Link to="/profile/documents" data-guide="document-vault" className="tn-chip">
+                Documents
+              </Link>
+            </div>
 
             {error && !creating && !joining && (
               <p role="alert" className="text-[14px] text-destructive">
@@ -412,15 +533,47 @@ function TripsPage() {
               </p>
             )}
 
-            <div data-guide="trip-list" className="space-y-3">
+            <div data-guide="trip-list" className="space-y-7">
               {t.loading && t.trips.length === 0 && <TripListSkeleton />}
 
               {view === "upcoming" && (
                 <>
                   {ahead}
-                  {draftsSection}
+                  {lists.drafts.length > 0 ? (
+                    <button
+                      type="button"
+                      onClick={() => setView("drafts")}
+                      className="plain-card flex w-full items-center gap-3 px-4 py-3 text-left"
+                    >
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-[16px] font-semibold">
+                          {lists.drafts.length} {lists.drafts.length === 1 ? "draft" : "drafts"}{" "}
+                          with dates to set
+                        </span>
+                        <span className="block text-[14px] text-muted-foreground">
+                          {lists.drafts
+                            .slice(0, 3)
+                            .map((d) => d.title)
+                            .join(" · ")}
+                        </span>
+                      </span>
+                      <ChevronRight className="size-5 shrink-0 text-muted-foreground" aria-hidden />
+                    </button>
+                  ) : null}
+                  {pastSection(false)}
                 </>
               )}
+
+              {view === "drafts" &&
+                (lists.drafts.length > 0 ? (
+                  draftsSection(true)
+                ) : !t.loading && t.trips.length > 0 ? (
+                  <NothingAhead
+                    title="No drafts."
+                    body="A trip with dates still to set waits here until it has them."
+                    onPlan={openNew}
+                  />
+                ) : null)}
 
               {view === "past" &&
                 (lists.past.length > 0 ? (
@@ -434,7 +587,7 @@ function TripsPage() {
               {view === "all" && t.trips.length > 0 && (
                 <>
                   {ahead}
-                  {draftsSection}
+                  {draftsSection(false)}
                   {pastSection(false)}
                 </>
               )}
@@ -495,41 +648,27 @@ function TripsPage() {
           </div>
         )}
 
-        {/* The other ways in, as the design lists them under the trips. The vault
-            moved into Trip documents (its Protected section). */}
-        {t.signedIn ? (
-          <div className="space-y-3">
-            {view !== "past" && view !== "following" ? (
-              <button
-                type="button"
-                data-guide="join-trip"
-                aria-expanded={joining}
-                onClick={() => {
-                  setError("");
-                  setJoining(true);
-                  setCreating(false);
-                }}
-                className={moreWay}
-              >
-                Join with a code
-              </button>
-            ) : null}
-            {/* The calendar covers every trip, so it shows under every tab. */}
-            <Link to="/calendar" className={moreWay}>
-              Calendar
+        {/* The vault moved into Trip documents (its Protected section). */}
+        {t.signedIn && view === "upcoming" ? (
+          <TripsNextSection title="Trip documents">
+            <Link
+              to="/profile/documents"
+              className="hn-card flex min-h-[72px] items-center gap-3 p-4"
+            >
+              <span className="tile-fill-3 grid size-11 shrink-0 place-items-center rounded-full text-primary">
+                <FileText className="size-5" aria-hidden />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-[17px] font-semibold leading-tight">
+                  Bookings and tickets
+                </span>
+                <span className="block text-[14px] text-muted-foreground">
+                  And Protected files, encrypted on this device
+                </span>
+              </span>
+              <ChevronRight className="size-5 shrink-0 text-muted-foreground" aria-hidden />
             </Link>
-            {view !== "past" && view !== "following" ? (
-              <>
-                {/* Plan with Béa: build, import, optimize or compare, from one place. */}
-                <Link to="/trips/plan" data-guide="plan-with-bea" className={moreWay}>
-                  Plan with Béa
-                </Link>
-                <Link to="/profile/documents" data-guide="document-vault" className={moreWay}>
-                  Trip documents
-                </Link>
-              </>
-            ) : null}
-          </div>
+          </TripsNextSection>
         ) : null}
       </div>
 
