@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
+import { PlacePicture } from "@/components/PlacePicture";
 import type { ItineraryRow } from "@/hooks/useTrips";
 import { useRecommendations } from "@/hooks/useRecommendations";
 import { useTripGlances } from "@/hooks/useTripGlances";
@@ -64,6 +65,10 @@ export function TripOverview({
   onOpenSaved,
   onPrep,
   onOpenSettings,
+  onOpenBudget,
+  onPlan,
+  onAdd,
+  budgetOn = false,
   travellers = [],
 }: {
   tripId: string;
@@ -96,6 +101,13 @@ export function TripOverview({
   onPrep: (tab: PrepTab) => void;
   /** The trip menu: people, budget, photos and the details. */
   onOpenSettings?: () => void;
+  /** The budget section of the trip menu. */
+  onOpenBudget?: () => void;
+  /** Plan with Béa, on this trip. */
+  onPlan?: () => void;
+  /** Add a stop, a saved place or a city. */
+  onAdd?: () => void;
+  budgetOn?: boolean;
   /** Names of everyone on the trip. */
   travellers?: string[];
 }) {
@@ -159,9 +171,9 @@ export function TripOverview({
     ? `${Math.round(packing.ratio * 100)}% packed`
     : "No packing list yet";
 
-  // Where the trip is, stretch by stretch (Figma "Your itinerary"): a city
-  // and its days; days the route places nowhere are a stretch of their own.
-  const itinerary: Row[] = stretches.map((stretch) => {
+  // Where the trip is, stretch by stretch (Figma "Itinerary sequence"): a
+  // city and its days; days the route places nowhere are a stretch of their own.
+  const sequence: SequenceCard[] = stretches.map((stretch) => {
     const place = stretch.city;
     const stretchDays = days.filter((d) => d >= stretch.start && d <= stretch.end);
     const marks = stretchDays.map((day) =>
@@ -175,6 +187,10 @@ export function TripOverview({
     return {
       key: `${stretch.start}-${place?.city ?? ""}`,
       title: place ? shortCity(place.city) : homeCity ? shortCity(homeCity) : "No city set",
+      days:
+        stretch.firstDay === stretch.lastDay
+          ? `Day ${stretch.firstDay}`
+          : `Days ${stretch.firstDay}\u2013${stretch.lastDay}`,
       note: [
         stretchDates(stretch.start, stretch.end),
         place && isDayTrip(place) ? "Day trip" : "",
@@ -192,8 +208,9 @@ export function TripOverview({
           : onOpenTimeline(ALL_DAYS, place?.id ?? undefined),
     };
   });
+  const extras: Row[] = [];
   for (const c of undatedCities) {
-    itinerary.push({
+    extras.push({
       key: `undated-${c.city}-${c.arrive_on ?? ""}`,
       title: shortCity(c.city),
       note: [isDayTrip(c) ? "Day trip" : "", manyCountries ? placeCountry(c) : "", "No dates yet"]
@@ -203,13 +220,40 @@ export function TripOverview({
     });
   }
   if (undated) {
-    itinerary.push({
+    extras.push({
       key: "undated-stops",
       title: `${undated} ${undated === 1 ? "stop" : "stops"} without a day`,
       note: "Give them a day in the Timeline",
       onClick: () => onOpenTimeline(""),
     });
   }
+
+  const kindLine = (parts: [number, string, string][]) =>
+    parts
+      .filter(([n]) => n > 0)
+      .map(([n, one, many]) => `${n} ${n === 1 ? one : many}`)
+      .join(", ");
+  const bookingLines = [
+    kindLine([
+      [bookedByKind.flight, "flight", "flights"],
+      [bookedByKind.stay, "stay", "stays"],
+    ]),
+    kindLine([
+      [bookedByKind.transport, "transfer", "transfers"],
+      [bookedByKind.activity, "activity", "activities"],
+    ]),
+  ].filter(Boolean);
+  const cityOfDay = (day: string) => {
+    const stretch = stretches.find((st) => day >= st.start && day <= st.end);
+    return stretch?.city ? shortCity(stretch.city.city) : "";
+  };
+  // The next few things on the plan, from today on.
+  const highlights = items
+    .filter(
+      (item) => item.day_date && item.day_date >= today && timelineGlyph(item) !== "transport",
+    )
+    .sort((x, y) => (x.day_date ?? "").localeCompare(y.day_date ?? ""))
+    .slice(0, 3);
 
   return (
     <div className="trip-overview">
@@ -231,7 +275,7 @@ export function TripOverview({
 
       {live ? <RightNow state={now} onOpenCompanion={onOpenCompanion} /> : null}
 
-      <RuleLabel>Your itinerary</RuleLabel>
+      <RuleLabel>Itinerary sequence</RuleLabel>
       {onFindCities && names.length === 0 ? (
         <RowButton
           title={findingCities ? "Finding cities…" : "Find the cities"}
@@ -240,49 +284,167 @@ export function TripOverview({
           disabled={findingCities}
         />
       ) : null}
-      {itinerary.length === 0 ? (
+      {sequence.length === 0 && extras.length === 0 ? (
         <p className="trip-row-empty">
           Nothing planned yet. Add stops, or let Béa draft the days from a plan you already have.
         </p>
       ) : (
-        itinerary.map(({ key, ...row }) => <RowButton key={key} {...row} />)
+        <ol className="ov-sequence">
+          {sequence.map((card) => (
+            <li key={card.key}>
+              <button type="button" onClick={card.onClick} className="ov-city">
+                <span className="ov-city-name">{card.title}</span>
+                <span className="ov-city-days">{card.days}</span>
+                <span className="ov-city-note">{card.note}</span>
+              </button>
+            </li>
+          ))}
+        </ol>
       )}
-      <button type="button" onClick={() => onOpenTimeline()} className="trip-primary">
-        View itinerary
+      {extras.map(({ key, ...row }) => (
+        <RowButton key={key} {...row} />
+      ))}
+      <button type="button" onClick={() => onOpenTimeline()} className="trip-row">
+        <span className="trip-row-title">View itinerary</span>
+        <span className="trip-row-note">Every day, stop by stop</span>
       </button>
 
-      <RuleLabel>{past ? "This trip" : "Before you go"}</RuleLabel>
-      <RowButton
-        title="Bookings"
-        note={[booked ? `${booked} booked` : "Flights, stays, transport and activities", flightNote]
-          .filter(Boolean)
-          .join(" / ")}
-        onClick={() => onOpenBookings("all")}
-      />
+      {onPlan ? (
+        <button type="button" onClick={onPlan} className="trip-primary ov-continue">
+          <span className="ov-continue-title">Continue planning</span>
+          <span className="ov-continue-note">Open assistant</span>
+        </button>
+      ) : null}
+
+      <RuleLabel>Management</RuleLabel>
+      <div className="ov-manage">
+        {onAdd ? (
+          <button type="button" onClick={onAdd} className="ov-tile">
+            <span className="ov-tile-title">Add destination</span>
+            <span className="ov-tile-note">Add a city</span>
+          </button>
+        ) : null}
+        <button type="button" onClick={() => onPrep("todo")} className="ov-tile">
+          <span className="ov-tile-title">To do</span>
+          <span className="ov-tile-note">
+            {todos} {todos === 1 ? "task" : "tasks"}
+          </span>
+        </button>
+        {onOpenSettings ? (
+          <button type="button" onClick={onOpenSettings} className="ov-tile">
+            <span className="ov-tile-title">Trip menu / Settings</span>
+            <span className="ov-tile-note">People, photos, details</span>
+          </button>
+        ) : null}
+      </div>
+
+      <div className="ov-cards">
+        <button type="button" onClick={() => onOpenBookings("all")} className="ov-card">
+          <span className="ov-card-title">Bookings by kind</span>
+          {bookingLines.length > 0 ? (
+            bookingLines.map((line) => (
+              <span key={line} className="ov-card-note">
+                {line}
+              </span>
+            ))
+          ) : (
+            <span className="ov-card-note">Flights, stays, transport and activities</span>
+          )}
+          {flightNote ? <span className="ov-card-note">{flightNote}</span> : null}
+        </button>
+        <button type="button" onClick={() => onPrep("todo")} className="ov-card">
+          <span className="ov-card-title">Prep</span>
+          <span className="ov-card-note">
+            {todos} {todos === 1 ? "task" : "tasks"} left
+          </span>
+          <span className="ov-card-note">{packed}</span>
+        </button>
+        <Link to="/profile/documents" className="ov-card">
+          <span className="ov-card-title">Documents</span>
+          <span className="ov-card-note">Tickets and confirmations</span>
+          <span className="ov-card-note">
+            {bookingDocs.length ? `${bookingDocs.length} uploaded` : "Passports, tickets and more"}
+          </span>
+        </Link>
+        <button
+          type="button"
+          onClick={onOpenBudget ?? onOpenSettings}
+          disabled={!onOpenBudget && !onOpenSettings}
+          className="ov-card"
+        >
+          <span className="ov-card-title">Budget</span>
+          <span className="ov-card-note">
+            {budgetOn ? "Review trip expenses" : "Set a trip budget"}
+          </span>
+        </button>
+      </div>
+
       {gaps.map((gap) => {
         const { key, ...row } = stayRow(gap);
         return <RowButton key={key} {...row} />;
       })}
-      <RowButton
-        title="To do and packing"
-        note={`${todos} ${todos === 1 ? "to-do" : "to-dos"} / ${packed}`}
-        onClick={() => onPrep("todo")}
-      />
       <SavedRow cities={savedCities} onOpen={onOpenSaved} />
-      <Link to="/profile/documents" className="trip-row">
-        <span className="trip-row-title">Travel documents</span>
-        <span className="trip-row-note">Passports, tickets and confirmations</span>
-      </Link>
-      {onOpenSettings ? (
-        <RowButton
-          title="Trip settings"
-          note="People, budget, photos and the details"
-          onClick={onOpenSettings}
-        />
+
+      {days.length > 0 ? (
+        <>
+          <RuleLabel>Days at a glance</RuleLabel>
+          <ul className="ov-days">
+            {days.map((day, i) => (
+              <li key={day}>
+                <button
+                  type="button"
+                  onClick={() => onOpenTimeline(day)}
+                  className="ov-day"
+                  aria-current={day === today && live ? "date" : undefined}
+                >
+                  <span className="ov-day-n">Day {i + 1}</span>
+                  <span className="ov-day-city">{cityOfDay(day)}</span>
+                  <span className="ov-day-date">{formatTimelineDayLabel(day)}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : null}
+
+      {highlights.length > 0 ? (
+        <>
+          <div className="ov-head">
+            <RuleLabel>Upcoming highlights</RuleLabel>
+            <button type="button" onClick={() => onOpenTimeline()} className="ov-see-all">
+              See all
+            </button>
+          </div>
+          <ul className="ov-highlights">
+            {highlights.map((item) => (
+              <li key={item.id}>
+                <button
+                  type="button"
+                  onClick={() => onOpenTimeline(item.day_date ?? undefined)}
+                  className="ov-highlight"
+                >
+                  <PlacePicture
+                    name={item.title}
+                    kind={item.kind}
+                    lat={item.lat}
+                    lon={item.lon}
+                    className="ov-highlight-art"
+                  />
+                  <span className="ov-highlight-title">{item.title}</span>
+                  <span className="ov-highlight-date">
+                    {item.day_date ? formatTimelineDayLabel(item.day_date) : ""}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </>
       ) : null}
     </div>
   );
 }
+
+type SequenceCard = { key: string; title: string; days: string; note: string; onClick: () => void };
 
 type Row = { key: string; title: string; note: string; onClick: () => void };
 

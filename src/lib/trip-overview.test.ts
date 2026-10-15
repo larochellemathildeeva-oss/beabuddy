@@ -6,10 +6,13 @@ import {
   countBookings,
   documentBookingKind,
   leavingIn,
+  nextStopFrom,
   missingStays,
   placesForTrip,
   stretchDates,
+  transportMode,
   tripBookings,
+  withTransportMode,
 } from "./trip-overview.ts";
 
 test("flights, stays, other transport and activities are told apart", () => {
@@ -186,4 +189,44 @@ test("a stretch's dates are said briefly", () => {
   assert.equal(stretchDates("2026-10-01", "2026-10-01"), "Oct 1");
   assert.equal(stretchDates("2026-10-01", "2026-10-03"), "Oct 1 – 3");
   assert.equal(stretchDates("2026-09-30", "2026-10-02"), "Sep 30 – Oct 2");
+});
+
+test("a journey is told by the way it goes", () => {
+  assert.equal(transportMode({ kind: "transport", title: "Fly to Porto" }), "flight");
+  assert.equal(transportMode({ kind: "train", title: "Shinkansen to Kyoto" }), "train");
+  assert.equal(transportMode({ kind: "transport", title: "Bus to the coast" }), "bus");
+  assert.equal(transportMode({ kind: "transport", title: "Taxi to the hotel" }), "car");
+  assert.equal(transportMode({ kind: "transport", title: "Head to the pier" }), null);
+  assert.equal(transportMode({ kind: "meal", title: "Dinner" }), null);
+});
+
+test("picking a way keeps every stop that is not travel", () => {
+  const items = [
+    { id: "a", kind: "sight", title: "Castle" },
+    { id: "b", kind: "train", title: "Train to Sintra" },
+    { id: "c", kind: "transport", title: "Fly to Porto" },
+  ];
+  assert.deepEqual(
+    withTransportMode(items, "train").map((i) => i.id),
+    ["a", "b"],
+  );
+  assert.deepEqual(
+    withTransportMode(items, "all").map((i) => i.id),
+    ["a", "b", "c"],
+  );
+});
+
+test("the next stop skips travel and says how far off it is", () => {
+  const rows = [
+    { id: "t", day_date: "2026-10-04", kind: "train" },
+    { id: "s", day_date: "2026-10-06", kind: "sight" },
+    { id: "old", day_date: "2026-10-01", kind: "sight" },
+  ];
+  const next = nextStopFrom(rows, "2026-10-04", (r) => r.kind === "train");
+  assert.equal(next?.stop.id, "s");
+  assert.equal(next?.inDays, 2);
+  assert.equal(
+    nextStopFrom([], "2026-10-04", () => false),
+    null,
+  );
 });

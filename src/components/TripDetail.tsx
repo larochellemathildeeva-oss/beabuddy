@@ -31,6 +31,7 @@ import { TimelineEntryForm } from "@/components/TimelineEntryForm";
 import { Sheet } from "@/components/Sheet";
 import { ConfirmSheet } from "@/components/ConfirmSheet";
 import { TripMap } from "@/components/TripMap";
+import { NextStopCard, TransportFilter } from "@/components/MapExtras";
 import { TripPrep, type PrepTab } from "@/components/TripPrep";
 import { savedAgoLabel, savedIsStale, savedMatchesStops } from "@/lib/offline-directions";
 import { useUndo } from "@/hooks/useUndo";
@@ -82,7 +83,14 @@ import {
 } from "@/components/day/TripMenuSheet";
 import { dayLengthLabel, dayTitle } from "@/components/day/stop-words";
 import { bannerArtUrl, bannerSceneFor } from "@/lib/banner-art";
-import { countBookings, tripBookings } from "@/lib/trip-overview";
+import {
+  countBookings,
+  nextStopFrom,
+  transportMode,
+  tripBookings,
+  withTransportMode,
+  type TransportMode,
+} from "@/lib/trip-overview";
 import { TripBookings, BOOKING_TITLES, type BookingFilter } from "@/components/day/TripBookings";
 import { useTripBookingDocuments } from "@/hooks/useTripDocuments";
 import { useStopPhotos } from "@/hooks/useStopPhotos";
@@ -1322,6 +1330,17 @@ export function TripDetail({
 
   /** "Locate on map" from a Timeline card: the stop the Map tab opens on. */
   const [mapFocus, setMapFocus] = useState<string | null>(null);
+  // The map's way-of-travelling filter, and the next stop under it.
+  const [transportPick, setTransportPick] = useState<TransportMode | "all">("all");
+  const hasTransport = stopItems.some((item) => transportMode(item) !== null);
+  const mapGroups =
+    transportPick === "all"
+      ? shownGroups
+      : shownGroups.map((group) => ({
+          ...group,
+          items: withTransportMode(group.items, transportPick),
+        }));
+  const nextStop = nextStopFrom(stopItems, todayKey, (item) => timelineGlyph(item) === "transport");
   const locate = (item: ItineraryRow) => {
     if (item.day_date) setDayChoice(item.day_date);
     setMapFocus(item.id);
@@ -1840,6 +1859,16 @@ export function TripDetail({
               setSettingsOpen(true);
               setSheetSection(null);
             }}
+            onOpenBudget={() => {
+              setSettingsOpen(true);
+              setSheetSection("budget");
+            }}
+            budgetOn={Boolean(trip.budget_enabled)}
+            onPlan={() => {
+              setPlannerTab("start");
+              setPlannerOpen(true);
+            }}
+            onAdd={() => setAddOpen(true)}
           />
         )}
         {/* Past You, for a trip still ahead or under way: not one already over.
@@ -1984,7 +2013,7 @@ export function TripDetail({
               <MapSplit
                 key={`${chosenDay}:${mapFocus ?? ""}`}
                 focusId={mapFocus}
-                groups={shownGroups}
+                groups={mapGroups}
                 nesting={view.prefs.nesting}
                 ordinals={Object.fromEntries(splitChips.map((chip) => [chip.key, chip.ordinal]))}
                 legFor={travelInto}
@@ -1992,6 +2021,19 @@ export function TripDetail({
                 {...directionsButton}
               />
             )}
+            {nextStop ? (
+              <NextStopCard
+                stop={nextStop.stop}
+                inDays={nextStop.inDays}
+                onOpen={() => {
+                  if (nextStop.stop.day_date) pickDayManually(nextStop.stop.day_date);
+                  setMapFocus(nextStop.stop.id);
+                }}
+              />
+            ) : null}
+            {hasTransport ? (
+              <TransportFilter value={transportPick} onChange={setTransportPick} />
+            ) : null}
             {/* The whole trip, city to city — only when looking at the whole
                 trip. Under a single day it was a second, busier map repeating
                 the first. The same stop list the directions are built from,
