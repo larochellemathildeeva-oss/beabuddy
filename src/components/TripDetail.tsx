@@ -3574,25 +3574,26 @@ function TimelineTiles({
   onTodo: () => void;
   onMenu: () => void;
 }) {
-  const tiles: [string, string, () => void, string?][] = [
-    ["Plan with", "Béa", onPlan, "bea-plan"],
-    ["Add", "stop", onAdd, "add-stop"],
-    ["To do", String(todos), onTodo, "trip-prep"],
-    ["Trip", "menu", onMenu, "trip-menu"],
-  ];
+  const face = (top: string, bottom: string) => (
+    <>
+      <span className="text-[12px] text-muted-foreground">{top}</span>
+      <span className="text-[14px] font-semibold">{bottom}</span>
+    </>
+  );
   return (
     <div className="tl-tiles" role="group" aria-label="Trip actions">
-      {tiles.map(([top, bottom, onClick, guide]) => (
-        <button
-          key={top}
-          type="button"
-          onClick={onClick}
-          {...(guide ? { "data-guide": guide } : {})}
-        >
-          <span className="text-[12px] text-muted-foreground">{top}</span>
-          <span className="text-[14px] font-semibold">{bottom}</span>
-        </button>
-      ))}
+      <button type="button" onClick={onPlan} data-guide="bea-plan">
+        {face("Plan with", "Béa")}
+      </button>
+      <button type="button" onClick={onAdd} data-guide="add-stop">
+        {face("Add", "stop")}
+      </button>
+      <button type="button" onClick={onTodo} data-guide="trip-prep">
+        {face("To do", String(todos))}
+      </button>
+      <button type="button" onClick={onMenu} data-guide="trip-menu">
+        {face("Trip", "menu")}
+      </button>
     </div>
   );
 }
