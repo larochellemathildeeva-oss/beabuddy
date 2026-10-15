@@ -82,3 +82,43 @@ export function NextStopCard({
     </button>
   );
 }
+
+/** "Day 1 · Apr 5 / Kyoto / what is on it" with a way into that day (Figma trip map). */
+export function MapDayCard({
+  label,
+  city,
+  line,
+  first,
+  onOpen,
+}: {
+  label: string;
+  city: string;
+  line: string;
+  first?: { title: string; kind?: string | null; lat?: number | null; lon?: number | null };
+  onOpen: () => void;
+}) {
+  return (
+    <div className="map-day">
+      <PlacePicture
+        name={first?.title ?? city}
+        kind={first?.kind}
+        lat={first?.lat}
+        lon={first?.lon}
+        className="map-next-art"
+      />
+      <span className="map-next-text">
+        <span className="map-next-kicker">{label}</span>
+        <span className="text-[22px] font-semibold leading-tight">{city}</span>
+        {line ? <span className="map-next-when">{line}</span> : null}
+      </span>
+      <button
+        type="button"
+        onClick={onOpen}
+        aria-label={`Open ${label} in the Timeline`}
+        className="tf-round"
+      >
+        <ChevronRight className="size-5" aria-hidden />
+      </button>
+    </div>
+  );
+}

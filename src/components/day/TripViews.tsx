@@ -11,8 +11,11 @@ export function TripViews({
   position,
   value,
   onChange,
+  inline = false,
 }: {
   position: TripBarPosition;
+  /** Inside the trip's head card (top bar only): a pill, not a sticky strip. */
+  inline?: boolean;
   value: TripPerspective;
   onChange: (value: TripPerspective) => void;
 }) {
@@ -53,7 +56,7 @@ export function TripViews({
       data-trip-bar={position}
       role="tablist"
       aria-label="How to look at this trip"
-      className={`trip-views trip-views--${position}`}
+      className={`trip-views trip-views--${position}${inline && position === "top" ? " trip-views--pill" : ""}`}
       style={
         floating
           ? position === "bottom"
@@ -91,7 +94,11 @@ export function TripViews({
     <div
       ref={anchor}
       className={
-        position === "top" ? "sticky top-0 z-40 px-5 pt-3 bg-background/95 backdrop-blur-xl" : "h-0"
+        position === "top"
+          ? inline
+            ? ""
+            : "sticky top-0 z-40 px-5 pt-3 bg-background/95 backdrop-blur-xl"
+          : "h-0"
       }
     >
       {floating && bounds.width ? createPortal(nav, document.body) : !floating ? nav : null}
@@ -193,11 +200,11 @@ export function MapModeSwitch({
   onChange: (value: TripPerspective) => void;
 }) {
   return (
-    <div role="group" aria-label="Live or Split" className="map-mode mb-3">
+    <div role="group" aria-label="Map or Companion" className="map-switch">
       {(
         [
-          ["companion", "Live"],
-          ["map", "Split"],
+          ["map", "Map"],
+          ["companion", "Companion"],
         ] as const
       ).map(([id, label]) => (
         <button key={id} type="button" aria-pressed={value === id} onClick={() => onChange(id)}>

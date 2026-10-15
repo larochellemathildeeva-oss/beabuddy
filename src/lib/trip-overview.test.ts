@@ -14,6 +14,13 @@ import {
   tripBookings,
   withTransportMode,
 } from "./trip-overview.ts";
+import {
+  frameDateRange,
+  frameDayCount,
+  frameDaysLabel,
+  frameStay,
+  stopTimeSpan,
+} from "./trip-frame.ts";
 
 test("flights, stays, other transport and activities are told apart", () => {
   assert.equal(bookingKind({ kind: "flight", title: "YUL to LIS" }), "flight");
@@ -229,4 +236,28 @@ test("the next stop skips travel and says how far off it is", () => {
     nextStopFrom([], "2026-10-04", () => false),
     null,
   );
+});
+
+test("the head card writes the range with the year once, at the end", () => {
+  assert.equal(frameDateRange("2026-04-05", "2026-04-16"), "Apr 5 – Apr 16, 2026");
+  assert.equal(frameDateRange("2026-04-05", "2026-04-05"), "Apr 5, 2026");
+  assert.equal(frameDateRange(null, null), "");
+});
+
+test("the head card counts both end days", () => {
+  assert.equal(frameDayCount("2026-04-05", "2026-04-16"), 12);
+  assert.equal(frameDayCount("2026-04-05", null), null);
+  assert.equal(frameDaysLabel(1), "1 day");
+  assert.equal(frameDaysLabel(12), "12 days");
+  assert.equal(frameDaysLabel(null), "");
+});
+
+test("a stop's time span and stay read as the timeline frame writes them", () => {
+  assert.equal(stopTimeSpan("09:00", 120), "09:00–11:00");
+  assert.equal(stopTimeSpan("13:30", 90), "13:30–15:00");
+  assert.equal(stopTimeSpan("09:00", null), "09:00");
+  assert.equal(stopTimeSpan("Morning", 60), "Morning");
+  assert.equal(frameStay(120), "2h");
+  assert.equal(frameStay(90), "1h 30m");
+  assert.equal(frameStay(45), "45m");
 });

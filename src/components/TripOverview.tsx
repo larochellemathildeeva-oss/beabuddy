@@ -1,4 +1,5 @@
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { Link } from "@tanstack/react-router";
 import { PlacePicture } from "@/components/PlacePicture";
 import type { ItineraryRow } from "@/hooks/useTrips";
@@ -255,26 +256,11 @@ export function TripOverview({
     .sort((x, y) => (x.day_date ?? "").localeCompare(y.day_date ?? ""))
     .slice(0, 3);
 
-  return (
-    <div className="trip-overview">
-      <div className="trip-figures">
-        <div>
-          <p className="trip-figure">{days.length}</p>
-          <p className="trip-figure-label">{days.length === 1 ? "Day" : "Days"}</p>
-        </div>
-        {/* Nothing until the members have loaded, rather than a guessed "1". */}
-        {travellers.length > 0 ? (
-          <div>
-            <p className="trip-figure">{travellers.length}</p>
-            <p className="trip-figure-label">
-              {travellers.length === 1 ? "Traveller" : "Travellers"}
-            </p>
-          </div>
-        ) : null}
-      </div>
-
-      {live ? <RightNow state={now} onOpenCompanion={onOpenCompanion} /> : null}
-
+  // The day the cards open on: today while the trip is on, else the first.
+  const selectedIndex = live && days.includes(today) ? days.indexOf(today) : 0;
+  const selectedDay = days.length ? `Day ${selectedIndex + 1}` : "";
+  const sequenceBlock = (
+    <>
       <RuleLabel>Itinerary sequence</RuleLabel>
       {onFindCities && names.length === 0 ? (
         <RowButton
@@ -301,14 +287,14 @@ export function TripOverview({
           ))}
         </ol>
       )}
-      {extras.map(({ key, ...row }) => (
-        <RowButton key={key} {...row} />
-      ))}
-      <button type="button" onClick={() => onOpenTimeline()} className="trip-row">
-        <span className="trip-row-title">View itinerary</span>
-        <span className="trip-row-note">Every day, stop by stop</span>
-      </button>
+    </>
+  );
+  const [host, setHost] = useState<HTMLElement | null>(null);
+  useEffect(() => setHost(document.getElementById("tf-seq")), []);
 
+  return (
+    <div className="trip-overview">
+      {host ? createPortal(sequenceBlock, host) : sequenceBlock}
       {onPlan ? (
         <button type="button" onClick={onPlan} className="trip-primary ov-continue">
           <span className="ov-continue-title">Continue planning</span>
@@ -316,26 +302,28 @@ export function TripOverview({
         </button>
       ) : null}
 
-      <RuleLabel>Management</RuleLabel>
-      <div className="ov-manage">
-        {onAdd ? (
-          <button type="button" onClick={onAdd} className="ov-tile">
-            <span className="ov-tile-title">Add destination</span>
-            <span className="ov-tile-note">Add a city</span>
+      <div className="ov-box">
+        <p className="ov-box-label">Management</p>
+        <div className="ov-manage">
+          {onAdd ? (
+            <button type="button" onClick={onAdd} className="ov-tile">
+              <span className="ov-tile-title">Add destination</span>
+              <span className="ov-tile-note">Add a city</span>
+            </button>
+          ) : null}
+          <button type="button" onClick={() => onPrep("todo")} className="ov-tile">
+            <span className="ov-tile-title">To do</span>
+            <span className="ov-tile-note">
+              {todos} {todos === 1 ? "task" : "tasks"}
+            </span>
           </button>
-        ) : null}
-        <button type="button" onClick={() => onPrep("todo")} className="ov-tile">
-          <span className="ov-tile-title">To do</span>
-          <span className="ov-tile-note">
-            {todos} {todos === 1 ? "task" : "tasks"}
-          </span>
-        </button>
-        {onOpenSettings ? (
-          <button type="button" onClick={onOpenSettings} className="ov-tile">
-            <span className="ov-tile-title">Trip menu / Settings</span>
-            <span className="ov-tile-note">People, photos, details</span>
-          </button>
-        ) : null}
+          {onOpenSettings ? (
+            <button type="button" onClick={onOpenSettings} className="ov-tile">
+              <span className="ov-tile-title">Trip menu / Settings</span>
+              <span className="ov-tile-note">People, photos, details</span>
+            </button>
+          ) : null}
+        </div>
       </div>
 
       <div className="ov-cards">
@@ -379,15 +367,12 @@ export function TripOverview({
         </button>
       </div>
 
-      {gaps.map((gap) => {
-        const { key, ...row } = stayRow(gap);
-        return <RowButton key={key} {...row} />;
-      })}
-      <SavedRow cities={savedCities} onOpen={onOpenSaved} />
-
       {days.length > 0 ? (
         <>
-          <RuleLabel>Days at a glance</RuleLabel>
+          <div className="ov-head">
+            <h2 className="ov-h2">Days at a glance</h2>
+            {selectedDay ? <span className="text-[13px]">Selected: {selectedDay}</span> : null}
+          </div>
           <ul className="ov-days">
             {days.map((day, i) => (
               <li key={day}>
@@ -395,7 +380,7 @@ export function TripOverview({
                   type="button"
                   onClick={() => onOpenTimeline(day)}
                   className="ov-day"
-                  aria-current={day === today && live ? "date" : undefined}
+                  aria-current={i === selectedIndex ? "true" : undefined}
                 >
                   <span className="ov-day-n">Day {i + 1}</span>
                   <span className="ov-day-city">{cityOfDay(day)}</span>
@@ -410,7 +395,7 @@ export function TripOverview({
       {highlights.length > 0 ? (
         <>
           <div className="ov-head">
-            <RuleLabel>Upcoming highlights</RuleLabel>
+            <h2 className="ov-h2">Upcoming highlights</h2>
             <button type="button" onClick={() => onOpenTimeline()} className="ov-see-all">
               See all
             </button>
@@ -440,6 +425,24 @@ export function TripOverview({
           </ul>
         </>
       ) : null}
+      {live || extras.length > 0 || gaps.length > 0 ? (
+        <RuleLabel>More on this trip</RuleLabel>
+      ) : null}
+      {live ? <RightNow state={now} onOpenCompanion={onOpenCompanion} /> : null}
+
+      {extras.map(({ key, ...row }) => (
+        <RowButton key={key} {...row} />
+      ))}
+      <button type="button" onClick={() => onOpenTimeline()} className="trip-row">
+        <span className="trip-row-title">View itinerary</span>
+        <span className="trip-row-note">Every day, stop by stop</span>
+      </button>
+
+      {gaps.map((gap) => {
+        const { key, ...row } = stayRow(gap);
+        return <RowButton key={key} {...row} />;
+      })}
+      <SavedRow cities={savedCities} onOpen={onOpenSaved} />
     </div>
   );
 }
