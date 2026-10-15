@@ -5884,3 +5884,34 @@ main [class*="rounded-2xl"] {
   border-radius: var(--r-card);
   background: var(--card);
 }
+
+/* Trip menu, as the Figma frame draws it. */
+.tm-close {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 16px;
+  font-size: 14px;
+  font-weight: 500;
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+  background: var(--muted);
+}
+.tm-group {
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+  background: var(--card);
+}
+.tm-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 52px;
+  padding: 10px 0;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+.tm-row:last-child {
+  border-bottom: 0;
+}

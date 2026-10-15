@@ -2984,6 +2984,10 @@ export function TripDetail({
           setPlannerTab("start");
           setPlannerOpen(true);
         }}
+        onEditTimeline={() => {
+          setSettingsOpen(false);
+          setPerspective("timeline");
+        }}
         onPrep={() => {
           setSettingsOpen(false);
           setPrepSignal((n) => n + 1);
