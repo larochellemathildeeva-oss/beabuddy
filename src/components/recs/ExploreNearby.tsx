@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Link } from "@tanstack/react-router";
 import { friendlyError } from "@/lib/friendly-error";
 import { useServerFn } from "@tanstack/react-start";
 import {
@@ -110,6 +111,20 @@ export function ExploreNearby({
   const [placeName, setPlaceName] = useState("");
   const [state, setState] = useState<"idle" | "locating" | "ok" | "error">("idle");
   const [error, setError] = useState("");
+  const savedCities = useMemo(
+    () =>
+      [
+        ...new Set(
+          saved
+            .map((r) => r.city?.split(",")[0]?.trim() ?? "")
+            .filter((c): c is string => c.length > 0),
+        ),
+      ].sort(),
+    [saved],
+  );
+  const [manualCity, setManualCityState] = useState("");
+  const manualCityShown = manualCity || savedCities[0] || "";
+  const setManualCity = setManualCityState;
   const [places, setPlaces] = useState<Found[]>([]);
   const [loadingPlaces, setLoadingPlaces] = useState(false);
   const [placesError, setPlacesError] = useState(false);
@@ -527,11 +542,55 @@ export function ExploreNearby({
       </div>
 
       {state === "error" && (
-        <div className="recs-box p-4 text-[14px] text-muted-foreground">
-          {error}
-          <button type="button" onClick={locate} className="ml-2 font-semibold text-primary">
-            Try again
+        <div className="space-y-3" data-guide="nearby-denied">
+          <section className="fr-note">
+            <p className="text-[14px] font-semibold">Location wasn&apos;t shared</p>
+            <p className="mt-1 text-[12px] text-muted-foreground">
+              {error} Nothing is tracked in this state. You can keep going without sharing it.
+            </p>
+          </section>
+          {savedCities.length > 0 ? (
+            <section className="fd-box">
+              <h3 className="text-[18px] font-semibold">Choose a city instead</h3>
+              <label className="mt-2 block text-[12px] text-muted-foreground">
+                Saved-place city · manual selection
+                <select
+                  value={manualCityShown}
+                  onChange={(e) => setManualCity(e.target.value)}
+                  className="mt-1 block w-full rounded-[var(--r-card)] border border-border bg-card px-3 py-3 text-[14px] text-foreground"
+                >
+                  {savedCities.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <button type="button" onClick={onBack} className="tm-close mt-3">
+                Show {manualCityShown} saved Recs
+              </button>
+            </section>
+          ) : null}
+          <section className="fd-box">
+            <h3 className="text-[18px] font-semibold">Want to enable location?</h3>
+            <p className="mt-2 text-[13px]">
+              Retry the location request, or change Béa&apos;s permission in your device settings if
+              requests are blocked.
+            </p>
+            <button type="button" onClick={locate} className="tm-close mt-3 !bg-card">
+              Retry location
+            </button>
+          </section>
+          <p className="px-1 text-[12px] text-muted-foreground">
+            No distances or current weather are shown without a suitable location. A manually chosen
+            city does not share your device location.
+          </p>
+          <button type="button" onClick={onBack} className="tm-close !bg-card">
+            Continue to saved Recs
           </button>
+          <Link to="/" className="tm-close flex items-center justify-center !bg-card">
+            Back to Home
+          </Link>
         </div>
       )}
       {state === "locating" && !center && (
