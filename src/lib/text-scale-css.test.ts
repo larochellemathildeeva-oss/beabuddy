@@ -32,5 +32,7 @@ test("small sizes sit on the 12px and 14px steps", () => {
   assert.equal(sizeOf("11.5px"), "12");
   assert.equal(sizeOf("12px"), "12");
   assert.equal(sizeOf("13px"), "14");
-  assert.equal(sizeOf("15px"), "15");
+  assert.equal(sizeOf("14px"), "14");
+  assert.equal(sizeOf("15px"), "16");
+  assert.equal(sizeOf("17px"), "17");
 });
