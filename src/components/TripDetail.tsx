@@ -76,9 +76,8 @@ import { SortableDay, SortableStop, type SortableBind } from "@/components/day/S
 import { TripPageBanner } from "@/components/TripPageBanner";
 import { TripViews, TripBarOptions, MapModeSwitch } from "@/components/day/TripViews";
 import { TripFrameHeader } from "@/components/day/TripFrameHeader";
-import { usePlaceNow } from "@/hooks/usePlaceNow";
+import { DayWeather } from "@/components/day/DayWeather";
 import { useTripGlances } from "@/hooks/useTripGlances";
-import { describeWeather, formatTemp, usesFahrenheit } from "@/lib/weather";
 import { useTripBarPosition } from "@/hooks/useTripBarPosition";
 import {
   TripMenuSheet,
@@ -1519,6 +1518,16 @@ export function TripDetail({
       ? tripPlacesLine(names)
       : formatTripLocation(trip.city?.split(",")[0], trip.country) || tripPlacesLine(cityNames);
   })();
+  const headTabs = (
+    <>
+      {barPosition === "top" ? (
+        <TripViews inline position="top" value={perspective} onChange={setPerspective} />
+      ) : null}
+      {perspective === "map" || perspective === "companion" ? (
+        <MapModeSwitch value={perspective} onChange={setPerspective} />
+      ) : null}
+    </>
+  );
   const overviewSequence = <div id="tf-seq" className="tf-seq" />;
   const todoCount = useTripGlances([trip.id]).glances[trip.id]?.todos.open ?? 0;
   const dayTracker = (
@@ -1655,64 +1664,59 @@ export function TripDetail({
       data-bar-position={barPosition}
       className="trip-shell overflow-clip sm:mx-4 sm:mt-3 sm:rounded-3xl sm:border sm:border-border sm:bg-card"
     >
-      <TripFrameHeader
-        perspective={perspective === "companion" ? "map" : perspective}
-        title={headTitle}
-        kicker={headKicker}
-        places={headPlaces}
-        country={trip.country}
-        startDate={trip.start_date}
-        endDate={trip.end_date}
-        tentative={trip.dates_status === "tentative"}
-        onMenu={() => {
-          setSettingsOpen(true);
-          setSheetSection(null);
-        }}
-        onOpenMap={() => setPerspective("map")}
-        badge={
-          view.prefs.pinChecks && toCheck.length > 0 ? (
-            <button
-              type="button"
-              onClick={() => setPinReviewOpen(true)}
-              title="Places to confirm"
-              aria-label={`${toCheck.length} ${toCheck.length === 1 ? "place" : "places"} to confirm`}
-              className="relative grid size-11 place-items-center rounded-full border border-destructive/40 bg-destructive/10 text-[20px] font-bold text-destructive"
-            >
-              !
-              <span className="absolute -right-1 -top-1 grid min-w-5 place-items-center rounded-full bg-destructive px-1 text-[13px] font-bold leading-5 text-white">
-                {toCheck.length}
-              </span>
-            </button>
-          ) : null
-        }
-        photo={
-          perspective === "timeline" ? (
-            <TripPageBanner
-              strip
-              art={companionArt}
-              title={trip.title}
-              city={trip.city}
-              country={trip.country}
-              cities={cityNames}
-              look={bannerLook}
-              own={bannerOwn}
-              viewTransitionName={`trip-photo-${trip.id}`}
-            />
-          ) : null
-        }
-        tabs={
-          <>
-            {barPosition === "top" ? (
-              <TripViews inline position="top" value={perspective} onChange={setPerspective} />
-            ) : null}
-            {perspective === "map" || perspective === "companion" ? (
-              <MapModeSwitch value={perspective} onChange={setPerspective} />
-            ) : null}
-          </>
-        }
-      >
-        {perspective === "overview" ? overviewSequence : null}
-      </TripFrameHeader>
+      {perspective === "companion" ? (
+        <div className="tf-tabs-only">{headTabs}</div>
+      ) : (
+        <TripFrameHeader
+          perspective={perspective}
+          title={headTitle}
+          kicker={headKicker}
+          places={headPlaces}
+          country={trip.country}
+          startDate={trip.start_date}
+          endDate={trip.end_date}
+          tentative={trip.dates_status === "tentative"}
+          onMenu={() => {
+            setSettingsOpen(true);
+            setSheetSection(null);
+          }}
+          onOpenMap={() => setPerspective("map")}
+          badge={
+            view.prefs.pinChecks && toCheck.length > 0 ? (
+              <button
+                type="button"
+                onClick={() => setPinReviewOpen(true)}
+                title="Places to confirm"
+                aria-label={`${toCheck.length} ${toCheck.length === 1 ? "place" : "places"} to confirm`}
+                className="relative grid size-11 place-items-center rounded-full border border-destructive/40 bg-destructive/10 text-[20px] font-bold text-destructive"
+              >
+                !
+                <span className="absolute -right-1 -top-1 grid min-w-5 place-items-center rounded-full bg-destructive px-1 text-[13px] font-bold leading-5 text-white">
+                  {toCheck.length}
+                </span>
+              </button>
+            ) : null
+          }
+          photo={
+            perspective === "timeline" ? (
+              <TripPageBanner
+                strip
+                art={companionArt}
+                title={trip.title}
+                city={trip.city}
+                country={trip.country}
+                cities={cityNames}
+                look={bannerLook}
+                own={bannerOwn}
+                viewTransitionName={`trip-photo-${trip.id}`}
+              />
+            ) : null
+          }
+          tabs={headTabs}
+        >
+          {perspective === "overview" ? overviewSequence : null}
+        </TripFrameHeader>
+      )}
       {barPosition !== "top" ? (
         <TripViews position={barPosition} value={perspective} onChange={setPerspective} />
       ) : null}
@@ -1863,22 +1867,18 @@ export function TripDetail({
 
         {perspective === "companion" && (
           <div data-guide="trip-companion" className="space-y-3" {...(offerDays ? daySwipe : {})}>
-            {/* Live: the day's map, then its day tabs, then the companion card.
+            {/* Live (Figma trip companion): no map, the day tabs, then the cards.
                 Kept out of the panel, which starts afresh on each day, so a
                 day picked by keyboard keeps its focus. */}
-            {nowStops.length > 0 && companionDay ? (
-              <p className="now-day-line">
-                {[companionOrdinal, companionDateLine].filter(Boolean).join(" · ")}
-              </p>
-            ) : null}
-            {nowStops.length > 0 && companionDay ? (
-              <LiveMap stops={nowStops} nesting={view.prefs.nesting} onLook={setPeekId} />
-            ) : null}
             {mapDayTabs}
             {nowStops.length > 0 && companionDay ? (
               <>
                 <NowPanel
                   key={companionDay.key}
+                  place={companionPlace}
+                  dayLabel={shortDayLabel(companionDay.key)}
+                  onOpenTimeline={() => setPerspective("timeline")}
+                  onOpenMap={() => setPerspective("map")}
                   dayStops={nowStops}
                   tripStops={tripStopsForNow}
                   legs={nowLegs}
@@ -3554,6 +3554,12 @@ function MenuChoice({
  * Drawn only on today, and only on a day that names at least one time. A rule
  * through an untimed list would be claiming an order the plan never had.
  */
+/** "Fri, Apr 12". */
+function shortDayLabel(key: string): string {
+  const date = new Date(`${key}T00:00:00`);
+  return date.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+}
+
 /** "Saturday, Apr 12". */
 function fullDayLabel(key: string): string {
   const date = new Date(`${key}T00:00:00`);
@@ -3595,23 +3601,6 @@ function TimelineTiles({
         {face("Trip", "menu")}
       </button>
     </div>
-  );
-}
-
-/** Today's weather at the day's first placed stop; nothing for other days. */
-function DayWeather({ items }: { items: readonly ItineraryRow[] }) {
-  const at = items.find((i) => typeof i.lat === "number" && typeof i.lon === "number");
-  const now = usePlaceNow(at?.lat, at?.lon);
-  if (now.status !== "ready") return null;
-  const w = now.weather;
-  const fahrenheit = usesFahrenheit(
-    typeof navigator === "undefined" ? undefined : navigator.language,
-  );
-  return (
-    <span className="shrink-0 text-right text-[13px] leading-[1.35]">
-      <span className="block">{formatTemp(w.temp, fahrenheit)}</span>
-      <span className="block text-muted-foreground">{describeWeather(w.code).label}</span>
-    </span>
   );
 }
 

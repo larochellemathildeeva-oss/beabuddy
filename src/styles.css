@@ -5247,7 +5247,8 @@ main [class*="rounded-2xl"] {
   border-radius: 6px;
   background: var(--card);
 }
-.tf-card .trip-views.trip-views--top.trip-views--pill {
+.tf-card .trip-views.trip-views--top.trip-views--pill,
+.tf-tabs-only .trip-views.trip-views--top.trip-views--pill {
   gap: 2px;
   padding: 4px;
   border: 1px solid var(--border);
@@ -5255,7 +5256,8 @@ main [class*="rounded-2xl"] {
   background: var(--card);
   box-shadow: none;
 }
-.tf-card .trip-views.trip-views--top.trip-views--pill button {
+.tf-card .trip-views.trip-views--top.trip-views--pill button,
+.tf-tabs-only .trip-views.trip-views--top.trip-views--pill button {
   flex: 1;
   min-height: 36px;
   flex-direction: row;
@@ -5268,15 +5270,18 @@ main [class*="rounded-2xl"] {
   letter-spacing: 0;
   text-transform: none;
 }
-.tf-card .trip-views.trip-views--top.trip-views--pill button::after {
+.tf-card .trip-views.trip-views--top.trip-views--pill button::after,
+.tf-tabs-only .trip-views.trip-views--top.trip-views--pill button::after {
   display: none;
 }
-.tf-card .trip-views.trip-views--top.trip-views--pill button[aria-selected="true"] {
+.tf-card .trip-views.trip-views--top.trip-views--pill button[aria-selected="true"],
+.tf-tabs-only .trip-views.trip-views--top.trip-views--pill button[aria-selected="true"] {
   background: var(--muted);
   color: var(--foreground);
   font-weight: 600;
 }
-.tf-card .map-switch {
+.tf-card .map-switch,
+.tf-tabs-only .map-switch {
   display: flex;
   gap: 2px;
   margin: 0;
@@ -5285,7 +5290,8 @@ main [class*="rounded-2xl"] {
   border-radius: 999px;
   background: var(--card);
 }
-.tf-card .map-switch button {
+.tf-card .map-switch button,
+.tf-tabs-only .map-switch button {
   flex: 1;
   min-height: 36px;
   border: 0;
@@ -5293,7 +5299,8 @@ main [class*="rounded-2xl"] {
   font-family: inherit;
   font-size: 14px;
 }
-.tf-card .map-switch button[aria-pressed="true"] {
+.tf-card .map-switch button[aria-pressed="true"],
+.tf-tabs-only .map-switch button[aria-pressed="true"] {
   border: 0;
   background: var(--muted);
   color: var(--foreground);
@@ -5349,7 +5356,8 @@ main [class*="rounded-2xl"] {
 .trip-overview .ov-continue {
   border-radius: var(--r-card);
 }
-.tf-card .trip-views.trip-views--top.trip-views--pill button > span {
+.tf-card .trip-views.trip-views--top.trip-views--pill button > span,
+.tf-tabs-only .trip-views.trip-views--top.trip-views--pill button > span {
   width: auto;
 }
 .tf-card .trip-views.trip-views--top.trip-views--pill button {
@@ -5423,4 +5431,99 @@ main [class*="rounded-2xl"] {
   background: var(--card);
   font-size: 14px;
   line-height: 1.4;
+}
+
+/* Figma Live companion: cards, a dark Directions bar, paired buttons. */
+.tf-tabs-only {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 8px 16px 0;
+}
+.lv-card {
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+  background: var(--card);
+}
+.lv-directions {
+  display: flex;
+  min-height: 52px;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--r-card);
+  background: var(--foreground);
+  color: var(--background);
+  font-size: 14px;
+  font-weight: 600;
+}
+.lv-pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.lv-btn {
+  min-height: 52px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+  background: var(--card);
+  font-size: 14px;
+  font-weight: 600;
+}
+.lv-btn:disabled {
+  opacity: 0.45;
+}
+.lv-dots {
+  display: flex;
+  align-items: center;
+  margin-top: 12px;
+}
+.lv-dots li {
+  display: flex;
+  flex: 1;
+  align-items: center;
+}
+.lv-dots li:first-child {
+  flex: 0 0 auto;
+}
+.lv-line {
+  flex: 1;
+  height: 0;
+  border-top: 2px dotted var(--muted-foreground);
+}
+.lv-line.is-on {
+  border-top-style: solid;
+  border-top-color: var(--foreground);
+}
+.lv-dot {
+  display: grid;
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 2px solid var(--foreground);
+  border-radius: 999px;
+  background: var(--card);
+}
+.lv-dot.is-here {
+  background: var(--foreground);
+}
+.lv-dot.is-done {
+  border: 0;
+  background: transparent;
+  color: var(--foreground);
+}
+.lv-next3 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+.tf-tabs-only .trip-views.trip-views--top.trip-views--pill button {
+  align-items: center;
+  justify-content: center;
+}
+.tf-tabs-only .trip-views.trip-views--top.trip-views--pill button > span {
+  width: auto;
 }
