@@ -1,46 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import { useSyncExternalStore } from "react";
 import { browserHasStoredSession } from "@/lib/stored-session";
 import { hasPendingOAuthResultInWindow } from "@/lib/auth-redirect";
 import { SignedInHomeNext } from "@/components/next/HomeNextPage";
 import { AppShell } from "@/components/AppShell";
-import { HomeSuggested, HomeUpcoming, HomeWhereNext } from "@/components/HomeLivingMap";
-import {
-  HomeNoTripHero,
-  HomeOnTrip,
-  HomeSavedCard,
-  HomeWaiting,
-  NowCards,
-} from "@/components/HomeMoods";
-import { laterTrips, pastTrips, pickActiveTrip } from "@/lib/home-trip";
-import { savedCities } from "@/lib/home-now";
-import { isUnderway } from "@/lib/trip-card";
-import { toLocalISODate } from "@/lib/trip-dates";
-import { NearHome } from "@/components/NearHome";
-import { HomeWeather, WeatherCredit } from "@/components/HomeWeather";
-import { useNearMe } from "@/hooks/useNearMe";
-import { useTrips } from "@/hooks/useTrips";
-import { useTripPhotos } from "@/hooks/useTripPhotos";
-import { useTripGlances } from "@/hooks/useTripGlances";
-import { greetingFor, heroTags } from "@/lib/trip-glance";
-
 import { useAuth } from "@/hooks/useAuth";
-import { useFutureNotes } from "@/hooks/useFutureNotes";
-import { useHomeLayout, useHomeTripMoment, type HomeSectionKey } from "@/hooks/useHomeLayout";
-import { HomeTripModule } from "@/components/HomeModules";
-import { useHomeTripModules } from "@/hooks/useHomeTripModules";
-import { HomeWidgetGrid } from "@/components/HomeWidgetGrid";
-import { CustomizeHome } from "@/components/CustomizeHome";
-import { usePhotoMemories } from "@/hooks/usePhotoMemories";
-import { useRecommendations } from "@/hooks/useRecommendations";
-import { supabase } from "@/integrations/supabase/client";
-import { useScorePrefs } from "@/hooks/useScorePrefs";
-import { rankOpportunities } from "@/lib/score-opportunity";
-import { hasDismissedSampleCta } from "@/lib/auto-seed";
-import { beaLine } from "@/lib/bea-voice";
-import { safeStorage } from "@/lib/tour-state";
-import { rememberedProfileName, rememberProfileName, shownName } from "@/lib/profile-name";
-import { isAreaPlace } from "@/lib/reco-place";
 
 export const Route = createFileRoute("/")({
   staticData: { plane: "tab" },
