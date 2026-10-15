@@ -229,6 +229,7 @@ export function TimelineEntry({
   /** A compact row opened to its whole card. */
   const [expanded, setExpanded] = useState(false);
   const [bookingOpen, setBookingOpen] = useState(false);
+  const [removeOpen, setRemoveOpen] = useState(false);
   /** The quick actions under the front, opened by ⋯. */
   const [actionsOpen, setActionsOpen] = useState(false);
   /** The pill's list, open on the front of the card. */
@@ -1044,7 +1045,7 @@ export function TimelineEntry({
         )}
         <button
           type="button"
-          onClick={onRemove}
+          onClick={() => setRemoveOpen(true)}
           aria-label={`Delete ${item.title}`}
           className={`${actionRow} text-destructive`}
         >
@@ -1121,6 +1122,57 @@ export function TimelineEntry({
           )}
         </div>
       </div>
+      <Sheet
+        open={removeOpen}
+        onClose={() => setRemoveOpen(false)}
+        title="Remove this stop?"
+        hint="Timeline"
+        crumb="Back to stop details"
+        page
+        above
+        tone={3}
+      >
+        <div className="space-y-3">
+          <p className="text-[14px]">
+            {[item.title, item.day_date ? formatTimelineDayLabel(item.day_date) : ""]
+              .filter(Boolean)
+              .join(" · ")}
+          </p>
+          <section className="fe-summary">
+            <p className="text-[14px] font-semibold">
+              {[
+                rail ? stopTimeSpan(rail, item.planned_stay_minutes) : "",
+                item.planned_stay_minutes ? frameStay(item.planned_stay_minutes) : "",
+              ]
+                .filter(Boolean)
+                .join(" · ") || "No set time"}
+            </p>
+            <p className="mt-1 text-[14px]">
+              This stop will be removed from your timeline. Places you saved stay in Recs.
+            </p>
+          </section>
+          <section className="fe-card">
+            <h2 className="text-[18px] font-semibold leading-tight">What happens next</h2>
+            <p className="mt-2 text-[14px]">
+              Other stops keep their times. Check the walks around this stop afterwards.
+            </p>
+            <p className="mt-2 text-[14px]">You can undo for a few seconds after removing it.</p>
+          </section>
+          <button type="button" onClick={() => setRemoveOpen(false)} className="fe-btn">
+            Keep stop
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setRemoveOpen(false);
+              onRemove();
+            }}
+            className="fe-btn"
+          >
+            Remove stop
+          </button>
+        </div>
+      </Sheet>
       {!editing && (
         <Sheet
           open={flipped}

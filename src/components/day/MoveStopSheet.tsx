@@ -90,12 +90,14 @@ export function MoveStopSheet({
     (day ?? "") === (stop.day_date ?? "") && index === here && newTime === stop.time_label;
 
   const dayChoices: (string | null)[] = [...days, ...(stop.day_date ? [] : [null])];
-  const chip = (active: boolean) =>
-    `min-h-9 rounded-full border px-3 text-[13px] font-semibold ${
-      active
-        ? "border-primary bg-primary text-primary-foreground"
-        : "border-border bg-card text-muted-foreground"
-    }`;
+  const here0 = stop.day_date ? days.indexOf(stop.day_date) : -1;
+  const nowLine = [
+    stop.day_date ? `Day ${here0 + 1} · ${formatTimelineDayLabel(stop.day_date)}` : "No date",
+    stop.time_label,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+  const dayIndex = day ? days.indexOf(day) : -1;
 
   const submit = async () => {
     setBusy(true);
@@ -112,27 +114,41 @@ export function MoveStopSheet({
   };
 
   return (
-    <Sheet open onClose={onClose} title={`Move ${stop.title}`} hint="Pick a day, then where in it">
-      <div className="space-y-4">
+    <Sheet
+      open
+      onClose={onClose}
+      page
+      title="Move stop"
+      hint="Timeline"
+      crumb="Back to stop details"
+    >
+      <div className="space-y-3">
+        <p className="text-[14px]">{stop.title}</p>
+        <section className="fe-summary">
+          <p className="text-[14px] font-semibold">Currently on</p>
+          <p className="mt-1 text-[14px]">{nowLine}</p>
+        </section>
+
         <div>
-          <p className="label-caps mb-1.5">Day</p>
-          <div className="flex flex-wrap gap-1.5">
+          <label htmlFor="move-day" className="fe-label">
+            Move to day
+          </label>
+          <select
+            id="move-day"
+            value={day ?? ""}
+            onChange={(e) => pickDay(e.target.value || null)}
+            className="fe-input"
+          >
             {dayChoices.map((d, i) => (
-              <button
-                key={d ?? "none"}
-                type="button"
-                aria-pressed={(d ?? "") === (day ?? "")}
-                onClick={() => pickDay(d)}
-                className={chip((d ?? "") === (day ?? ""))}
-              >
+              <option key={d ?? "none"} value={d ?? ""}>
                 {d ? `Day ${i + 1} · ${formatTimelineDayLabel(d)}` : "No date"}
-              </button>
+              </option>
             ))}
-          </div>
+          </select>
         </div>
 
         <div>
-          <p className="label-caps mb-1.5">Where on that day</p>
+          <p className="fe-label">Where on that day</p>
           <div className="space-y-1" role="radiogroup" aria-label="Where on that day">
             {[null, ...others].map((before, i) => {
               const label = before
@@ -143,7 +159,7 @@ export function MoveStopSheet({
               return (
                 <label
                   key={before?.id ?? "first"}
-                  className={`flex min-h-10 items-center gap-2 rounded-xl border px-3 text-[14px] ${
+                  className={`flex min-h-12 items-center gap-2 rounded-[var(--r-card)] border px-3 text-[14px] ${
                     index === i ? "border-primary bg-primary-soft" : "border-border bg-card"
                   }`}
                 >
@@ -161,32 +177,35 @@ export function MoveStopSheet({
         </div>
 
         <div>
-          <label className="flex items-center gap-2 text-[13px] text-muted-foreground">
-            Time
+          <label htmlFor="move-time" className="fe-label">
+            Start time
+          </label>
+          <div className="flex items-center gap-3">
             <input
+              id="move-time"
               type="time"
               value={time}
               onChange={(e) => setTime(e.target.value)}
-              className="rounded-lg border border-[var(--field-border)] bg-card px-2 py-1 text-[14px] text-foreground"
+              className="fe-input"
             />
             {time && (
               <button
                 type="button"
                 onClick={() => setTime("")}
-                className="text-[12.5px] font-semibold text-primary underline"
+                className="shrink-0 text-[14px] font-semibold underline"
               >
                 No time
               </button>
             )}
-          </label>
+          </div>
           {fit && (
-            <p className="mt-1.5 text-[13px] text-muted-foreground">
+            <p className="mt-2 text-[14px] text-muted-foreground">
               {fit.time} is out of order there.{" "}
               {fit.suggestion && (
                 <button
                   type="button"
                   onClick={() => setTime(fit.suggestion!)}
-                  className="font-semibold text-primary underline"
+                  className="font-semibold underline"
                 >
                   Use {fit.suggestion}
                 </button>
@@ -195,19 +214,38 @@ export function MoveStopSheet({
           )}
         </div>
 
+        <section className="fe-card">
+          <h2 className="text-[18px] font-semibold leading-tight">Review this move</h2>
+          <p className="mt-2 text-[14px]">
+            {unchanged
+              ? "Choose a different day, place or time to move this stop."
+              : `Move ${stop.title} to ${
+                  day ? `Day ${dayIndex + 1} (${formatTimelineDayLabel(day)})` : "no date"
+                }${newTime ? ` at ${newTime}` : ""}.`}
+          </p>
+          <p className="mt-2 text-[14px] text-muted-foreground">
+            Other stops will not be moved automatically.
+          </p>
+        </section>
+
         {problem && (
           <p role="alert" className="text-[14px] text-destructive">
             {problem}
           </p>
         )}
-        <button
-          type="button"
-          disabled={busy || unchanged}
-          onClick={() => void submit()}
-          className="min-h-11 w-full rounded-xl bg-primary text-[15px] font-semibold text-primary-foreground disabled:opacity-50"
-        >
-          {busy ? "Moving…" : "Move here"}
-        </button>
+        <div className="grid grid-cols-2 gap-2">
+          <button type="button" onClick={onClose} className="fe-btn">
+            Cancel
+          </button>
+          <button
+            type="button"
+            disabled={busy || unchanged}
+            onClick={() => void submit()}
+            className="fe-btn fe-btn-primary"
+          >
+            {busy ? "Moving…" : "Move stop"}
+          </button>
+        </div>
       </div>
     </Sheet>
   );

@@ -5915,3 +5915,57 @@ main [class*="rounded-2xl"] {
 .tm-row:last-child {
   border-bottom: 0;
 }
+
+/* Edit, move and review pages of the timeline, as the Figma frames draw them. */
+.fe-summary {
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+  background: var(--muted);
+}
+.fe-card {
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+  background: var(--card);
+}
+.fe-label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--muted-foreground);
+}
+.fe-input {
+  width: 100%;
+  min-height: 48px;
+  padding: 0 14px;
+  font-size: 14px;
+  border: 1px solid var(--field-border, var(--border));
+  border-radius: var(--r-card);
+  background: var(--card);
+  color: var(--foreground);
+}
+.fe-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 48px;
+  padding: 0 16px;
+  font-size: 14px;
+  font-weight: 600;
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+  background: var(--card);
+  color: var(--foreground);
+}
+.fe-btn:disabled {
+  opacity: 0.5;
+}
+.fe-btn-primary {
+  border-color: transparent;
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
