@@ -44,9 +44,10 @@ export function SavedPlacesSheet({
     <Sheet
       open={open}
       onClose={onClose}
-      title="Saved places"
-      hint={dayLabel ? `Add to ${dayLabel}` : "Pick a day first to add to it, or add to the trip"}
-      width="sm"
+      page
+      title="Add saved place to trip"
+      hint={dayLabel ? `Recs · Add to ${dayLabel}` : "Recs · Pick a day first, or add to the trip"}
+      crumb="Back to Timeline"
     >
       <div className="space-y-3">
         {local.length > 0 && local.length < rows.length && (
@@ -60,10 +61,10 @@ export function SavedPlacesSheet({
                 type="button"
                 aria-pressed={showAll === all}
                 onClick={() => setShowAll(all as boolean)}
-                className={`min-h-9 rounded-lg px-3 text-[12.5px] font-semibold ${
+                className={`min-h-11 rounded-[var(--r-card)] border px-4 text-[14px] font-semibold ${
                   showAll === all
-                    ? "bg-foreground text-background"
-                    : "border border-border bg-elevated text-muted-foreground"
+                    ? "border-foreground bg-foreground text-background"
+                    : "border-border bg-card text-foreground"
                 }`}
               >
                 {label as string}
@@ -73,22 +74,22 @@ export function SavedPlacesSheet({
         )}
 
         {loading ? (
-          <p className="text-[13.5px] text-muted-foreground">Loading your places…</p>
+          <p className="text-[14px] text-muted-foreground">Loading your places…</p>
         ) : shown.length === 0 ? (
-          <p className="text-[13.5px] text-muted-foreground">
+          <p className="text-[14px] text-muted-foreground">
             No saved places yet. Save places in Recs, or with "Save to my places" on a stop, and
             they appear here.
           </p>
         ) : (
-          <ul className="divide-y divide-border">
+          <ul className="space-y-3">
             {shown.map((place) => {
               const done = added.has(place.id);
               return (
-                <li key={place.id} className="flex items-center gap-3 py-2.5">
-                  <MapPin className="size-4 shrink-0 text-primary" aria-hidden />
+                <li key={place.id} className="fe-card flex items-center gap-3">
+                  <MapPin className="size-5 shrink-0" aria-hidden />
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-[14.5px] font-semibold">{place.name}</p>
-                    <p className="truncate text-[12px] text-muted-foreground">
+                    <p className="truncate text-[16px] font-semibold">{place.name}</p>
+                    <p className="truncate text-[14px] text-muted-foreground">
                       {[place.category, place.city].filter(Boolean).join(" · ")}
                     </p>
                   </div>
@@ -102,7 +103,7 @@ export function SavedPlacesSheet({
                         () => setError(`Couldn't add ${place.name}. Try again.`),
                       );
                     }}
-                    className="inline-flex min-h-9 shrink-0 items-center gap-1 rounded-xl border border-border bg-card px-3 text-[12.5px] font-semibold text-primary disabled:text-nexttime"
+                    className="inline-flex min-h-11 shrink-0 items-center gap-1 rounded-[var(--r-card)] border border-border bg-card px-4 text-[14px] font-semibold disabled:text-muted-foreground"
                   >
                     {done ? (
                       "Added"
