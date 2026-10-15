@@ -1532,7 +1532,7 @@ await flow("timeline editor: move a stop later and save its order", async (page)
   const before = (await writes(page)).length;
   await page.getByRole("button", { name: /^Move .* later$/ }).first().click();
   await page.waitForTimeout(400);
-  const apply = page.getByRole("button", { name: "Apply changes", exact: true });
+  const apply = page.getByRole("button", { name: "Save changes", exact: true });
   if (await apply.isVisible()) {
     if ((await writes(page)).length !== before) throw new Error("the order changed before confirmation");
     await apply.click();
