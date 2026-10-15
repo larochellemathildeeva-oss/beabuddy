@@ -219,19 +219,24 @@ export function SignedInHomeNext() {
         {showTrip && trip && (
           <div className="space-y-4">
             {underway ? (
-              <HomeNextOnTrip
-                trip={trip}
-                photos={photos}
-                glance={glances[trip.id]}
-                showStops={on("stops")}
-                savedHere={tripModules.savedHere.length}
-                weather={tripWeather}
-              />
+              <>
+                <HomeNextOnTrip
+                  trip={trip}
+                  photos={photos}
+                  glance={glances[trip.id]}
+                  showStops={on("stops")}
+                  savedHere={tripModules.savedHere.length}
+                  weather={tripWeather}
+                />
+                <HomeNextStats trip={trip} glance={glances[trip.id]} overlap={false} />
+              </>
             ) : (
-              <HomeNextUpcoming trip={trip} photos={photos} />
+              <div className="space-y-3 rounded-[var(--r-card)] border border-border bg-muted/60 p-3">
+                <HomeNextUpcoming trip={trip} photos={photos} />
+                <HomeNextStats trip={trip} glance={glances[trip.id]} overlap={false} />
+                <HomeNextContinue trip={trip} />
+              </div>
             )}
-            <HomeNextStats trip={trip} glance={glances[trip.id]} overlap={!underway} />
-            {!underway && <HomeNextContinue trip={trip} />}
             <HomeWhereNext />
             {on("suggested") && <HomeSuggested trip={trip} here={tripModules.here} />}
           </div>
@@ -239,8 +244,8 @@ export function SignedInHomeNext() {
 
         {noTripMap && (
           <div className="space-y-4">
-            <HomeNextNoTrip greeting={greetingLine} date={today} cities={waiting} />
-            <div className="relative z-[3] -mt-10">
+            <HomeNextNoTrip greeting={greetingLine} date={today} />
+            <div>
               <HomeSavedCard cities={waiting} />
             </div>
             <HomeWaiting cities={waiting} />

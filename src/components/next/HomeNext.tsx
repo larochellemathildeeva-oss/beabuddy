@@ -86,176 +86,75 @@ function BannerWords({
 /* ------------------------------------------------------------------ */
 
 /**
- * Home before a trip (mockup `homeUpcoming`, the references' trip home): the
- * kind of moment and how soon over the trip's part of the world, seen from
- * above, its cities joined by the route, each with a photo bubble saying how
- * long you stay. Without any placed city, the trip's picture.
+ * Home before a trip (Figma "Home", upcoming): the kind of moment, the trip's
+ * name and how soon, its destination picture, and the route as a row of city
+ * chips with their stay. No map: the picture is a photo of the place.
  */
-export function HomeNextUpcoming({
-  trip,
-  photos,
-  registry = TERRAIN_ART,
-}: {
-  trip: TripRow;
-  photos: TripPhotoRow[];
-  /** The owner's terrain art (`terrain-art.ts`). */
-  registry?: TerrainRegistry;
-}) {
+export function HomeNextUpcoming({ trip, photos }: { trip: TripRow; photos: TripPhotoRow[] }) {
   const { stops, route } = useAerialRoute(trip, true);
   const tags = heroTags(trip.start_date, trip.end_date, trip.dates_status === "tentative");
   const when = heroWhen(tags.when);
   const cityNames = stops.map((s) => s.city).filter(Boolean);
-  const places: AerialPlace[] = route;
-  const terrain = terrainFor(
-    [trip.title, ...route.map((s) => s.city), trip.country],
-    route,
-    registry,
-  );
-  const where =
-    routeLine(cityNames) || trip.city?.split(",")[0] || cityNames[0] || trip.country || "";
-
   return (
-    <section data-guide="home-trip" className="hn-hero -mx-4" style={{ height: UPCOMING_H }}>
-      {route.length > 0 ? (
-        <AerialBanner
-          places={places}
-          label={`Map of the trip: ${route.map((s) => s.city).join(", ")}`}
-          height={UPCOMING_H}
-          top={190}
-          bottom={UPCOMING_H - 70}
-          terrain={terrain?.art ?? null}
-          scene={sceneFor(trip, cityNames)}
-          showLabels={false}
-          spread={[0.14, 0.7]}
-          footInset={56}
-        >
-          {(points, width) => {
-            const widths = route.map((s) => Math.min(184, 88 + pillLabel(s.city).length * 8.8));
-            const boxes = calloutBoxes(
-              points,
-              widths,
-              { width, top: 0, bottom: UPCOMING_H - 56 },
-              {
-                height: BUBBLE_H,
-                gap: 8,
-                dot: 10,
-                // The title and the open button stay clear.
-                keepClear: [
-                  { x: 0, y: 0, width: Math.min(270, width * 0.7), height: 150 },
-                  { x: width - 96, y: 0, width: 96, height: 104 },
-                ],
-              },
-            );
-            return (
-              <>
-                {/* A bubble moved off its town keeps a thread to it. */}
-                <svg
-                  aria-hidden
-                  viewBox={`0 0 ${width} ${UPCOMING_H}`}
-                  preserveAspectRatio="none"
-                  className="pointer-events-none absolute inset-0 z-[1] size-full"
-                >
-                  {boxes.map((box, i) => {
-                    const at = points[i];
-                    if (!box || !at) return null;
-                    const x = Math.max(box.x + 20, Math.min(box.x + box.width - 20, at.x));
-                    const y = Math.max(box.y + 6, Math.min(box.y + box.height - 6, at.y));
-                    if (Math.hypot(x - at.x, y - at.y) < 22) return null;
-                    return <line key={i} x1={at.x} y1={at.y} x2={x} y2={y} className="hn-thread" />;
-                  })}
-                </svg>
-                {route.map((stop, i) => {
-                  const box = boxes[i];
-                  if (!box) return null;
-                  return (
-                    <CityBubble
-                      key={`${stop.city}-${i}`}
-                      trip={trip}
-                      city={stop.city}
-                      country={stop.country}
-                      days={stayLabel(stop.days)}
-                      style={{
-                        left: `${(box.x / width) * 100}%`,
-                        top: box.y,
-                        width: box.width,
-                        height: BUBBLE_H,
-                      }}
-                    />
-                  );
-                })}
-              </>
-            );
-          }}
-        </AerialBanner>
-      ) : (
-        <>
-          <TripPicture trip={trip} photos={photos} cities={cityNames} />
-          {where ? (
-            <span className="absolute inset-x-5 bottom-16 z-[1] truncate text-[16px] font-semibold text-white [text-shadow:0_1px_6px_rgb(0_0_0/0.5)]">
-              {where}
-            </span>
-          ) : null}
-        </>
-      )}
-      <span aria-hidden className="hn-haze" style={{ "--haze-end": "150px" } as CSSProperties} />
-      <BannerWords
-        trip={trip}
-        kicker={tags.label}
-        title={
-          <>
-            <span className="line-clamp-2 break-words">{trip.title}</span>
-            {when ? <span className="block">{when}</span> : null}
-          </>
-        }
-      />
+    <section data-guide="home-trip" className="space-y-3">
+      <Link to="/trips/$tripId" params={{ tripId: trip.id }} viewTransition className="block">
+        <p className="hn-kicker">{tags.label}</p>
+        <h2 className="hn-title mt-1.5 !text-[32px]">
+          <span className="line-clamp-2 break-words">{trip.title}</span>
+          {when ? <span className="block">{when}</span> : null}
+        </h2>
+      </Link>
+      <TripPhotoBox trip={trip} photos={photos} cities={cityNames} />
+      <CityChips cities={route.map((s) => ({ city: s.city, days: stayLabel(s.days) }))} />
     </section>
   );
 }
 
-const BUBBLE_H = 50;
-
-/** A city on the upcoming map: its photo (or Béa's painting) in a ring, and how long you stay. */
-function CityBubble({
+/** The destination picture: a photo of the place, never a map. */
+function TripPhotoBox({
   trip,
-  city,
-  country,
-  days,
-  style,
+  photos,
+  cities,
 }: {
   trip: TripRow;
-  city: string;
-  country: string | null;
-  days: string;
-  style: CSSProperties;
+  photos: TripPhotoRow[];
+  cities: string[];
 }) {
-  const town = useTownPicture(false, city, country);
-  // Too small for a photo's author and licence: only photos credited once for all, else the painting.
-  const photo = town.photo && !creditedOnPhoto(town.photo) ? town.photo : null;
-  const art = bannerArtUrl(bannerSceneFor([city, country], city));
   return (
-    <Link
-      to="/trips/$tripId"
-      params={{ tripId: trip.id }}
-      viewTransition
-      aria-label={days ? `${city}, ${days}` : city}
-      className="hn-bubble absolute z-[1]"
-      style={style}
-    >
-      <img
-        src={photo?.url ?? art}
-        alt=""
-        decoding="async"
-        referrerPolicy={photo ? "no-referrer" : undefined}
-        onError={photo ? town.onError : undefined}
-        className="size-[42px] shrink-0 rounded-full object-cover"
-      />
-      <span className="min-w-0 leading-tight">
-        <b className="block truncate text-[15px] font-bold">{pillLabel(city)}</b>
-        {days ? (
-          <span className="block truncate text-[13px] text-muted-foreground">{days}</span>
-        ) : null}
-      </span>
-    </Link>
+    <div className="relative h-[132px] overflow-hidden rounded-[var(--r-card)] border border-border">
+      <TripPicture trip={trip} photos={photos} cities={cities} />
+    </div>
+  );
+}
+
+/** The route as chips joined by arrows: "Paris · 3 days → Prague · 1 day". */
+function CityChips({
+  cities,
+  current = -1,
+}: {
+  cities: { city: string; days: string }[];
+  current?: number;
+}) {
+  if (cities.length === 0) return null;
+  return (
+    <ol className="flex items-center gap-1.5 overflow-x-auto pb-0.5" aria-label="Route">
+      {cities.map((c, i) => (
+        <li key={`${c.city}-${i}`} className="flex shrink-0 items-center gap-1.5">
+          {i > 0 ? <ArrowRight className="size-4 text-muted-foreground" aria-hidden /> : null}
+          <span
+            aria-current={i === current ? "step" : undefined}
+            className={`rounded-full border px-3 py-1.5 leading-tight ${
+              i === current ? "border-foreground bg-card" : "border-border bg-card"
+            }`}
+          >
+            <b className="block text-[14px] font-semibold">{pillLabel(c.city)}</b>
+            {c.days ? (
+              <span className="block text-[13px] text-muted-foreground">{c.days}</span>
+            ) : null}
+          </span>
+        </li>
+      ))}
+    </ol>
   );
 }
 
@@ -450,37 +349,17 @@ export function HomeNextOnTrip({
   const progress = tripProgress(current, behind, route.length);
 
   return (
-    <section data-guide="home-trip">
-      <div className="hn-hero -mx-4" style={{ height: ON_TRIP_H }}>
-        {route.length > 0 ? (
-          <AerialBanner
-            places={route}
-            label={`Map of the trip: ${route.map((s) => s.city).join(", ")}`}
-            height={ON_TRIP_H}
-            current={current}
-            done={behind}
-            top={190}
-            bottom={ON_TRIP_H - 80}
-            footInset={66}
-            terrain={terrain?.art ?? null}
-            scene={sceneFor(trip, cityNames)}
-          />
-        ) : (
-          <TripPicture trip={trip} photos={photos} cities={cityNames} />
-        )}
-        <span aria-hidden className="hn-haze" style={{ "--haze-end": "140px" } as CSSProperties} />
-        <BannerWords trip={trip} kicker={kicker} title={withStop(trip.title)} />
-        <Link
-          to="/trips/$tripId"
-          params={{ tripId: trip.id }}
-          viewTransition
-          aria-label={`Today on ${trip.title}`}
-          className="hn-glass-btn absolute bottom-[58px] right-4 z-[2]"
-        >
-          <Navigation className="size-5" aria-hidden />
-        </Link>
-      </div>
-      <div className="hn-panel -mx-4 space-y-3 px-4 pt-4">
+    <section data-guide="home-trip" className="space-y-3">
+      <Link to="/trips/$tripId" params={{ tripId: trip.id }} viewTransition className="block">
+        <p className="hn-kicker">{kicker}</p>
+        <h2 className="hn-title mt-1.5">{withStop(trip.title)}</h2>
+      </Link>
+      <TripPhotoBox trip={trip} photos={photos} cities={cityNames} />
+      <CityChips
+        cities={route.map((s) => ({ city: s.city, days: stayLabel(s.days) }))}
+        current={current >= 0 ? current : Math.min(behind, route.length - 1)}
+      />
+      <div className="space-y-3">
         {showStops ? <NowCards trip={trip} glance={glance} day={tags.when} /> : null}
         <TripChips
           trip={trip}
@@ -656,86 +535,27 @@ function TripChips({
 /* ------------------------------------------------------------------ */
 
 /**
- * Home with no trip (mockup "No trip"): "Where to next?" over the terrain of
- * the cities the traveller has saved places in, seen from above, a heart tag
- * at each opening Recs. Only cities the map can place are drawn.
+ * Home with no trip (Figma "Home no trip"): "No trip selected", the invitation
+ * to start one, and Plan with Béa. The saved cities follow as photo cards.
  */
-export function HomeNextNoTrip({
-  greeting,
-  date,
-  cities,
-}: {
-  greeting: string;
-  date: string;
-  cities: SavedCity[];
-}) {
-  const placed = useMemo(
-    () =>
-      cities
-        .filter(
-          (c): c is SavedCity & { lat: number; lon: number } => c.lat !== null && c.lon !== null,
-        )
-        .slice(0, 6),
-    [cities],
-  );
-  const places = useMemo(
-    () => placed.map((c) => ({ city: c.city, lat: c.lat, lon: c.lon })),
-    [placed],
-  );
+export function HomeNextNoTrip({ greeting, date }: { greeting: string; date: string }) {
   return (
-    <section data-guide="home-trip" className="hn-hero -mx-4" style={{ height: NO_TRIP_H }}>
-      <AerialBanner
-        places={places}
-        label={`Map of your saved cities: ${placed.map((c) => c.city).join(", ")}`}
-        height={NO_TRIP_H}
-        top={170}
-        bottom={NO_TRIP_H - 40}
-        mode="pins"
-        spread={[0.1, 0.62]}
+    <section
+      data-guide="home-trip"
+      className="space-y-2 rounded-[var(--r-card)] border border-border bg-muted/60 p-4"
+    >
+      <p className="hn-kicker">No trip selected</p>
+      <h2 className="hn-title !text-[30px]">Your next trip starts here</h2>
+      <p className="text-[15px] text-foreground/80">
+        Your saved places are ready when you are. Choose a city, then shape a plan.
+      </p>
+      <Link
+        to="/trips/plan"
+        aria-label={`Plan with Béa. ${greeting}, ${date}`}
+        className="flex min-h-11 items-center justify-center rounded-[var(--r-card)] border border-border bg-card px-4 text-[15px] font-semibold"
       >
-        {(pins, width) => {
-          const widths = placed.map((c) => Math.min(200, 70 + c.city.length * 9.5));
-          const boxes = calloutBoxes(
-            pins,
-            widths,
-            { width, top: 0, bottom: NO_TRIP_H - 20 },
-            {
-              height: 44,
-              keepClear: [{ x: 0, y: 0, width: Math.min(280, width * 0.72), height: 150 }],
-            },
-          );
-          return placed.map((c, i) => {
-            const box = boxes[i];
-            if (!box) return null;
-            return (
-              <Link
-                key={`${c.city}-${c.country}`}
-                to="/recommendations"
-                aria-label={`${c.city}: ${c.count} saved ${c.count === 1 ? "place" : "places"}`}
-                className="hn-tag absolute z-[1]"
-                style={{
-                  left: `${(box.x / width) * 100}%`,
-                  top: box.y,
-                  width: box.width,
-                  height: box.height,
-                }}
-              >
-                <Heart className="size-4 shrink-0 text-[var(--acc)]" weight="fill" aria-hidden />
-                <span className="min-w-0 truncate">{c.city}</span>
-                <span className="ms-auto shrink-0 text-[13px] font-medium text-muted-foreground">
-                  {c.count}
-                </span>
-              </Link>
-            );
-          });
-        }}
-      </AerialBanner>
-      <span aria-hidden className="hn-haze" style={{ "--haze-end": "140px" } as CSSProperties} />
-      <div className="relative z-[2] px-5 pt-3">
-        <p className="hn-kicker">{greeting}</p>
-        <h2 className="hn-title mt-1.5">Where to next?</h2>
-        <p className="mt-1.5 text-[15px] font-medium text-foreground/80">{date}</p>
-      </div>
+        Plan with Béa
+      </Link>
     </section>
   );
 }

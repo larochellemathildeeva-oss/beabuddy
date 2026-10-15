@@ -24,7 +24,6 @@ import {
   TripNextFeature,
   TripNextRow,
   TripsActionTile,
-  TripsNextHero,
   TripsNextSection,
 } from "@/components/next/TripsNext";
 import { useTripPicture } from "@/hooks/useTripPicture";
@@ -127,8 +126,8 @@ function TripsPage() {
   useEffect(() => {
     setView(search.view ?? "upcoming");
   }, [search.view]);
-  const [layout, setLayout] = useTripsLayout();
-  const [picture, setPicture] = useTripPicture();
+  // Figma: trips are a plain list with photo thumbnails, never maps.
+  const picture = "photo" as const;
   const {
     trips: followed,
     failed: followedFailed,
@@ -332,7 +331,7 @@ function TripsPage() {
     setCreating(true);
     setJoining(false);
   };
-  const featured = layout === "big" ? lists.upcoming[0] : undefined;
+  const featured = undefined as (typeof lists.upcoming)[number] | undefined;
   const rest = featured ? lists.upcoming.slice(1) : lists.upcoming;
   const live = !!(featured?.start_date && featured.start_date <= today);
   const row = (trip: TripRow) => (
@@ -347,12 +346,7 @@ function TripsPage() {
       picture={picture}
     />
   );
-  const switches = (withLayout: boolean) => (
-    <div className="flex flex-wrap items-center gap-2">
-      {withLayout ? <LayoutSwitch layout={layout} onLayout={setLayout} /> : null}
-      <PictureSwitch picture={picture} onPicture={setPicture} />
-    </div>
-  );
+  const switches = (_withLayout: boolean) => null;
   const pastSection = (all: boolean) =>
     lists.past.length > 0 ? (
       <TripsNextSection
@@ -430,23 +424,23 @@ function TripsPage() {
   return (
     <AppShell>
       <div className="space-y-6">
-        <TripsNextHero
-          trips={hero}
-          today={today}
-          actions={
-            t.signedIn ? (
-              <span className="pt-2 text-[14px] font-semibold">
-                {t.trips.length} {t.trips.length === 1 ? "trip" : "trips"}
-              </span>
-            ) : null
-          }
-        />
+        <header
+          data-guide="trips-header"
+          className="flex items-baseline justify-between border-b border-border pb-3"
+        >
+          <h1 className="text-[26px] font-semibold leading-tight">Your trips</h1>
+          {t.signedIn ? (
+            <span className="text-[14px] font-semibold">
+              {t.trips.length} {t.trips.length === 1 ? "trip" : "trips"}
+            </span>
+          ) : null}
+        </header>
         {t.signedIn ? (
           <>
             <div
               role="tablist"
               aria-label="Which trips"
-              className="trips-tabs tn-tabs relative z-[3] -mt-2"
+              className="trips-tabs tn-tabs relative z-[3]"
             >
               {(
                 [
