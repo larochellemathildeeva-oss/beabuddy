@@ -1497,6 +1497,10 @@ await flow("stop card: one editor opens, saves and closes", async (page) => {
     const n = (await writes(page)).length;
     await page.getByRole("button", { name: /tap to edit$/ }).first().click();
     await page.getByRole("dialog").getByRole("button", { name }).first().click();
+    // Deleting asks first, on its own page.
+    if (String(name) === String(/^Delete /)) {
+      await page.getByRole("button", { name: "Remove stop", exact: true }).click();
+    }
     await page.waitForTimeout(400);
     if ((await writes(page)).length === n) throw new Error(`${name} on the back wrote nothing`);
     await page.mouse.move(0, 0);
