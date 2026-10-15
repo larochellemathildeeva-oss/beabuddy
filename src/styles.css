@@ -5786,3 +5786,57 @@ main [class*="rounded-2xl"] {
   border-radius: var(--r-card);
   background: var(--muted);
 }
+
+/* Trip documents, as the Figma frame draws it. */
+.fd-head {
+  padding: 16px;
+  border-radius: var(--r-card);
+  background: var(--muted);
+}
+.fd-box {
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+  background: var(--card);
+}
+.fd-pill {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  border-radius: 9999px;
+  background: var(--muted);
+}
+.fd-pill.doc-search {
+  justify-content: flex-start;
+}
+.fd-seg {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1.5fr;
+  padding: 3px;
+  border: 1px solid var(--border);
+  border-radius: 9999px;
+  background: var(--card);
+}
+.fd-seg button {
+  min-height: 36px;
+  padding: 0 8px;
+  font-size: 12px;
+  border-radius: 9999px;
+}
+.fd-seg button[aria-selected="true"] {
+  background: var(--muted);
+  font-weight: 600;
+}
+.fd-round {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--border);
+  border-radius: 9999px;
+}
