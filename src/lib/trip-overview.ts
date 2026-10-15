@@ -251,3 +251,60 @@ export function stretchDates(start: string, end: string): string {
     ? `${month(from)} ${from.getDate()} – ${to.getDate()}`
     : `${month(from)} ${from.getDate()} – ${month(to)} ${to.getDate()}`;
 }
+
+/** The ways the map's filter row tells journeys apart. */
+export const TRANSPORT_MODES = ["flight", "train", "bus", "car"] as const;
+export type TransportMode = (typeof TRANSPORT_MODES)[number];
+
+const TRAIN = /\b(train|rail|railway|shinkansen|metro|subway|tram|tgv|ice|eurostar)\b/i;
+const BUS = /\b(bus|coach|shuttle|flixbus)\b/i;
+const CAR = /\b(car|drive|driving|taxi|cab|uber|rental|transfer|road trip)\b/i;
+
+/**
+ * Which way a journey on the timeline goes, or null for a stop that is not
+ * travel, or travel that names no way (it shows under "All" only).
+ */
+export function transportMode(item: {
+  kind?: string | null;
+  title?: string | null;
+}): TransportMode | null {
+  if (timelineGlyph(item) !== "transport") return null;
+  const text = `${item.kind ?? ""} ${item.title ?? ""}`;
+  if (FLIGHT.test(text)) return "flight";
+  if (TRAIN.test(text)) return "train";
+  if (BUS.test(text)) return "bus";
+  if (CAR.test(text)) return "car";
+  return null;
+}
+
+/**
+ * The stops left once one way of travelling is picked: every stop that is
+ * not travel stays, and so does travel that goes another way only when
+ * nothing is picked.
+ */
+export function withTransportMode<T extends { kind?: string | null; title?: string | null }>(
+  items: readonly T[],
+  mode: TransportMode | "all",
+): T[] {
+  if (mode === "all") return [...items];
+  return items.filter((item) => {
+    if (timelineGlyph(item) !== "transport") return true;
+    return transportMode(item) === mode;
+  });
+}
+
+/** The next stop still ahead from today, with how far off it is. */
+export function nextStopFrom<T extends { day_date: string | null; id: string }>(
+  items: readonly T[],
+  today: string,
+  isTravel: (item: T) => boolean,
+): { stop: T; inDays: number } | null {
+  const ahead = items
+    .filter((item) => item.day_date && item.day_date >= today && !isTravel(item))
+    .sort((a, b) => (a.day_date ?? "").localeCompare(b.day_date ?? ""));
+  const stop = ahead[0];
+  if (!stop?.day_date) return null;
+  const a = Date.parse(`${today}T00:00:00Z`);
+  const b = Date.parse(`${stop.day_date}T00:00:00Z`);
+  return { stop, inDays: Math.round((b - a) / 86_400_000) };
+}
