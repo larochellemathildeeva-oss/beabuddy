@@ -26,7 +26,7 @@ import { knownCityPosition } from "@/lib/city-locate";
 import { cityKey, hasPosition, tripCityStop, type CityStop } from "@/lib/city-position";
 import { liveSummary } from "@/lib/companion";
 import { currentLeg, isPastTrip } from "@/lib/home-trip";
-import type { RouteStop } from "@/lib/home-route-map";
+import { flightParts, type RouteStop } from "@/lib/home-route-map";
 import { terrainFor, TERRAIN_ART, type TerrainRegistry } from "@/lib/terrain-art";
 import { timeForRail } from "@/lib/timeline-kind";
 import { pickTripPhoto, tripDateLine } from "@/lib/trip-card";
@@ -399,11 +399,11 @@ export function TripsActionTile({
         <Icon className="size-[22px]" aria-hidden />
       </span>
       <span className="min-w-0">
-        <span className="block font-display text-[19px] leading-tight">{title}</span>
-        <span className="block text-[13px] leading-snug text-muted-foreground">{sub}</span>
+        <span className="block text-[15px] font-semibold leading-tight">{title}</span>
+        <span className="block text-[12px] leading-snug text-muted-foreground">{sub}</span>
       </span>
     </>,
-    `tn-action tile-fill-${tone}`,
+    `tn-action tone-${tone}`,
   );
 }
 
@@ -820,40 +820,40 @@ export function TripNextRow({
     trip.start_date || trip.end_date
       ? tripDateLine(trip.start_date, trip.end_date)
       : "No dates yet";
+  const parts = glance?.flight
+    ? flightParts(`${glance.flight.title} ${glance.flight.detail ?? ""}`)
+    : null;
+  const flightText = glance?.flight ? (parts?.code ?? glance.flight.title) : "—";
+  const todoText = glance ? String(glance.todos.open) : "—";
+  const packText = glance?.packing ? `${Math.round(glance.packing.ratio * 100)}%` : "—";
   return (
-    <div className="tn-row relative flex min-h-[120px] overflow-hidden">
-      <div className="relative m-2 w-[36%] max-w-[156px] shrink-0 overflow-hidden rounded-[16px] bg-muted">
+    <div className="tn-row relative flex min-h-[120px] items-center gap-3 overflow-hidden p-2.5">
+      <div className="relative h-[70px] w-[36%] max-w-[150px] shrink-0 overflow-hidden rounded-[var(--r-card)] border border-border bg-muted">
         <TripFill
           trip={trip}
           photos={photos}
           cityNames={cityNames}
           route={route}
           picture={picture}
-          height={104}
-          top={20}
-          bottom={86}
+          height={70}
+          top={14}
+          bottom={56}
           compact
           registry={registry}
         />
       </div>
-      <div className="flex min-w-0 flex-1 flex-col gap-0.5 py-3 pl-1.5 pr-12">
-        <p className="line-clamp-2 break-words font-display text-[21px] leading-tight">
+      <div className="flex min-w-0 flex-1 flex-col gap-0.5 pr-8">
+        <p className="line-clamp-2 break-words text-[17px] font-semibold leading-tight">
           {trip.title}
         </p>
-        <p className="truncate text-[14px] text-muted-foreground">
+        <p className="truncate text-[13px]">
           {dates}
           {trip.dates_status === "tentative" && trip.start_date ? " · tentative" : ""}
         </p>
-        {places ? <p className="truncate text-[13px] text-muted-foreground">{places}</p> : null}
-        {leg && !live ? (
-          <p className="truncate text-[13px] font-semibold text-foreground/80">
-            {leg.label} · {short(leg.city)}
-          </p>
-        ) : null}
-        <div className="mt-auto flex flex-wrap items-center gap-2 pt-1">
-          <Faces people={people} count={peopleCount} {...(me ? { me } : {})} />
-          {tag ? <Tag tag={tag} /> : null}
-        </div>
+        <p className="truncate text-[12px] text-muted-foreground">
+          Flight {flightText} · To-do {todoText}
+        </p>
+        <p className="truncate text-[12px] text-muted-foreground">Packing {packText}</p>
       </div>
       <Link
         to="/trips/$tripId"
@@ -949,7 +949,7 @@ export function TripsNextSection({
   return (
     <section className="rise">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
-        <h2 className="font-display text-[24px] leading-none">{title}</h2>
+        <h2 className="text-[24px] font-semibold leading-none">{title}</h2>
         {aside}
       </div>
       {children}

@@ -104,8 +104,12 @@ export function HomeNextUpcoming({ trip, photos }: { trip: TripRow; photos: Trip
           {when ? <span className="block">{when}</span> : null}
         </h2>
       </Link>
-      <TripPhotoBox trip={trip} photos={photos} cities={cityNames} />
-      <CityChips cities={route.map((s) => ({ city: s.city, days: stayLabel(s.days) }))} />
+      <div className="overflow-hidden rounded-[var(--r-card)] border border-border bg-card">
+        <TripPhotoBox trip={trip} photos={photos} cities={cityNames} />
+        <div className="border-t border-border p-2">
+          <CityChips cities={route.map((s) => ({ city: s.city, days: stayLabel(s.days) }))} />
+        </div>
+      </div>
     </section>
   );
 }
@@ -121,7 +125,7 @@ function TripPhotoBox({
   cities: string[];
 }) {
   return (
-    <div className="relative h-[132px] overflow-hidden rounded-[var(--r-card)] border border-border">
+    <div className="relative h-[112px] overflow-hidden">
       <TripPicture trip={trip} photos={photos} cities={cities} />
     </div>
   );
@@ -192,62 +196,53 @@ export function HomeNextStats({
   const packed = packing
     ? new Intl.NumberFormat(undefined, { style: "percent" }).format(percent / 100)
     : "—";
+  const tile =
+    "flex min-h-[64px] flex-col justify-center gap-0.5 rounded-[var(--r-card)] border border-border bg-card px-3 py-2.5";
   return (
     <section
       data-guide="home-next"
       aria-label="This trip at a glance"
-      className={`hn-stats relative z-[3] ${overlap ? "-mt-12" : ""} grid grid-cols-3 gap-2`}
+      className="grid grid-cols-3 gap-2"
     >
       <Link
         to="/trips/$tripId"
         params={{ tripId: trip.id }}
         search={{ prep: "todo" }}
-        className="hn-chip hn-chip-1"
+        className={tile}
       >
-        <span className="hn-chip-icon">
-          <Check className="size-4" aria-hidden />
-        </span>
         <Stat big={String(open)} small={open === 1 ? "to-do" : "to-dos"} />
       </Link>
       <Link
         to="/trips/$tripId"
         params={{ tripId: trip.id }}
         search={flight ? {} : { view: "bookings" }}
-        className="hn-chip hn-chip-2"
+        className={tile}
       >
-        <span className="hn-chip-icon">
-          <Plane className="size-4" aria-hidden />
-        </span>
         {flight ? (
           <Stat
             big={parts?.code ?? flight.title}
             small={[parts?.route, shortDay(flight.day_date)].filter(Boolean).join(" · ")}
+            icon={<Plane className="size-4" aria-hidden />}
           />
         ) : (
-          <Stat big="Flight" small="Not added yet" />
+          <Stat
+            big="Flight"
+            small="Not added yet"
+            icon={<Plane className="size-4" aria-hidden />}
+          />
         )}
       </Link>
       <Link
         to="/trips/$tripId"
         params={{ tripId: trip.id }}
         search={{ prep: "packing" }}
-        className="hn-chip hn-chip-4"
+        className={tile}
       >
-        <span className="hn-chip-icon">
-          <Luggage className="size-4" aria-hidden />
-        </span>
-        <span className="w-full min-w-0">
-          <Stat big={packed} small={packing ? "packed" : "Packing list"} />
-          <span
-            aria-hidden
-            className="mt-1 block h-1 w-full overflow-hidden rounded-full bg-[var(--stat-track)]"
-          >
-            <span
-              className="block h-full rounded-full bg-[image:var(--stat-fill)]"
-              style={{ width: `${percent}%` }}
-            />
-          </span>
-        </span>
+        <Stat
+          big={packed}
+          small={packing ? "packed" : "Packing list"}
+          icon={<Luggage className="size-4" aria-hidden />}
+        />
       </Link>
     </section>
   );
@@ -259,7 +254,7 @@ export function HomeNextContinue({ trip }: { trip: TripRow }) {
     <Link
       to="/trips/$tripId"
       params={{ tripId: trip.id }}
-      className="hn-card flex min-h-[64px] flex-col justify-center gap-0.5 px-4 py-3"
+      className="flex min-h-[64px] flex-col justify-center gap-0.5 rounded-[var(--r-card)] border border-border bg-card px-4 py-3"
     >
       <span className="flex items-center gap-1.5 text-[16px] font-bold leading-tight">
         Continue trip
@@ -272,10 +267,13 @@ export function HomeNextContinue({ trip }: { trip: TripRow }) {
   );
 }
 
-function Stat({ big, small }: { big: string; small: string }) {
+function Stat({ big, small, icon }: { big: string; small: string; icon?: ReactNode }) {
   return (
     <span className="block min-w-0">
-      <span className="block truncate text-[16px] font-bold leading-tight">{big}</span>
+      <span className="flex items-center gap-1.5 text-[16px] font-bold leading-tight">
+        {icon}
+        <span className="truncate">{big}</span>
+      </span>
       <span className="line-clamp-2 block break-words text-[13px] leading-snug text-muted-foreground">
         {small}
       </span>

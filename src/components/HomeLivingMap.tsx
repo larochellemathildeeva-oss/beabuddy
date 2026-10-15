@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { Link } from "@tanstack/react-router";
-import { ArrowRight } from "@/components/icons";
+import { ArrowRight, Search } from "@/components/icons";
 import { HomeTripBanner } from "@/components/HomeTripBanner";
 import type { TripPhotoRow } from "@/hooks/useTripPhotos";
 import type { TripRow } from "@/hooks/useTrips";
@@ -24,9 +24,15 @@ export function HomeUpcoming({ trip, photos }: { trip: TripRow; photos: TripPhot
 /** "Where to next?": the way into planning another trip. */
 export function HomeWhereNext() {
   return (
-    <Link to="/trips/plan" className="flex h-[52px] items-center gap-3 border border-border px-4">
-      <span className="flex-1 text-[14px] text-muted-foreground">Where to next?</span>
-      <ArrowRight className="size-[18px] shrink-0" aria-hidden />
+    <Link
+      to="/trips/plan"
+      className="flex h-[52px] items-center gap-3 rounded-full border border-border bg-card px-4"
+    >
+      <Search className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+      <span className="flex-1 text-[15px] font-medium">Where to next?</span>
+      <span className="grid size-9 shrink-0 place-items-center rounded-full bg-muted">
+        <ArrowRight className="size-[18px]" aria-hidden />
+      </span>
     </Link>
   );
 }
@@ -65,7 +71,6 @@ export function HomeSuggested({
   ];
   return (
     <section data-guide="home-suggested">
-      <p className="label-caps mb-1">Béa suggests</p>
       <div className="mb-1.5 flex items-center justify-between gap-3">
         <h2>Suggested for your trip</h2>
         <Link
@@ -83,24 +88,18 @@ export function HomeSuggested({
             to="/trips/$tripId"
             params={{ tripId: trip.id }}
             search={{ plan: "build", ask: idea.ask }}
-            className="group relative aspect-square overflow-hidden rounded-[var(--r-card)] bg-muted"
+            className="flex flex-col gap-2 rounded-[var(--r-card)] border border-border bg-card p-1.5 pb-2.5"
           >
-            <img
-              src={idea.art}
-              alt=""
-              decoding="async"
-              className="art-dim absolute inset-0 size-full object-cover transition-transform duration-(--t-move) group-hover:scale-[1.03]"
-            />
-            <span
-              aria-hidden
-              className="absolute inset-0 bg-[linear-gradient(to_bottom,transparent_35%,rgb(0_0_0/0.62))]"
-            />
-            <span className="absolute bottom-2.5 left-2.5 right-7 text-[13.5px] font-bold leading-[1.15] text-white">
-              {idea.label}
+            <span className="relative block aspect-[4/3] overflow-hidden rounded-[6px] bg-muted">
+              <img
+                src={idea.art}
+                alt=""
+                decoding="async"
+                className="art-dim absolute inset-0 size-full object-cover"
+              />
             </span>
-            <span className="absolute bottom-2 right-1.5 grid size-[26px] place-items-center rounded-full bg-black/35 text-white backdrop-blur-sm">
-              <ArrowRight className="size-[15px]" />
-            </span>
+            <span className="px-1 text-[14px] font-bold leading-[1.15]">{idea.label}</span>
+            <ArrowRight className="mx-1 size-4" aria-hidden />
           </Link>
         ))}
       </div>

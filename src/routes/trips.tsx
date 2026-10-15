@@ -393,7 +393,19 @@ function TripsPage() {
             />
           </TripsNextSection>
         ) : (
-          <TripsNextSection title="Upcoming trips" aside={switches(true)}>
+          <TripsNextSection
+            title="Upcoming trips"
+            aside={
+              <button
+                type="button"
+                onClick={() => setView("all")}
+                className="flex min-h-11 shrink-0 items-center gap-0.5 text-[15px] font-semibold"
+              >
+                See all
+                <ChevronRight className="size-4" aria-hidden />
+              </button>
+            }
+          >
             <div className="space-y-3">{rest.map(row)}</div>
           </TripsNextSection>
         )
@@ -437,11 +449,7 @@ function TripsPage() {
         </header>
         {t.signedIn ? (
           <>
-            <div
-              role="tablist"
-              aria-label="Which trips"
-              className="trips-tabs tn-tabs relative z-[3]"
-            >
+            <div role="tablist" aria-label="Which trips" className="fg-tabs">
               {(
                 [
                   ["upcoming", "Upcoming"],
