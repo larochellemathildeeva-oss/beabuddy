@@ -49,64 +49,114 @@ function HomePage() {
   return <SignedInHomeNext />;
 }
 
-/** The welcome page, as the minimalist design draws it ("Minimalist / landing"). */
+/** The welcome page, as the Figma "Welcome" frame draws it. */
 function LandingPage() {
-  const link = "flex min-h-11 items-center text-[14px] text-foreground";
+  const row = "lp-row";
   return (
     <AppShell publicPage>
-      <div className="landing space-y-6">
-        <header className="space-y-2">
-          <h1 className="text-[28px] font-bold leading-[1.4]">
+      <div className="landing space-y-3">
+        <section className="lp-hero">
+          <h1 className="text-[32px] font-semibold leading-[1.15]">
             Turn your saved places into a trip that works.
           </h1>
-          <p className="text-[14px] leading-[1.4] text-muted-foreground">
-            Béa helps organise your places into daily plans, with directions and bookings together
-            when you travel.
+          <p className="mt-5 text-[11px] font-bold uppercase tracking-[0.04em]">
+            Plan. Keep. Remember.
           </p>
-        </header>
+          <p className="mt-2 text-[10px] uppercase tracking-[0.04em] text-muted-foreground">
+            Kyoto day demo
+          </p>
+          <svg viewBox="0 0 320 170" className="mt-4 h-[170px] w-full" aria-hidden>
+            <path
+              d="M12 160 L72 118 L150 88 L230 52"
+              fill="none"
+              stroke="currentColor"
+              strokeDasharray="5 5"
+              strokeWidth="1.4"
+              opacity="0.55"
+            />
+            <g transform="translate(118 90) rotate(-25)">
+              <path
+                d="M0 -9 L3 -3 L12 2 L12 5 L3 3 L3 9 L6 11 L6 13 L0 12 L-6 13 L-6 11 L-3 9 L-3 3 L-12 5 L-12 2 L-3 -3 Z"
+                fill="var(--card)"
+                stroke="currentColor"
+                strokeWidth="1.2"
+              />
+            </g>
+          </svg>
+          <div className="lp-pill" aria-hidden>
+            <span className="lp-dot" />
+            <span>
+              <span className="block text-[13px] font-semibold">Kyoto</span>
+              <span className="block text-[11px] text-muted-foreground">Japan</span>
+            </span>
+          </div>
+        </section>
 
-        <div className="space-y-2">
-          <StartFree />
-          <a href="#example-trip" className={link}>
-            See a sample trip
-          </a>
-          <p className="text-[12px] leading-[1.4] text-muted-foreground">
-            Free account · No card required
+        <section className="lp-card">
+          <h2 className="text-[15px] font-semibold">From saved places to a trip that works</h2>
+          <p className="mt-2 text-[13px] leading-snug text-muted-foreground">
+            Make a plan from saved places.
+            <br />
+            Keep directions and bookings together.
+            <br />
+            Remember places for next time.
           </p>
-        </div>
+        </section>
+
+        <Link to="/auth" search={{ mode: "signup" }} className={row}>
+          <span className="lp-dot" aria-hidden />
+          <span className="min-w-0 flex-1">
+            <span className="block text-[14px] font-semibold">Start free</span>
+            <span className="block text-[12px] text-muted-foreground">
+              Sign in or create an account
+            </span>
+          </span>
+          <span aria-hidden>›</span>
+        </Link>
+        <Link to="/auth" className={row}>
+          <span className="lp-dot" aria-hidden />
+          <span className="min-w-0 flex-1">
+            <span className="block text-[14px] font-semibold">Sign in</span>
+            <span className="block text-[12px] text-muted-foreground">
+              Continue with your existing account
+            </span>
+          </span>
+          <span aria-hidden>›</span>
+        </Link>
+        <Link to="/how-it-works" className={row}>
+          <span className="lp-dot" aria-hidden />
+          <span className="min-w-0 flex-1">
+            <span className="block text-[14px] font-semibold">How Béa works</span>
+            <span className="block text-[12px] text-muted-foreground">
+              Learn how trips, invites, and privacy work
+            </span>
+          </span>
+          <span aria-hidden>›</span>
+        </Link>
+        <Link to="/auth" search={{ mode: "signup", redirect: "/trips" }} className={row}>
+          <span className="lp-dot" aria-hidden />
+          <span className="min-w-0 flex-1">
+            <span className="block text-[14px] font-semibold">Joining friends?</span>
+            <span className="block text-[12px] text-muted-foreground">
+              Enter an invite code after signup, then Trips
+            </span>
+          </span>
+          <span aria-hidden>›</span>
+        </Link>
+
+        <nav aria-label="More about Béa" className="flex flex-col items-center gap-1 pt-2">
+          <Link to="/terms" className="flex min-h-9 items-center text-[12px] text-muted-foreground">
+            Terms
+          </Link>
+          <Link
+            to="/privacy"
+            className="flex min-h-9 items-center text-[12px] text-muted-foreground"
+          >
+            Privacy
+          </Link>
+        </nav>
 
         <ExampleTrip />
-
-        <ul className="space-y-3">
-          {LANDING_POINTS.map((point) => (
-            <li
-              key={point.title}
-              className="space-y-2 rounded-[var(--r-card)] border border-border bg-card p-4"
-            >
-              <p className="text-[16px] font-bold leading-[1.4]">{point.title}</p>
-              <p className="text-[14px] leading-[1.4] text-muted-foreground">{point.body}</p>
-            </li>
-          ))}
-        </ul>
-
-        <StartFree />
-
-        <nav aria-label="More about Béa" className="space-y-6">
-          <Link to="/auth" search={{ mode: "signup", redirect: "/trips" }} className={link}>
-            Joining friends? Enter an invite code
-          </Link>
-          <Link to="/how-it-works" className={link}>
-            How Béa works
-          </Link>
-          <div className="grid grid-cols-2 gap-2">
-            <Link to="/terms" className={link}>
-              Terms of Service
-            </Link>
-            <Link to="/privacy" className={link}>
-              Privacy Policy
-            </Link>
-          </div>
-        </nav>
       </div>
     </AppShell>
   );
@@ -154,34 +204,5 @@ function ExampleTrip() {
         ),
       )}
     </section>
-  );
-}
-
-/** What a visitor gets, in their words rather than the features'. */
-const LANDING_POINTS = [
-  {
-    title: "Make a plan from your saved places",
-    body: "Bring links, lists or ideas. Béa helps organise the days.",
-  },
-  {
-    title: "Keep directions and bookings together",
-    body: "Know what comes next, with the details close by.",
-  },
-  {
-    title: "Remember places for next time",
-    body: "Keep discoveries, notes and memories after the trip.",
-  },
-] as const;
-
-/** The sign-up button. */
-function StartFree() {
-  return (
-    <Link
-      to="/auth"
-      search={{ mode: "signup" }}
-      className="flex h-[52px] items-center justify-center rounded-[var(--r-card)] bg-primary text-[14px] font-medium text-primary-foreground"
-    >
-      Start planning free
-    </Link>
   );
 }

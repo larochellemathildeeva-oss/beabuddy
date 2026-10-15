@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { friendlyError } from "@/lib/friendly-error";
 import { RowListSkeleton } from "@/components/Skeletons";
 import { confirm } from "@/lib/haptics";
@@ -161,7 +161,6 @@ function RecommendationsPage() {
   const [tagsTouched, setTagsTouched] = useState(false);
   const [moreTags, setMoreTags] = useState(false);
   /** The other ways in, folded away until asked for. */
-  const [moreWays, setMoreWays] = useState(false);
   /** Send / Open a share, asked for from the "+" menu. */
   const [shareAsk, setShareAsk] = useState<{ mode: "picking" | "opening"; n: number } | null>(null);
   /** What the one add field currently holds. */
@@ -676,7 +675,6 @@ function RecommendationsPage() {
     setLocResults(null);
     setError(null);
     if (m === "here") handleHere();
-    setMoreWays(false);
   };
 
   // Each screen opens at its top, as a new page would.
@@ -713,11 +711,7 @@ function RecommendationsPage() {
   const shownGroups = listFilter === "all" ? groups : groups.filter((g) => g.type === listFilter);
 
   return (
-    <AppShell
-      {...(screen.kind === "home"
-        ? { eyebrow: "Recs / saved", title: "Places worth keeping." }
-        : {})}
-    >
+    <AppShell {...(screen.kind === "home" ? { homeHeader: true } : {})}>
       {nearbyOpen && (
         <div className={screen.kind === "nearby" ? "" : "hidden"}>
           <ExploreNearby
@@ -987,16 +981,25 @@ function RecommendationsPage() {
 
       {screen.kind === "home" && (
         <div className="space-y-3">
+          {/* The Figma "Recs" frame: a big title and what the page is for. */}
+          <div>
+            <h1 className="text-[40px] font-bold leading-[1.05]">Recs.</h1>
+            <p className="mt-2 text-[11px] font-medium uppercase leading-[1.4] tracking-[0.04em] text-muted-foreground">
+              Every place someone told you about, kept with who said it and why. Places worth
+              keeping.
+            </p>
+          </div>
           {/* One field, whatever you have: a name is looked up as you type, a
               pasted link gets read. The filter button beside it opens the
               saved places with their search, city and type filters. */}
           <section data-guide="reco-add" className="space-y-3">
             {/* The design's search box: a small label over the words, one hairline box. */}
-            <div className="recs-search rounded-[var(--r-card)] border border-border px-3 pb-2 pt-3">
-              <p id="recs-search-label" className="text-[12px] leading-[1.4]">
+            <div className="recs-search flex items-center gap-2 rounded-full border border-border bg-card px-4 py-1">
+              <Search className="size-5 shrink-0 text-muted-foreground" aria-hidden />
+              <p id="recs-search-label" className="sr-only">
                 Search or add a place
               </p>
-              <div className="relative min-w-0 [&_textarea]:min-h-11 [&_textarea]:border-0 [&_textarea]:bg-transparent [&_textarea]:px-0 [&_textarea]:py-2 [&_textarea]:text-[16px] [&_textarea]:leading-[1.4] [&_textarea]:shadow-none [&_textarea+button]:size-11 [&_textarea:placeholder-shown+button]:hidden">
+              <div className="relative min-w-0 flex-1 [&_textarea]:min-h-11 [&_textarea]:border-0 [&_textarea]:bg-transparent [&_textarea]:px-0 [&_textarea]:py-2 [&_textarea]:text-[16px] [&_textarea]:leading-[1.4] [&_textarea]:shadow-none [&_textarea+button]:size-11 [&_textarea:placeholder-shown+button]:hidden">
                 <PlaceSearchInput
                   value={addText}
                   onChange={setAddText}
@@ -1005,7 +1008,7 @@ function RecommendationsPage() {
                   onPick={openFound}
                   ariaLabelledBy="recs-search-label"
                   placeholder={
-                    views.length > 0 ? "Search places, cities, people…" : addPlaceholder(false)
+                    views.length > 0 ? "Search name or paste map link" : addPlaceholder(false)
                   }
                   onSaveTyped={(text) => {
                     setAddText("");
@@ -1314,9 +1317,9 @@ function RecommendationsPage() {
 
           <div
             role="tablist"
-            aria-label="Recs views"
+            aria-label="Recs sections"
             data-guide="explore-nearby"
-            className="grid grid-cols-3"
+            className="fr-seg"
           >
             {(
               [
@@ -1339,43 +1342,141 @@ function RecommendationsPage() {
             ))}
           </div>
 
+          {views.length > 0 && (
+            <div data-guide="reco-search" className="fr-filters">
+              <FilterSelect
+                guide="reco-places"
+                label="City"
+                value={placeFilter}
+                all="All places"
+                allLabel="All cities"
+                options={places}
+                onChange={setPlaceFilter}
+                plain
+              />
+              <FilterSelect
+                guide="reco-categories"
+                label="Kind"
+                value={category}
+                all="All"
+                options={categories}
+                onChange={setCategory}
+                plain
+              />
+            </div>
+          )}
+
+          <div className="fr-tiles" role="group" aria-label="Add places">
+            {(
+              [
+                ["Add manually", "Name, note, and source", () => startMode("manual")],
+                ["Paste list/ article", "Extract places from text", () => startMode("list")],
+                [
+                  "Send places as code",
+                  "Share a compact pack",
+                  () => {
+                    setShareAsk((prev) => ({ mode: "picking", n: (prev?.n ?? 0) + 1 }));
+                    setMode(null);
+                    setDraft(null);
+                  },
+                ],
+                [
+                  "Open a share",
+                  "Import a shared rec",
+                  () => {
+                    setShareAsk((prev) => ({ mode: "opening", n: (prev?.n ?? 0) + 1 }));
+                    setMode(null);
+                    setDraft(null);
+                  },
+                ],
+                ["From my trips", "Places on your plans", () => startMode("trips")],
+                ["I'm here now", "Save where you are", () => startMode("here")],
+                [
+                  "Pin nearby",
+                  "Pick on the map",
+                  () => setScreen({ kind: "nearby", browse: "All" }),
+                ],
+              ] as const
+            ).map(([title, note, go]) => (
+              <button key={title} type="button" onClick={go} className="fr-tile">
+                <span className="text-[13px] font-semibold leading-tight">{title}</span>
+                <span className="text-[11px] leading-tight text-muted-foreground">{note}</span>
+              </button>
+            ))}
+          </div>
+
+          {views.length > 0 && (
+            <div className="fr-chips" aria-label="Kinds and lists">
+              {categories
+                .filter((c) => c !== "All")
+                .slice(0, 4)
+                .map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    aria-pressed={category === c}
+                    onClick={() => setCategory(category === c ? "All" : c)}
+                    className={category === c ? "is-on" : ""}
+                  >
+                    {c}
+                  </button>
+                ))}
+              <span className="fr-break" aria-hidden />
+              {pinChoices.map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setScreen({ kind: "saved", list: t })}
+                  className={t === "reco" ? "is-on" : ""}
+                >
+                  {pinLabel[t]}
+                </button>
+              ))}
+            </div>
+          )}
+
           {views.length === 0 && !vault.loading ? (
             <section data-guide="reco-list">
               <EmptyVault />
             </section>
           ) : (
             <section data-guide="reco-list" className="space-y-3">
-              {recentlySaved(visibleRows, 1).map((r) => (
+              <div className="flex items-baseline justify-between">
+                <h2 className="text-[18px] font-semibold">Recently saved</h2>
                 <button
-                  key={r.id}
                   type="button"
-                  onClick={() => openPlace(placeFromRow(r))}
-                  aria-label={`Open ${r.name}`}
-                  className="block w-full"
+                  onClick={() => setScreen({ kind: "saved", list: "all" })}
+                  className="text-[12px] font-medium"
                 >
-                  <PlaceArt
-                    place={{ name: r.name, category: r.category, lat: r.lat, lon: r.lon }}
-                    className="h-[160px] w-full rounded-[var(--r-card)]"
-                    eager
-                  />
+                  See all →
                 </button>
-              ))}
-              <div className="space-y-2">
-                <hr className="border-0 border-t border-[var(--rule)]" />
-                <p className="text-[12px] leading-[1.4]">Recently saved</p>
               </div>
               {vault.loading && vault.rows.length === 0 && <RowListSkeleton />}
-              <ul>
-                {recentlySaved(visibleRows, 3).map((r) => (
+              <ul className="space-y-2">
+                {recentlySaved(
+                  visibleRows.filter((r) => inCategory.some((v) => v.id === r.id)),
+                  4,
+                ).map((r) => (
                   <li key={r.id}>
                     <button
                       type="button"
                       onClick={() => openPlace(placeFromRow(r))}
-                      className="flex w-full flex-col gap-1 border-b border-border py-3 text-left"
+                      aria-label={`Open ${r.name}`}
+                      className="fr-card"
                     >
-                      <span className="truncate text-[16px] leading-[1.4]">{r.name}</span>
-                      <span className="truncate text-[14px] leading-[1.4]">
-                        {[r.city, r.category].filter(Boolean).join(" / ")}
+                      <PlaceArt
+                        place={{ name: r.name, category: r.category, lat: r.lat, lon: r.lon }}
+                        className="size-16 shrink-0 rounded-[6px] border border-border"
+                      />
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-[15px] font-semibold">{r.name}</span>
+                        <span className="block truncate text-[12px] text-muted-foreground">
+                          {formatTripLocation(r.city, r.country)}
+                        </span>
+                        <span className="block truncate text-[11px] text-muted-foreground">
+                          Source: {r.source || r.recommended_by || "unknown"}
+                          {r.notes ? ` · Note: ${r.notes}` : ""}
+                        </span>
                       </span>
                     </button>
                   </li>
@@ -1384,89 +1485,20 @@ function RecommendationsPage() {
             </section>
           )}
 
-          <div className="space-y-3">
-            <button
-              type="button"
-              aria-expanded={moreWays}
-              onClick={() => setMoreWays(true)}
-              className="flex h-[52px] w-full items-center justify-center rounded-[var(--r-card)] bg-primary text-[14px] font-medium text-primary-foreground"
-            >
-              Save a place
-            </button>
-            <button
-              type="button"
-              data-guide="reco-search"
-              onClick={() => setScreen({ kind: "saved", list: "all" })}
-              className="flex h-[52px] w-full items-center justify-center rounded-[var(--r-card)] border border-border bg-card text-[14px] font-medium text-foreground"
-            >
-              Filters
-            </button>
+          <div className="fr-note">
+            <p className="text-[14px] font-semibold">World&apos;s Bucket list</p>
+            <p className="mt-1 text-[12px] text-muted-foreground">
+              Whole cities and countries belong here. They show in World&apos;s Bucket list, not
+              mixed with business cards.
+            </p>
           </div>
+          <Link to="/trips/plan" className="fr-plan">
+            <span className="text-[14px] font-semibold">Plan with Béa</span>
+            <span className="text-[12px] text-muted-foreground">
+              Select places to move them into a trip and start planning together.
+            </span>
+          </Link>
         </div>
-      )}
-
-      {moreWays && (
-        <Sheet label="Add a place" onClose={() => setMoreWays(false)}>
-          <h2 id="reco-add-menu" className="pr-10 font-display text-[27px] leading-none">
-            Add a place
-          </h2>
-          <p className="mt-1 text-[14px] text-muted-foreground">
-            Or search above: a name or a pasted link works too.
-          </p>
-          <div className="mt-4 grid grid-cols-2 gap-2">
-            {(
-              [
-                ["trips", "From my trips", MapPinned],
-                ["here", "I'm here now", LocateFixed],
-                ["manual", "By hand", Hand],
-                ["list", "Paste a list", ListPlus],
-              ] as const
-            ).map(([m, label, Icon], i) => (
-              <button
-                key={m}
-                type="button"
-                onClick={() => startMode(m)}
-                className={`tile-fill-${i + 1} flex items-center gap-2 rounded-2xl border border-border px-3 py-3 text-left text-[15px] font-semibold`}
-              >
-                <Icon className="size-5 shrink-0 text-primary" aria-hidden />
-                {label}
-              </button>
-            ))}
-            {(
-              [
-                ["picking", "Send places", Share2],
-                ["opening", "Open a share", Inbox],
-              ] as const
-            ).map(([m, label, Icon], i) => (
-              <button
-                key={m}
-                type="button"
-                onClick={() => {
-                  setScreen({ kind: "home" });
-                  setShareAsk((prev) => ({ mode: m, n: (prev?.n ?? 0) + 1 }));
-                  setMode(null);
-                  setDraft(null);
-                  setMoreWays(false);
-                }}
-                className={`tile-fill-${i + 5 > 5 ? 1 : 5} flex items-center gap-2 rounded-2xl border border-border px-3 py-3 text-left text-[15px] font-semibold`}
-              >
-                <Icon className="size-5 shrink-0 text-primary" aria-hidden />
-                {label}
-              </button>
-            ))}
-            <button
-              type="button"
-              onClick={() => {
-                setMoreWays(false);
-                setScreen({ kind: "nearby", browse: "All" });
-              }}
-              className="tile-fill-2 col-span-2 flex items-center gap-2 rounded-2xl border border-border px-3 py-3 text-left text-[15px] font-semibold"
-            >
-              <MapPinned className="size-5 shrink-0 text-primary" aria-hidden />
-              Pin somewhere nearby
-            </button>
-          </div>
-        </Sheet>
       )}
 
       {justSaved && (
@@ -1586,17 +1618,47 @@ function FilterSelect({
   label,
   value,
   all,
+  allLabel = "All",
   options,
   onChange,
+  plain = false,
 }: {
   guide: string;
   label: string;
   value: string;
   all: string;
+  allLabel?: string;
   options: string[];
   onChange: (value: string) => void;
+  /** Drawn as a plain field of a row, with no pill of its own. */
+  plain?: boolean;
 }) {
   const on = value !== all;
+  if (plain)
+    return (
+      <label
+        data-guide={guide}
+        className="relative flex min-w-0 flex-1 items-center gap-1 text-[13px]"
+      >
+        <span>{label}:</span>
+        <span className="truncate">{on ? value : allLabel}</span>
+        <span aria-hidden className="text-[9px]">
+          ▾
+        </span>
+        <select
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          aria-label={`Filter by ${label.toLowerCase()}`}
+          className="absolute inset-0 size-full cursor-pointer opacity-0"
+        >
+          {options.map((o) => (
+            <option key={o} value={o}>
+              {o === all ? allLabel : o}
+            </option>
+          ))}
+        </select>
+      </label>
+    );
   return (
     <label
       data-guide={guide}

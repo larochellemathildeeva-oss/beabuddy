@@ -112,8 +112,8 @@ test("each walk teaches one goal, in a few steps", () => {
     .toLowerCase();
   for (const needle of [
     "plan with béa",
-    "build a new trip",
-    "import your plan",
+    "plan from saved places",
+    "import bookings",
     "help me choose",
     "offline",
     "directions",

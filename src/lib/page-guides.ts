@@ -165,11 +165,11 @@ export const guides: Record<string, Guide> = {
     about:
       "Béa's planner: start a trip from what you saved, or improve one you already have. You approve before anything saves.",
     features: [
-      "Build a new trip: a day-by-day plan from your saved places and preferences",
-      "Import your plan: a photo, PDF, calendar or pasted text becomes a trip",
-      "Optimize my trip: a better order for a trip's stops, with less travel",
+      "Plan from saved places: a day-by-day plan from your saved places and preferences",
+      "Import bookings: a photo, PDF, calendar or pasted text becomes a trip",
+      "Improve my itinerary: a better order for a trip's stops, with less travel",
       "Compare options: two plans side by side, with pros and cons",
-      "Planning in ChatGPT or another assistant? Import your plan has Get the AI prompt; paste its answer back",
+      "Planning in ChatGPT or another assistant? Import bookings has Get the AI prompt; paste its answer back",
       "Béa does not book or check availability; you reserve yourself",
     ],
     steps: [

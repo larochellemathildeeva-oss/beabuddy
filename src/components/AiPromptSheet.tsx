@@ -34,7 +34,7 @@ export function AiPromptCopy() {
         <p className="mt-1 text-[16px] leading-[22px]">Copy into your preferred AI tool</p>
         <p className="mt-1 text-[14px] leading-[20px] text-muted-foreground">
           ChatGPT, Gemini, Claude or whichever you use: fill in the brackets, then paste its answer
-          into Plan with Béa → Import your plan. It asks for one place per line with a time and a
+          into Plan with Béa → Import bookings. It asks for one place per line with a time and a
           street address, the shape Béa reads straight, so each stop gets its own pin.
         </p>
       </div>

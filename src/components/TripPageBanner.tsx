@@ -41,6 +41,7 @@ export function TripPageBanner({
   viewTransitionName,
   card,
   kicker,
+  strip = false,
 }: {
   title: string;
   city?: string | null;
@@ -68,6 +69,8 @@ export function TripPageBanner({
   card?: { kicker: string; tripId: string };
   /** Above the name on the trip page: "Trip / overview". */
   kicker?: string;
+  /** Only the picture, as a slim strip: the head card draws the words. */
+  strip?: boolean;
 }) {
   const mine = look !== "illustration" && look !== "stock" && own.length > 0;
   const [turn, setTurn] = useState(0);
@@ -117,6 +120,33 @@ export function TripPageBanner({
         ? () => setBrokenOwn(ownUrl)
         : undefined,
   };
+
+  if (strip) {
+    return (
+      <div
+        className="tf-photo"
+        style={viewTransitionName ? { viewTransitionName } : undefined}
+        aria-hidden
+      >
+        {imageUrl ? (
+          <img
+            key={imageUrl}
+            {...photoProps}
+            alt=""
+            className="art-dim absolute inset-0 size-full object-cover"
+          />
+        ) : null}
+        {credited ? (
+          <p
+            title={photoCredit(credited)}
+            className="absolute start-2 top-1 max-w-[70%] truncate bg-black/70 px-2 py-0.5 text-[12px] text-white"
+          >
+            {photoCredit(credited)}
+          </p>
+        ) : null}
+      </div>
+    );
+  }
 
   if (card) {
     return (

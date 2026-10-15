@@ -7,6 +7,7 @@ import { parseLocalDate } from "@/lib/trip-dates";
 import { StopDisc } from "@/components/day/stop-bits";
 import { legWords, measured } from "@/components/day/stop-words";
 import { stayLabel } from "@/lib/planned-stay";
+import { LiveCurrent, LiveNextDestination, LiveStatus } from "@/components/day/LiveFrame";
 import { PlaceFacts } from "@/components/PlaceFacts";
 import { FollowAlong, FromHereLine } from "@/components/day/FollowAlong";
 import { QuickPhoto, type StopPhotosProps } from "@/components/day/StopPhotos";
@@ -71,7 +72,17 @@ export function NowPanel({
   progress,
   onLook,
   photosFor,
+  place = "",
+  dayLabel = "",
+  onOpenTimeline,
+  onOpenMap,
 }: {
+  /** The town and the day, for the status card. */
+  place?: string;
+  dayLabel?: string;
+  /** "Return to Timeline" and "Map destination". */
+  onOpenTimeline?: (() => void) | undefined;
+  onOpenMap?: (() => void) | undefined;
   /** The chosen day's stops, in order, without Walk / Drive rows. */
   dayStops: ItineraryRow[];
   /** The whole trip's stops in the same shape, which saved legs index into. */
@@ -295,8 +306,82 @@ export function NowPanel({
     </>
   );
 
+  const destination = phase === "at" ? next : phase === "between" ? null : rowNext;
+  const destinationLine = destination
+    ? [
+        "Next stop",
+        leave?.kind === "time" ? `Leave by ${leave.at}` : "",
+        words ? `${words.time} ${words.how} to get there` : "",
+      ]
+        .filter(Boolean)
+        .join(" · ")
+    : "";
+  const frameDirections = focus
+    ? phase === "at" && next
+      ? directionsHref
+      : mapsPlaceUrl(focus.title, { lat: focus.lat, lon: focus.lon }, focus.address)
+    : "";
+
   return (
     <div className="space-y-3">
+      {focus && phase !== "done" ? (
+        <>
+          <LiveStatus place={place} dayLabel={dayLabel} selected={focus.title} stops={dayStops} />
+          <LiveCurrent
+            kicker={
+              phase === "at" ? "Current stop" : phase === "between" ? "On the way to" : "First up"
+            }
+            stop={focus}
+            here={phase === "at"}
+            stops={dayStops}
+            later={tail}
+            now={now}
+            onLook={onLook}
+          />
+          {destination ? <LiveNextDestination stop={destination} line={destinationLine} /> : null}
+          <a href={frameDirections} target="_blank" rel="noreferrer" className="lv-directions">
+            Directions
+            <span className="sr-only">
+              : open {(phase === "at" && next ? next : focus).title} in maps
+            </span>
+          </a>
+          <div className="lv-pair" role="group" aria-label="Where you are">
+            <button
+              type="button"
+              disabled={busy || phase === "at"}
+              onClick={() =>
+                void act(() => onProgress(arrivalWrites(dayStops, focus.id, new Date())))
+              }
+              className="lv-btn"
+            >
+              I'm here
+            </button>
+            <button
+              type="button"
+              disabled={busy || phase !== "at" || !current}
+              onClick={() =>
+                current && void act(() => onProgress([leavingWrite(current, new Date())]))
+              }
+              className="lv-btn"
+            >
+              Leaving
+            </button>
+          </div>
+          <div className="lv-pair">
+            <button
+              type="button"
+              disabled={!onOpenTimeline}
+              onClick={onOpenTimeline}
+              className="lv-btn"
+            >
+              Return to Timeline
+            </button>
+            <button type="button" disabled={!onOpenMap} onClick={onOpenMap} className="lv-btn">
+              Map destination
+            </button>
+          </div>
+        </>
+      ) : null}
       {reminders.length > 0 && (
         <ul role="status" aria-label="Coming up" className="space-y-1.5">
           {reminders.map((r) => (
@@ -351,48 +436,10 @@ export function NowPanel({
         <>
           {/* The design's "Right now" card (Figma trip-companion): a label on a
               hairline, the place, one line, then the buttons full width. */}
-          <section className="now-card now-current" aria-labelledby="now-here">
-            <p className="trip-rule-label">Right now</p>
-            <h2 id="now-here" className="now-card-title">
-              {current.title}
-            </h2>
-            <p className="now-card-line">
-              {[
-                "Here now",
-                current.planned_stay_minutes ? stayLabel(current.planned_stay_minutes) : "",
-                current.address?.trim() ?? "",
-              ]
-                .filter(Boolean)
-                .join(" / ")}
-            </p>
+          <section className="now-card now-current" aria-label="More about this stop">
             <StayLine stop={current} now={now} />
             {leavePanel}
             <div className="now-actions" role="group" aria-label="This stop">
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => void act(() => onProgress([leavingWrite(current, new Date())]))}
-                className="trip-primary"
-              >
-                Leaving
-              </button>
-              <a
-                href={
-                  next
-                    ? directionsHref
-                    : mapsPlaceUrl(
-                        current.title,
-                        { lat: current.lat, lon: current.lon },
-                        current.address,
-                      )
-                }
-                target="_blank"
-                rel="noreferrer"
-                className="trip-secondary"
-              >
-                Get directions
-                <span className="sr-only">: open {next?.title ?? current.title} in maps</span>
-              </a>
               {photosFor && <QuickPhoto photos={photosFor(current)} />}
               <button
                 type="button"
@@ -456,16 +503,7 @@ export function NowPanel({
       )}
 
       {focus && phase !== "at" && phase !== "done" && (
-        <section className="now-card" aria-labelledby="now-next">
-          <StopKicker
-            live={phase === "between"}
-            label={phase === "between" ? "On the way to" : "First up"}
-            aside={timeForRail(focus.time_label)}
-          />
-          <h2 id="now-next" className="now-card-title">
-            {focus.title}
-          </h2>
-          {focus.address?.trim() && <p className="now-card-line">{focus.address}</p>}
+        <section className="now-card" aria-label="More about this stop">
           <BookingAtHandCard stop={focus} docs={bookingDocs} />
           <PlaceFacts
             name={focus.title}
@@ -476,27 +514,6 @@ export function NowPanel({
             auto
           />
           {journeyNotes}
-          <div className="now-actions" role="group" aria-label="Next stop">
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() =>
-                void act(() => onProgress(arrivalWrites(dayStops, focus.id, new Date())))
-              }
-              className="trip-primary"
-            >
-              Mark arrived
-            </button>
-            {navigateTo(focus)}
-          </div>
-          {rowNext && (
-            <NextRow
-              stop={rowNext}
-              kicker="Next"
-              meta={timeForRail(rowNext.time_label)}
-              onLook={onLook}
-            />
-          )}
         </section>
       )}
 

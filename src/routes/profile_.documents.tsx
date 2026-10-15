@@ -82,8 +82,6 @@ export const Route = createFileRoute("/profile_/documents")({
   component: DocumentsPage,
 });
 
-const RECENT_COUNT = 5;
-
 /** Which sheet is up. One at a time, plus the detail underneath. */
 type Panel =
   | { kind: "none" }
@@ -110,11 +108,13 @@ function DocumentsPage() {
   const d = useTripDocuments(uid);
   const settings = useBeaSettings();
 
-  const [view, setView] = useState<LibraryView>("all");
+  const [seg, setSeg] = useState<"all" | "shared" | "protected">("all");
+  const [tripFilter, setTripFilter] = useState<string | null>(null);
+  const [showFilters, setShowFilters] = useState(false);
+  const view: LibraryView = tripFilter ? "trip" : "all";
   const [group, setGroup] = useState<DocumentGroup>("all");
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<SortOrder>("newest");
-  const [showAll, setShowAll] = useState(false);
   const [tripId, setTripId] = useState<string | null>(null);
   const [pickViewTrip, setPickViewTrip] = useState(false);
   const [detailId, setDetailId] = useState<string | null>(search.doc ?? null);
@@ -152,15 +152,16 @@ function DocumentsPage() {
 
   const list = useMemo(() => {
     const base = eventFilter ? d.docs.filter((x) => x.itinerary_item_id === eventFilter) : d.docs;
-    return filterDocuments(base, { view, tripId, group, query, sort });
-  }, [d.docs, eventFilter, view, tripId, group, query, sort]);
+    return filterDocuments(base, { view, tripId: tripFilter, group, query, sort });
+  }, [d.docs, eventFilter, view, tripFilter, group, query, sort]);
 
   const filtering = query.trim() !== "" || group !== "all" || !!eventFilter;
-  const shown = view === "all" && !filtering && !showAll ? list.slice(0, RECENT_COUNT) : list;
+  const sharedDocs = list.filter((x) => x.trip_id);
+  const looseDocs = list.filter((x) => !x.trip_id);
   const noResultsLine = useMemo(
     () => emptyLine({ kind: "noResults", settings }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [query, group, view],
+    [query, group, seg],
   );
 
   const mine = (doc: TripDocument) => doc.owner_id === uid;
@@ -217,18 +218,18 @@ function DocumentsPage() {
 
   // ── Signed out / loading / locked ────────────────────────────────────────
   const intro = (
-    <div className="doc-intro -mt-3">
-      <img src="/art/docs-passport.webp" alt="" aria-hidden className="doc-intro-art" />
-      <p className="doc-intro-text text-[16px] text-muted-foreground">
-        Manage all your bookings, confirmations and trip files in one place.
+    <section className="fd-head">
+      <h1 className="text-[24px] font-semibold leading-tight">Trip documents</h1>
+      <p className="mt-2 text-[13px] leading-snug">
+        Bookings and tickets for your trips. Private identity documents stay in Protected.
       </p>
-    </div>
+    </section>
   );
 
   // Signed out never reaches here: AppShell sends the traveller to sign in.
   if (authLoading || !uid || v.loading || !lock.ready) {
     return (
-      <AppShell eyebrow="Your files" title="Trip documents.">
+      <AppShell homeHeader>
         {/* The shape of the library, so nothing jumps when it arrives. */}
         <div className="space-y-4" aria-busy="true" aria-label="Opening Trip documents">
           {intro}
@@ -251,7 +252,7 @@ function DocumentsPage() {
 
   if (!lock.open) {
     return (
-      <AppShell eyebrow="Your files" title="Trip documents.">
+      <AppShell homeHeader>
         <div className="space-y-4">
           {intro}
           <VaultUnlock
@@ -277,93 +278,96 @@ function DocumentsPage() {
     : null;
 
   return (
-    <AppShell eyebrow="Your files" title="Trip documents.">
+    <AppShell homeHeader>
       <div className="space-y-4 pb-2">
         {intro}
 
-        <div role="tablist" aria-label="Which documents" className="doc-seg grid grid-cols-3">
-          {(
-            [
-              ["all", "All"],
-              ["trip", "By trip"],
-              ["unassigned", "Unassigned"],
-            ] as const
-          ).map(([value, label]) => (
-            <button
-              key={value}
-              type="button"
-              role="tab"
-              aria-selected={view === value}
-              onClick={() => setView(value)}
-              className="doc-seg-tab text-[15px] font-semibold transition-colors duration-(--t-tap)"
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-
-        {view === "trip" && (
-          <div className="plain-card overflow-hidden">
-            {viewTrip ? (
-              <LinkRow
-                media={<TripThumb trip={viewTrip} />}
-                title={viewTrip.title}
-                line={tripLine(viewTrip)}
-                onClick={() => setPickViewTrip(true)}
+        <section className="fd-box space-y-2">
+          <div className="flex gap-2">
+            <label className="doc-search fd-pill min-w-0 flex-1">
+              <Search className="size-4 shrink-0" aria-hidden />
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search documents"
+                aria-label="Search documents"
+                className="min-w-0 flex-1 bg-transparent text-[13px] outline-none placeholder:text-muted-foreground"
               />
-            ) : (
-              <p className="p-3 text-[14px] text-muted-foreground">
-                No trips yet. Documents stay in Unassigned until there is one.
-              </p>
-            )}
+              {query && (
+                <button type="button" aria-label="Clear search" onClick={() => setQuery("")}>
+                  <X className="size-4 text-muted-foreground" aria-hidden />
+                </button>
+              )}
+            </label>
+            <button
+              type="button"
+              onClick={() => setPickViewTrip(true)}
+              className="fd-pill max-w-[40%] shrink-0 text-[13px] font-semibold"
+            >
+              <span className="truncate">
+                {tripFilter ? (tripById.get(tripFilter)?.title ?? "Trip") : "All trips"}
+              </span>
+            </button>
           </div>
-        )}
-
-        {view !== "trip" && (
-          <label className="doc-search flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2.5">
-            <Search className="size-4 shrink-0 text-muted-foreground" aria-hidden />
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search documents"
-              aria-label="Search documents"
-              className="min-w-0 flex-1 bg-transparent text-[16px] outline-none placeholder:text-muted-foreground"
-            />
-            {query && (
-              <button type="button" aria-label="Clear search" onClick={() => setQuery("")}>
-                <X className="size-4 text-muted-foreground" aria-hidden />
-              </button>
-            )}
-          </label>
-        )}
-
-        <div className="flex items-center gap-2">
-          <div className="-mx-1 flex min-w-0 flex-1 gap-1.5 overflow-x-auto px-1 pb-0.5 [scrollbar-width:none]">
-            {DOCUMENT_GROUPS.map((g, i) => (
+          <div role="tablist" aria-label="Which documents" className="fd-seg">
+            {(
+              [
+                ["all", "All"],
+                ["shared", "Trip shared"],
+                ["protected", "Protected · Only you"],
+              ] as const
+            ).map(([value, label]) => (
               <button
-                key={g}
+                key={value}
                 type="button"
-                aria-pressed={group === g}
-                onClick={() => setGroup(g)}
-                className={`doc-chip shrink-0 rounded-full border px-3.5 py-1.5 text-[14px] font-semibold ${
-                  group === g
-                    ? "border-primary bg-primary text-primary-foreground"
-                    : `tile-fill-${(i % 5) + 1} border-border`
-                }`}
+                role="tab"
+                aria-selected={seg === value}
+                onClick={() => setSeg(value)}
               >
-                {GROUP_LABEL[g]}
+                {label}
               </button>
             ))}
           </div>
-          <button
-            type="button"
-            aria-label="Sort documents"
-            onClick={() => setPanel({ kind: "sort" })}
-            className="grid size-9 shrink-0 place-items-center rounded-full border border-border bg-card"
-          >
-            <Settings2 className="size-4" aria-hidden />
-          </button>
-        </div>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              aria-label="Sort documents"
+              onClick={() => setPanel({ kind: "sort" })}
+              className="fd-pill"
+            >
+              <Settings2 className="size-4" aria-hidden />
+              <span className="text-[13px] font-semibold">Sort</span>
+            </button>
+            <button
+              type="button"
+              aria-pressed={showFilters}
+              onClick={() => setShowFilters(!showFilters)}
+              className="fd-pill"
+            >
+              <Search className="size-4" aria-hidden />
+              <span className="text-[13px] font-semibold">Filter</span>
+            </button>
+          </div>
+          {showFilters && (
+            <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-0.5 [scrollbar-width:none]">
+              {DOCUMENT_GROUPS.map((g) => (
+                <button
+                  key={g}
+                  type="button"
+                  aria-pressed={group === g}
+                  onClick={() => setGroup(g)}
+                  className={`doc-chip shrink-0 rounded-full border px-3.5 py-1.5 text-[13px] font-semibold ${
+                    group === g
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-border"
+                  }`}
+                >
+                  {GROUP_LABEL[g]}
+                </button>
+              ))}
+            </div>
+          )}
+        </section>
 
         {eventFilter && (
           <button
@@ -375,130 +379,149 @@ function DocumentsPage() {
           </button>
         )}
 
-        {d.unavailable ? (
-          <div className="plain-card space-y-1.5 p-4">
-            <p className="font-semibold">Trip documents is not set up yet</p>
-            <p className="text-[14px] text-muted-foreground">
-              Béa needs one database update before it can keep bookings and files here. Nothing is
-              lost in the meantime, and Protected below already works.
-            </p>
-          </div>
-        ) : d.loadError ? (
-          <div className="plain-card space-y-2 p-4">
-            <p className="text-[14px]">Trip documents did not load. Check your connection.</p>
+        {seg !== "protected" &&
+          (d.unavailable ? (
+            <div className="plain-card space-y-1.5 p-4">
+              <p className="font-semibold">Trip documents is not set up yet</p>
+              <p className="text-[14px] text-muted-foreground">
+                Béa needs one database update before it can keep bookings and files here. Nothing is
+                lost in the meantime, and Protected below already works.
+              </p>
+            </div>
+          ) : d.loadError ? (
+            <div className="plain-card space-y-2 p-4">
+              <p className="text-[14px]">Trip documents did not load. Check your connection.</p>
+              <button
+                type="button"
+                onClick={() => void d.reload()}
+                className="text-[14px] font-semibold text-primary underline"
+              >
+                Try again
+              </button>
+            </div>
+          ) : d.loading ? (
+            <div className="doc-card h-32 animate-pulse" />
+          ) : list.length === 0 ? (
+            <div className="plain-card flex items-center gap-3 p-4">
+              <img
+                src="/bea/bea-think-static.png"
+                alt=""
+                className="art-dim size-16 shrink-0 object-contain"
+              />
+              <p className="text-[14px] text-muted-foreground">
+                {d.docs.length === 0
+                  ? "Béa keeps bookings, confirmations and tickets here. Add the first one below."
+                  : noResultsLine}
+              </p>
+            </div>
+          ) : (
+            <>
+              {sharedDocs.length > 0 && (
+                <section className="fd-box">
+                  <div className="mb-2 flex items-baseline justify-between">
+                    <h2 className="text-[13px] font-semibold">Trip shared</h2>
+                    <span className="text-[11px] text-muted-foreground">
+                      {sharedDocs.length} {sharedDocs.length === 1 ? "document" : "documents"}
+                    </span>
+                  </div>
+                  <div className="doc-list">
+                    {sharedDocs.map((doc) => (
+                      <DocumentRow
+                        key={doc.id}
+                        doc={doc}
+                        onOpen={() => setDetailId(doc.id)}
+                        onMore={mine(doc) ? () => setPanel({ kind: "more", doc }) : undefined}
+                      />
+                    ))}
+                  </div>
+                </section>
+              )}
+              {looseDocs.length > 0 && (
+                <section className="fd-box">
+                  <div className="mb-2 flex items-baseline justify-between">
+                    <h2 className="text-[13px] font-semibold">Not on a trip yet</h2>
+                    <span className="text-[11px] text-muted-foreground">
+                      {looseDocs.length} {looseDocs.length === 1 ? "document" : "documents"}
+                    </span>
+                  </div>
+                  <div className="doc-list">
+                    {looseDocs.map((doc) => (
+                      <DocumentRow
+                        key={doc.id}
+                        doc={doc}
+                        onOpen={() => setDetailId(doc.id)}
+                        onMore={mine(doc) ? () => setPanel({ kind: "more", doc }) : undefined}
+                      />
+                    ))}
+                  </div>
+                </section>
+              )}
+            </>
+          ))}
+
+        {seg !== "shared" && (
+          <section className="fd-box space-y-2">
+            <div className="flex items-baseline justify-between">
+              <h2 className="text-[13px] font-semibold">Protected · Only you</h2>
+            </div>
             <button
               type="button"
-              onClick={() => void d.reload()}
-              className="text-[14px] font-semibold text-primary underline"
+              onClick={() => setPanel({ kind: "protected" })}
+              className="doc-card doc-link flex w-full items-center gap-3 p-3 text-left"
             >
-              Try again
+              <span className="tile-fill-1 grid size-12 shrink-0 place-items-center rounded-2xl border border-border/60 text-primary">
+                <ShieldCheck className="size-6" aria-hidden />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-[15px] font-semibold">
+                  Passports, cards and private files
+                </span>
+                <span className="flex items-center gap-1 text-[12px] text-muted-foreground">
+                  {v.unlocked ? (
+                    <LockOpen className="size-3.5" aria-hidden />
+                  ) : (
+                    <Lock className="size-3.5" aria-hidden />
+                  )}
+                  {v.unlocked
+                    ? `Unlocked · ${v.rows.length} ${v.rows.length === 1 ? "item" : "items"}`
+                    : v.hasVault
+                      ? "Encrypted · locked"
+                      : "Encrypted on your device · set a passcode"}
+                </span>
+              </span>
+              <ChevronRight className="size-5 shrink-0 text-muted-foreground" aria-hidden />
             </button>
-          </div>
-        ) : (
-          <section>
-            <div className="mb-2 flex items-baseline justify-between">
-              <h2 className="font-display text-[24px] leading-none">
-                {view === "all"
-                  ? filtering
-                    ? `${list.length} ${list.length === 1 ? "document" : "documents"}`
-                    : "Recently added"
-                  : view === "trip"
-                    ? "Documents"
-                    : "Unassigned"}
-              </h2>
-              {view === "all" && !filtering && list.length > RECENT_COUNT && (
-                <button
-                  type="button"
-                  onClick={() => setShowAll(!showAll)}
-                  className="text-[14px] font-semibold text-primary"
-                >
-                  {showAll ? "Show fewer" : "See all"}
-                </button>
-              )}
-            </div>
-            {d.loading ? (
-              <div className="doc-card h-32 animate-pulse" />
-            ) : shown.length > 0 ? (
-              <div className="doc-list">
-                {shown.map((doc) => (
-                  <DocumentRow
-                    key={doc.id}
-                    doc={doc}
-                    onOpen={() => setDetailId(doc.id)}
-                    onMore={mine(doc) ? () => setPanel({ kind: "more", doc }) : undefined}
-                  />
-                ))}
-              </div>
-            ) : (
-              <div className="plain-card flex items-center gap-3 p-4">
-                <img
-                  src="/bea/bea-think-static.png"
-                  alt=""
-                  className="art-dim size-16 shrink-0 object-contain"
-                />
-                <p className="text-[14px] text-muted-foreground">
-                  {d.docs.length === 0
-                    ? "Béa keeps bookings, confirmations and tickets here. Add the first one with the + button."
-                    : view === "unassigned" && !filtering
-                      ? "Everything has a trip. Nothing waiting to be organised."
-                      : view === "trip" && !filtering
-                        ? "No documents for this trip yet."
-                        : noResultsLine}
-                </p>
-              </div>
-            )}
+            <LockSetting lockOn={lock.lockOn} onChange={lock.setLockOn} />
           </section>
         )}
 
-        <section className="space-y-2">
-          <h2 className="font-display text-[24px] leading-none">Protected</h2>
-          <button
-            type="button"
-            onClick={() => setPanel({ kind: "protected" })}
-            className="doc-card doc-link flex w-full items-center gap-3 p-3 text-left"
-          >
-            <span className="tile-fill-1 grid size-12 shrink-0 place-items-center rounded-2xl border border-border/60 text-primary">
-              <ShieldCheck className="size-6" aria-hidden />
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block text-[17px] font-semibold">
-                Passports, cards and private files
-              </span>
-              <span className="flex items-center gap-1 text-[13px] text-muted-foreground">
-                {v.unlocked ? (
-                  <LockOpen className="size-3.5" aria-hidden />
-                ) : (
-                  <Lock className="size-3.5" aria-hidden />
-                )}
-                {v.unlocked
-                  ? `Unlocked · ${v.rows.length} ${v.rows.length === 1 ? "item" : "items"}`
-                  : v.hasVault
-                    ? "Encrypted · locked"
-                    : "Encrypted on your device · set a passcode"}
-              </span>
-            </span>
-            <ChevronRight className="size-5 shrink-0 text-muted-foreground" aria-hidden />
-          </button>
-          <LockSetting lockOn={lock.lockOn} onChange={lock.setLockOn} />
-          <p className="px-1 text-[13px] text-muted-foreground">
-            Trip documents is for bookings, confirmations and tickets, and is shared with the people
-            on the trip it belongs to. It is not for passports, payment cards or passwords — those
-            belong in Protected.
-          </p>
-        </section>
-
         {!d.unavailable && !d.loadError && (
-          <div className="pointer-events-none sticky bottom-4 flex justify-end">
+          <section className="fd-box" aria-label="Add document">
             <button
               type="button"
-              aria-label="Add document"
               onClick={() => setPanel({ kind: "add" })}
-              className="doc-fab pointer-events-auto grid size-14 place-items-center rounded-full bg-primary text-primary-foreground shadow-lg"
+              className="flex w-full items-center gap-3 text-left"
             >
-              <Plus className="size-7" aria-hidden />
+              <span aria-hidden className="fd-round">
+                <Plus className="size-4" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-[14px] font-semibold">Add document</span>
+                <span className="mt-0.5 flex justify-between gap-3 text-[12px] text-muted-foreground">
+                  <span>File/photo</span>
+                  <span>Paste confirmation text</span>
+                </span>
+              </span>
+              <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
             </button>
-          </div>
+          </section>
         )}
+
+        <p className="px-1 text-[12px] text-muted-foreground">
+          Trip documents is for bookings, confirmations and tickets, and is shared with the people
+          on the trip it belongs to. It is not for passports, payment cards or passwords — those
+          belong in Protected.
+        </p>
       </div>
 
       {/* ── Sheets ─────────────────────────────────────────────────────── */}
@@ -544,7 +567,7 @@ function DocumentsPage() {
           initial={{
             title: panel.file ? titleFromFileName(panel.file.name) : "",
             kind: panel.file ? guessKind(panel.file.name) : "other",
-            trip_id: view === "trip" ? tripId : null,
+            trip_id: tripFilter,
             itinerary_item_id: eventFilter,
             notes: "",
           }}
@@ -701,10 +724,11 @@ function DocumentsPage() {
         open={pickViewTrip}
         onClose={() => setPickViewTrip(false)}
         trips={trips}
-        selected={tripId}
-        allowNone={false}
+        selected={tripFilter}
+        allowNone
         onPick={(id) => {
-          setTripId(id);
+          setTripFilter(id);
+          if (id) setTripId(id);
           setPickViewTrip(false);
         }}
       />

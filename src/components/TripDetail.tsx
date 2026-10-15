@@ -24,14 +24,14 @@ import { TripStops } from "@/components/TripStops";
 import { TripPeople } from "@/components/TripPeople";
 import { TripBudgetSwitch, TripDeleteButton, TripDetailsForm } from "@/components/TripSettings";
 import type { TripPhotoRow } from "@/hooks/useTripPhotos";
-import { tripDateLine } from "@/lib/trip-card";
+import { tripDateLine, tripPlacesLine } from "@/lib/trip-card";
 import { TripOverview } from "@/components/TripOverview";
 import { timelineGlyph } from "@/lib/timeline-kind";
 import { TimelineEntryForm } from "@/components/TimelineEntryForm";
 import { Sheet } from "@/components/Sheet";
 import { ConfirmSheet } from "@/components/ConfirmSheet";
 import { TripMap } from "@/components/TripMap";
-import { NextStopCard, TransportFilter } from "@/components/MapExtras";
+import { MapDayCard, NextStopCard, TransportFilter } from "@/components/MapExtras";
 import { TripPrep, type PrepTab } from "@/components/TripPrep";
 import { savedAgoLabel, savedIsStale, savedMatchesStops } from "@/lib/offline-directions";
 import { useUndo } from "@/hooks/useUndo";
@@ -75,6 +75,9 @@ import { nowTarget } from "@/lib/now-jump";
 import { SortableDay, SortableStop, type SortableBind } from "@/components/day/SortableStops";
 import { TripPageBanner } from "@/components/TripPageBanner";
 import { TripViews, TripBarOptions, MapModeSwitch } from "@/components/day/TripViews";
+import { TripFrameHeader } from "@/components/day/TripFrameHeader";
+import { DayWeather } from "@/components/day/DayWeather";
+import { useTripGlances } from "@/hooks/useTripGlances";
 import { useTripBarPosition } from "@/hooks/useTripBarPosition";
 import {
   TripMenuSheet,
@@ -1200,7 +1203,7 @@ export function TripDetail({
   /** Timeline grouped by area (Neighbourhood) rather than by time. */
   const [byArea, setByArea] = useState(false);
   /** One line a stop, tap to open: for reading a long day at a glance. */
-  const [compactCards, setCompactCards] = useState(true);
+  const [compactCards, setCompactCards] = useState(false);
   /** The day a stop is being dragged in, if any. */
   const [draggingDay, setDraggingDay] = useState<string | null>(null);
   const doneCount = stopItems.filter(isDone).length;
@@ -1500,6 +1503,33 @@ export function TripDetail({
   const showDayTracker = perspective === "overview" || !companionDay;
   const cityOn = (day: string) =>
     routeCityOn(cities.stops, day)?.split(",")[0]?.trim() || trip.city || "Trip";
+  // The head card's words (Figma "Trip overview", "Trip map", "Trip timeline"):
+  // the Timeline names the day's city, the other views the trip.
+  const headTitle =
+    perspective === "timeline" && timelineByDay && chosenDay && chosenDay !== ALL_DAYS
+      ? cityOn(chosenDay)
+      : trip.title;
+  const headKicker = trip.country ? trip.country.toUpperCase() : "";
+  const headPlaces = (() => {
+    const names = [
+      ...new Set(cityNames.map((c) => (c.split(",")[0] ?? "").trim()).filter(Boolean)),
+    ];
+    return names.length > 1
+      ? tripPlacesLine(names)
+      : formatTripLocation(trip.city?.split(",")[0], trip.country) || tripPlacesLine(cityNames);
+  })();
+  const headTabs = (
+    <>
+      {barPosition === "top" ? (
+        <TripViews inline position="top" value={perspective} onChange={setPerspective} />
+      ) : null}
+      {perspective === "map" || perspective === "companion" ? (
+        <MapModeSwitch value={perspective} onChange={setPerspective} />
+      ) : null}
+    </>
+  );
+  const overviewSequence = <div id="tf-seq" className="tf-seq" />;
+  const todoCount = useTripGlances([trip.id]).glances[trip.id]?.todos.open ?? 0;
   const dayTracker = (
     <BannerDayTracker
       label="Your trip progress"
@@ -1527,6 +1557,27 @@ export function TripDetail({
   // Split hides the city picker, so its tabs offer every day of the trip and
   // a pick there clears the city, as the banner's day circles did before.
   const splitChips = dayChips(allDayGroups, todayKey);
+  const mapDay = (() => {
+    if (!chosenDay || chosenDay === ALL_DAYS) return null;
+    const chip = splitChips.find((c) => c.key === chosenDay);
+    const group =
+      mapGroups.find((g) => g.key === chosenDay) ?? allDayGroups.find((g) => g.key === chosenDay);
+    if (!chip || !group) return null;
+    const first =
+      group.items.find((i) => typeof i.lat === "number" && typeof i.lon === "number") ??
+      group.items[0];
+    return {
+      key: chosenDay,
+      ordinal: chip.ordinal,
+      titles: group.items
+        .slice(0, 3)
+        .map((i) => i.title)
+        .join(", "),
+      first: first
+        ? { title: first.title, kind: first.kind, lat: first.lat, lon: first.lon }
+        : undefined,
+    };
+  })();
   const mapDayTabs =
     perspective === "map" ? (
       shouldOfferDays(allDayGroups) ? (
@@ -1613,132 +1664,63 @@ export function TripDetail({
       data-bar-position={barPosition}
       className="trip-shell overflow-clip sm:mx-4 sm:mt-3 sm:rounded-3xl sm:border sm:border-border sm:bg-card"
     >
-      {headerSlot &&
-        createPortal(
-          <div className="flex w-max min-w-full items-center justify-between gap-1.5">
-            <div className="flex items-center gap-1.5">
+      {perspective === "companion" ? (
+        <div className="tf-tabs-only">{headTabs}</div>
+      ) : (
+        <TripFrameHeader
+          perspective={perspective}
+          title={headTitle}
+          kicker={headKicker}
+          places={headPlaces}
+          country={trip.country}
+          startDate={trip.start_date}
+          endDate={trip.end_date}
+          tentative={trip.dates_status === "tentative"}
+          onMenu={() => {
+            setSettingsOpen(true);
+            setSheetSection(null);
+          }}
+          onOpenMap={() => setPerspective("map")}
+          badge={
+            view.prefs.pinChecks && toCheck.length > 0 ? (
               <button
                 type="button"
-                data-guide="bea-plan"
-                title="Let Béa plan this trip"
-                onClick={() => {
-                  setPlannerTab("start");
-                  setPlannerOpen(true);
-                }}
-                aria-label="Plan with Béa"
-                className="trip-hero-plan"
+                onClick={() => setPinReviewOpen(true)}
+                title="Places to confirm"
+                aria-label={`${toCheck.length} ${toCheck.length === 1 ? "place" : "places"} to confirm`}
+                className="relative grid size-11 place-items-center rounded-full border border-destructive/40 bg-destructive/10 text-[20px] font-bold text-destructive"
               >
-                <img src={logo} alt="" className="size-6 object-contain" />
-                <span className="hidden min-[460px]:inline">Plan with Béa</span>
+                !
+                <span className="absolute -right-1 -top-1 grid min-w-5 place-items-center rounded-full bg-destructive px-1 text-[13px] font-bold leading-5 text-white">
+                  {toCheck.length}
+                </span>
               </button>
-              <button
-                type="button"
-                data-guide="add-stop"
-                title="Add a stop, a saved place or a city"
-                aria-label="Add stop"
-                onClick={() => setAddOpen(true)}
-                className="trip-hero-add"
-              >
-                <Plus className="size-5" aria-hidden />
-              </button>
-            </div>
-            <div className="flex items-center gap-1.5">
-              {view.prefs.pinChecks && toCheck.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setPinReviewOpen(true)}
-                  title="Places to confirm"
-                  aria-label={`${toCheck.length} ${toCheck.length === 1 ? "place" : "places"} to confirm`}
-                  className="relative grid size-11 place-items-center rounded-full border border-destructive/40 bg-destructive/10 text-[20px] font-bold text-destructive"
-                >
-                  !
-                  <span className="absolute -right-1 -top-1 grid min-w-5 place-items-center rounded-full bg-destructive px-1 text-[13px] font-bold leading-5 text-white">
-                    {toCheck.length}
-                  </span>
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={() => setPrepSignal((n) => n + 1)}
-                data-guide="trip-prep"
-                title="To-dos and packing for this trip"
-                aria-label="To do"
-                className="trip-hero-btn"
-              >
-                <ListChecks className="size-5" aria-hidden />
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setSettingsOpen(true);
-                  setSheetSection(null);
-                }}
-                data-guide="trip-menu"
-                title="Trip menu"
-                aria-label="Trip menu"
-                className="trip-hero-btn"
-              >
-                <MoreHorizontal className="size-5" aria-hidden />
-              </button>
-            </div>
-          </div>,
-          headerSlot,
-        )}
-      <TripPageBanner
-        art={perspective === "overview" ? tripArt : companionArt}
-        // Each view's head says what it shows, as the Figma frames do: the
-        // Timeline its day ("Day four.", 116:1135), Live today's town
-        // ("Kyoto, right now.", 116:988), Split the map (116:1060). The
-        // Overview, and any view of the whole trip, keeps the trip's name.
-        title={
-          // Only while the list is by day: "All entries" is the whole trip.
-          perspective === "timeline" && timelineByDay
-            ? timelineHeadTitle(chips.find((chip) => chip.key === chosenDay)?.ordinal) || trip.title
-            : perspective === "companion" && companionDay?.key === todayKey && nowStops.length > 0
-              ? `${companionPlace}, right now.`
-              : // A dated day only: not All days, "No date" or a day gone stale.
-                perspective === "map" &&
-                  chosenDay &&
-                  chosenDay !== ALL_DAYS &&
-                  splitChips.some((chip) => chip.key === chosenDay)
-                ? "The day, on the map."
-                : trip.title
-        }
-        city={trip.city}
-        country={trip.country}
-        cities={cityNames}
-        startDate={trip.start_date}
-        endDate={trip.end_date}
-        tentative={trip.dates_status === "tentative"}
-        companions={companionsLine}
-        look={bannerLook}
-        own={bannerOwn}
-        actions={{
-          primary:
-            perspective === "timeline"
-              ? { label: "Add stop", onClick: () => setAddOpen(true) }
-              : { label: "View itinerary", onClick: () => setPerspective("timeline") },
-          secondary: {
-            label: "Plan with Béa",
-            onClick: () => {
-              setPlannerTab("start");
-              setPlannerOpen(true);
-            },
-          },
-        }}
-        viewTransitionName={`trip-photo-${trip.id}`}
-        kicker={`Trip / ${TRIP_PERSPECTIVES.find((p) => p.id === tabOf(perspective))!.label.toLowerCase()}`}
-        // No day strip under the picture on Overview, the Map or the Timeline
-        // (Figma 116:892, 116:1060, 116:1135): their own rows and day tabs
-        // choose the days. Live keeps the Journey tracker while it is on.
-        tracker={perspective === "companion" && view.prefs.journey ? bannerTracker : null}
-      />
-
-      <TripViews position={barPosition} value={perspective} onChange={setPerspective} />
+            ) : null
+          }
+          photo={
+            perspective === "timeline" ? (
+              <TripPageBanner
+                strip
+                art={companionArt}
+                title={trip.title}
+                city={trip.city}
+                country={trip.country}
+                cities={cityNames}
+                look={bannerLook}
+                own={bannerOwn}
+                viewTransitionName={`trip-photo-${trip.id}`}
+              />
+            ) : null
+          }
+          tabs={headTabs}
+        >
+          {perspective === "overview" ? overviewSequence : null}
+        </TripFrameHeader>
+      )}
+      {barPosition !== "top" ? (
+        <TripViews position={barPosition} value={perspective} onChange={setPerspective} />
+      ) : null}
       <div className="trip-content section-stagger px-5 pb-4 pt-3">
-        {(perspective === "map" || perspective === "companion") && (
-          <MapModeSwitch value={perspective} onChange={setPerspective} />
-        )}
         {/* Only when someone else is on the trip right now (owner,
             2026-10-04: no "You're the only one here" line). */}
         {others.length > 0 && (
@@ -1885,22 +1867,18 @@ export function TripDetail({
 
         {perspective === "companion" && (
           <div data-guide="trip-companion" className="space-y-3" {...(offerDays ? daySwipe : {})}>
-            {/* Live: the day's map, then its day tabs, then the companion card.
+            {/* Live (Figma trip companion): no map, the day tabs, then the cards.
                 Kept out of the panel, which starts afresh on each day, so a
                 day picked by keyboard keeps its focus. */}
-            {nowStops.length > 0 && companionDay ? (
-              <p className="now-day-line">
-                {[companionOrdinal, companionDateLine].filter(Boolean).join(" · ")}
-              </p>
-            ) : null}
-            {nowStops.length > 0 && companionDay ? (
-              <LiveMap stops={nowStops} nesting={view.prefs.nesting} onLook={setPeekId} />
-            ) : null}
             {mapDayTabs}
             {nowStops.length > 0 && companionDay ? (
               <>
                 <NowPanel
                   key={companionDay.key}
+                  place={companionPlace}
+                  dayLabel={shortDayLabel(companionDay.key)}
+                  onOpenTimeline={() => setPerspective("timeline")}
+                  onOpenMap={() => setPerspective("map")}
                   dayStops={nowStops}
                   tripStops={tripStopsForNow}
                   legs={nowLegs}
@@ -2021,6 +1999,18 @@ export function TripDetail({
                 {...directionsButton}
               />
             )}
+            {mapDay ? (
+              <MapDayCard
+                label={`${mapDay.ordinal ? `${mapDay.ordinal} · ` : ""}${formatTimelineDayLabel(mapDay.key)}`}
+                city={cityOn(mapDay.key)}
+                line={mapDay.titles}
+                {...(mapDay.first ? { first: mapDay.first } : {})}
+                onOpen={() => {
+                  pickDayManually(mapDay.key);
+                  setPerspective("timeline");
+                }}
+              />
+            ) : null}
             {nextStop ? (
               <NextStopCard
                 stop={nextStop.stop}
@@ -2033,6 +2023,16 @@ export function TripDetail({
             ) : null}
             {hasTransport ? (
               <TransportFilter value={transportPick} onChange={setTransportPick} />
+            ) : null}
+            {mapDay ? (
+              <p className="map-note">
+                <b className="block text-[16px]">
+                  {[mapDay.ordinal, formatTimelineDayLabel(mapDay.key), cityOn(mapDay.key)]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </b>
+                Map and Timeline keep the same day and selected stop.
+              </p>
             ) : null}
             {/* The whole trip, city to city — only when looking at the whole
                 trip. Under a single day it was a second, busier map repeating
@@ -2057,6 +2057,21 @@ export function TripDetail({
               onCurrency={() => setCurrencyOpen(true)}
             />
           )}
+          {perspective === "timeline" && stopItems.length > 0 ? (
+            <TimelineTiles
+              todos={todoCount}
+              onPlan={() => {
+                setPlannerTab("start");
+                setPlannerOpen(true);
+              }}
+              onAdd={() => setAddOpen(true)}
+              onTodo={() => setPrepSignal((n) => n + 1)}
+              onMenu={() => {
+                setSettingsOpen(true);
+                setSheetSection(null);
+              }}
+            />
+          ) : null}
           <div data-guide="trip-timeline" className="pb-3 pt-2">
             {editingTimeline && (
               <div className="mb-3 flex items-center justify-between gap-2 rounded-2xl bg-primary-soft px-3 py-2">
@@ -2116,6 +2131,8 @@ export function TripDetail({
                     >
                       <TimelineHead
                         title={dayTitle(group.key, ordinalFor(group.key), group.label)}
+                        {...(group.key ? { fullDate: fullDayLabel(group.key) } : {})}
+                        {...(isToday ? { aside: <DayWeather items={group.items} /> } : {})}
                         {...(dayNumber(ordinalFor(group.key))
                           ? { day: dayNumber(ordinalFor(group.key)) }
                           : {})}
@@ -2165,7 +2182,7 @@ export function TripDetail({
                         </details>
                       )}
                       {dayOpen && (
-                        <ol className="relative min-w-0 space-y-1 overflow-x-hidden py-1">
+                        <ol className="tl-rail relative min-w-0 space-y-1 overflow-x-hidden py-1">
                           {hidingDone && group.items.every(isDone) && (
                             <li className="list-none py-2 pl-[3.75rem] text-[13px] text-muted-foreground">
                               ✓ Every stop on this day is visited.
@@ -2309,9 +2326,10 @@ export function TripDetail({
                             setAddingTimeline(true);
                           }}
                           aria-label={`Add a stop to ${group.label}`}
-                          className="btn-primary mt-4 flex w-full items-center justify-center px-4"
+                          className="mt-4 flex min-h-12 w-full items-center justify-center gap-2 rounded-[var(--r-card)] border border-border bg-card px-4 text-[15px] font-medium"
                         >
-                          Add stop
+                          <Plus className="size-4" aria-hidden />
+                          Add a stop
                         </button>
                       )}
                     </section>
@@ -2966,6 +2984,10 @@ export function TripDetail({
           setPlannerTab("start");
           setPlannerOpen(true);
         }}
+        onEditTimeline={() => {
+          setSettingsOpen(false);
+          setPerspective("timeline");
+        }}
         onPrep={() => {
           setSettingsOpen(false);
           setPrepSignal((n) => n + 1);
@@ -3392,6 +3414,8 @@ function dayNumber(ordinal: string): string {
 
 function TimelineHead({
   title,
+  fullDate,
+  aside,
   day,
   dateLine,
   line,
@@ -3401,6 +3425,10 @@ function TimelineHead({
   children,
 }: {
   title: string;
+  /** "Saturday, Apr 12": the day as the Figma timeline heads it. */
+  fullDate?: string;
+  /** Beside the date: the day's weather. */
+  aside?: ReactNode;
   /** The day's number, "04", drawn large under DAY as the Figma timeline does. */
   day?: string;
   /** Date and city over the line: "Wed, Nov 4 / Rome". */
@@ -3412,7 +3440,23 @@ function TimelineHead({
   onMore?: () => void;
   children?: ReactNode;
 }) {
-  const heading = (
+  const heading = fullDate ? (
+    <span className="flex items-start justify-between gap-3">
+      <span className="block min-w-0">
+        <span className="flex items-center gap-1.5">
+          <span className="text-[22px] font-semibold leading-[1.2]">{fullDate}</span>
+          {onToggle ? (
+            <ChevronDown
+              className={`size-4 shrink-0 text-muted-foreground transition-transform ${open ? "" : "-rotate-90"}`}
+              aria-hidden
+            />
+          ) : null}
+        </span>
+        <span className="mt-1 block text-[13px] leading-[1.4] text-muted-foreground">{line}</span>
+      </span>
+      {aside}
+    </span>
+  ) : (
     <span className="grid grid-cols-[minmax(0,2fr)_minmax(0,3fr)] items-start gap-4">
       <span className="block">
         {day ? (
@@ -3514,6 +3558,56 @@ function MenuChoice({
  * Drawn only on today, and only on a day that names at least one time. A rule
  * through an untimed list would be claiming an order the plan never had.
  */
+/** "Fri, Apr 12". */
+function shortDayLabel(key: string): string {
+  const date = new Date(`${key}T00:00:00`);
+  return date.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+}
+
+/** "Saturday, Apr 12". */
+function fullDayLabel(key: string): string {
+  const date = new Date(`${key}T00:00:00`);
+  return date.toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" });
+}
+
+/** The Figma timeline's four doors: plan, add, to-do and the trip menu. */
+function TimelineTiles({
+  todos,
+  onPlan,
+  onAdd,
+  onTodo,
+  onMenu,
+}: {
+  todos: number;
+  onPlan: () => void;
+  onAdd: () => void;
+  onTodo: () => void;
+  onMenu: () => void;
+}) {
+  const face = (top: string, bottom: string) => (
+    <>
+      <span className="text-[12px] text-muted-foreground">{top}</span>
+      <span className="text-[14px] font-semibold">{bottom}</span>
+    </>
+  );
+  return (
+    <div className="tl-tiles" role="group" aria-label="Trip actions">
+      <button type="button" onClick={onPlan} data-guide="bea-plan">
+        {face("Plan with", "Béa")}
+      </button>
+      <button type="button" onClick={onAdd} data-guide="add-stop">
+        {face("Add", "stop")}
+      </button>
+      <button type="button" onClick={onTodo} data-guide="trip-prep">
+        {face("To do", String(todos))}
+      </button>
+      <button type="button" onClick={onMenu} data-guide="trip-menu">
+        {face("Trip", "menu")}
+      </button>
+    </div>
+  );
+}
+
 function NowLine({ done = false }: { done?: boolean }) {
   return (
     <li aria-hidden className="relative -my-0.5 flex items-center gap-2 py-1">

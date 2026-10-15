@@ -31,39 +31,51 @@ export function PlanCards({
   optimizeNote?: string;
 }) {
   const rows: Row[] = [
-    { key: "build", title: "Build a new trip", note: "Béa drafts the days", onClick: onBuild },
+    {
+      key: "build",
+      title: "Plan from saved places",
+      note: "Turn saved places and your preferences into a proposed plan.",
+      onClick: onBuild,
+    },
     {
       key: "import",
-      title: "Import your plan",
-      note: "Paste text or bring a file",
+      title: "Import bookings",
+      note: "Start from a photo, PDF, calendar or pasted text. Review extracted details first.",
       onClick: onImport,
     },
     {
       key: "optimize",
-      title: "Optimize my trip",
-      note: optimizeNote || "A better order and pace",
+      title: "Improve my itinerary",
+      note:
+        optimizeNote ||
+        "Reorder existing stops for less travel. Review the changes before applying.",
       onClick: onOptimize,
     },
     {
       key: "compare",
       title: "Compare options",
-      note: "Choose what suits you",
+      note: "See pros and cons side by side. You choose what belongs in the trip.",
       onClick: onCompare,
     },
   ];
   return (
-    <div data-guide="plan-cards">
+    <div data-guide="plan-cards" className="space-y-3">
       {rows.map((row) => (
         <button
           key={row.key}
           type="button"
           onClick={row.onClick}
           data-guide={row.key === "optimize" ? "bea-optimize" : undefined}
-          className="block w-full border-b border-border py-3 text-start"
+          className="lp-card flex w-full items-start gap-3 text-start"
         >
-          <span className="block text-[16px] leading-[22px]">{row.title}</span>
-          <span className="mt-1 block text-[14px] leading-[20px] text-muted-foreground">
-            {row.note}
+          <span className="min-w-0 flex-1">
+            <span className="block text-[18px] font-semibold leading-tight">{row.title}</span>
+            <span className="mt-2 block text-[13px] leading-snug text-muted-foreground">
+              {row.note}
+            </span>
+          </span>
+          <span aria-hidden className="text-[16px]">
+            ›
           </span>
         </button>
       ))}

@@ -84,6 +84,7 @@ export function TripMenuSheet({
   onAsk,
   onPrep,
   onAdd,
+  onEditTimeline,
   onCurrency,
   citiesCount,
   offlineNote,
@@ -113,6 +114,8 @@ export function TripMenuSheet({
   onPrep: () => void;
   /** Add a stop, a saved place or a city. */
   onAdd: () => void;
+  /** Edit timeline: back to the day, to reorder, retime and edit. */
+  onEditTimeline?: (() => void) | undefined;
   onCurrency: () => void;
   citiesCount: number;
   /** "Saved 2 days ago", or empty. */
@@ -306,6 +309,69 @@ export function TripMenuSheet({
     },
   ];
 
+  const byKey = (rows: Row[]) => new Map(rows.map((r) => [r.key, r]));
+  const all = byKey([...plan, ...trip, ...phone]);
+  const pick = (...keys: string[]): Row[] =>
+    keys.map((k) => all.get(k)).filter((r): r is Row => Boolean(r));
+  const asRow = (key: string, title: string, note: string, onClick: () => void): Row => ({
+    key,
+    icon: Plus,
+    title,
+    note,
+    tone: 1,
+    onClick,
+  });
+  // The Figma "Trip menu" frame's four groups.
+  const groups: { name: string; rows: Row[] }[] = [
+    {
+      name: "Plan",
+      rows: [
+        ...pick("ask", "add", "checkup"),
+        ...pick("cities"),
+        ...(onEditTimeline
+          ? [
+              asRow(
+                "timeline",
+                "Edit timeline",
+                "Reorder stops, times and transfers",
+                onEditTimeline,
+              ),
+            ]
+          : []),
+      ],
+    },
+    {
+      name: "Prepare",
+      rows: [...pick("prep", "bookings", "budget", "currency", "offline")],
+    },
+    {
+      name: "Travel together",
+      rows: [
+        ...pick("invite"),
+        ...(all.get("invite")
+          ? [
+              asRow("share", "Read-only share", "Share a view without edit access", () =>
+                onSection("invite"),
+              ),
+            ]
+          : []),
+      ],
+    },
+    {
+      name: "Manage trip",
+      rows: pick(
+        "edit",
+        "preferences",
+        "photos",
+        "packing",
+        "again",
+        "calendar",
+        "print",
+        "customize",
+      ),
+    },
+  ];
+
   // Back on the menu from a section (its arrow, Escape or a Done inside it):
   // focus returns to that section's row, not to a button that is gone.
   const lastSection = useRef<TripMenuSection | null>(null);
@@ -335,13 +401,13 @@ export function TripMenuSheet({
       crumb={`${title} / Trip menu`}
       {...(section ? { backLabel: "Back to the trip menu" } : {})}
       tone={section ? 4 : 1}
-      title={section ? (SECTION_HEADLINES[section] ?? SECTION_TITLES[section]) : "Trip settings"}
+      title={section ? (SECTION_HEADLINES[section] ?? SECTION_TITLES[section]) : "Trip menu"}
       hint={
         section
           ? SECTION_HEADLINES[section]
             ? SECTION_TITLES[section]
             : title
-          : [title, subtitle].filter(Boolean).join(" · ")
+          : [title, "Trip tools"].filter(Boolean).join(" · ")
       }
       actions={
         section ? (
@@ -361,13 +427,46 @@ export function TripMenuSheet({
       {section ? (
         children
       ) : (
-        <div className="pb-4">
-          <Group name="Plan" rows={plan} />
-          <Group name="The trip" rows={trip} />
-          <Group name="On this phone" rows={phone} />
+        <div className="space-y-3 pb-4">
+          <p className="text-[13px] leading-snug">
+            Manage only this trip. The global Menu in the Béa header is separate.
+          </p>
+          <button type="button" onClick={onClose} className="tm-close">
+            Close · return to selected Timeline
+          </button>
+          {groups.map((g) => (
+            <section key={g.name} aria-label={g.name} className="tm-group">
+              <h2 className="text-[15px] font-semibold">{g.name}</h2>
+              <div>
+                {g.rows.map((row) => (
+                  <button
+                    key={row.key}
+                    type="button"
+                    data-menu-row={row.key}
+                    onClick={row.onClick}
+                    className="tm-row"
+                  >
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-[14px] font-semibold">{row.title}</span>
+                      <span className="block text-[12px] text-muted-foreground">{row.note}</span>
+                    </span>
+                    <span aria-hidden>›</span>
+                  </button>
+                ))}
+              </div>
+            </section>
+          ))}
           {footer ? <div className="menu-footer">{footer}</div> : null}
-          <button type="button" onClick={onClose} className="menu-done bg-primary">
-            Done
+          <section className="fr-note">
+            <p className="text-[13px] font-semibold">Looking for account or help?</p>
+            <p className="mt-1 text-[12px] text-muted-foreground">
+              Use the global Menu in the header for Help for this page, Profile settings, Help &amp;
+              FAQ, Privacy &amp; legal, sign out and online/offline status. Those account tools are
+              not trip-management actions.
+            </p>
+          </section>
+          <button type="button" onClick={onClose} className="tm-close !bg-card">
+            Return to the Timeline
           </button>
         </div>
       )}
@@ -383,25 +482,3 @@ type Row = {
   tone: number;
   onClick: () => void;
 };
-
-function Group({ name, rows }: { name: string; rows: Row[] }) {
-  return (
-    <section aria-label={name} className="menu-group">
-      <h2 className="mono-caps menu-group-label">{name}</h2>
-      <div>
-        {rows.map((row) => (
-          <button
-            key={row.key}
-            type="button"
-            data-menu-row={row.key}
-            onClick={row.onClick}
-            className="menu-row"
-          >
-            <span className="menu-row-title">{row.title}</span>
-            <span className="menu-row-note">{row.note}</span>
-          </button>
-        ))}
-      </div>
-    </section>
-  );
-}

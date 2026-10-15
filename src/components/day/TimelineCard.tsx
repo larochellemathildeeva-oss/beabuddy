@@ -75,6 +75,7 @@ import {
   timelineGlyph,
   type TimelineKind,
 } from "@/lib/timeline-kind";
+import { frameStay, stopTimeSpan } from "@/lib/trip-frame";
 import { legMiniMap, stepTurn, type LatLon, type StepTurn } from "@/lib/leg-mini-map";
 
 /**
@@ -82,7 +83,7 @@ import { legMiniMap, stepTurn, type LatLon, type StepTurn } from "@/lib/leg-mini
  * of the journey beside each leg. Shared so the two always line up.
  */
 // Figma "trip-timeline": a 48px hour, 16px from the stop.
-const TIME_COLUMN = "grid-cols-[48px_minmax(0,1fr)] gap-x-4";
+const TIME_COLUMN = "grid-cols-[56px_minmax(0,1fr)] gap-x-3";
 
 const TIME_MODES: { value: TimeMode; label: string }[] = [
   { value: "fixed", label: "Fixed" },
@@ -351,26 +352,19 @@ export function TimelineEntry({
   // the name opens the stop in a sheet to edit.
   const front = (
     <article
-      className={`rounded-[24px] border border-border/60 bg-card p-2.5 shadow-sm transition-shadow ${
-        current ? "ring-2 ring-primary/45" : hereNow ? "ring-2 ring-primary/25" : ""
+      className={`rounded-[var(--r-card)] border border-border bg-card p-2.5 ${
+        current ? "border-foreground" : ""
       }`}
     >
-      <div className="flex items-center gap-2.5">
+      <div className="flex items-start gap-2.5">
         <span className="relative block shrink-0" aria-hidden>
           <PlacePicture
             name={item.title}
             kind={item.kind}
             lat={item.lat}
             lon={item.lon}
-            className="size-[64px] rounded-2xl"
+            className="h-[72px] w-[64px] rounded-[6px] border border-border"
           />
-          {number != null ? (
-            <StopDisc
-              number={number}
-              done={done}
-              className="absolute -left-2 -top-2 size-6 text-[13px]"
-            />
-          ) : null}
         </span>
         <button
           type="button"
@@ -388,7 +382,7 @@ export function TimelineEntry({
             <span className="block text-[13px] text-muted-foreground">{item.day_date}</span>
           ) : null}
           <span
-            className={`block break-words font-display text-[18px] leading-[1.15] ${
+            className={`block break-words text-[16px] font-semibold leading-[1.25] ${
               done ? "text-muted-foreground" : ""
             }`}
           >
@@ -401,11 +395,16 @@ export function TimelineEntry({
               />
             ) : null}
           </span>
-          <span className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[14px] text-muted-foreground">
-            {item.planned_stay_minutes ? (
-              <span className="whitespace-nowrap">{stayLabel(item.planned_stay_minutes)} ·</span>
-            ) : null}
-            <span className="whitespace-nowrap">{glyphChipLabel(timelineGlyph(item))}</span>
+          <span className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[13px] text-muted-foreground">
+            <span className="whitespace-nowrap">
+              {[
+                rail ? stopTimeSpan(rail, item.planned_stay_minutes) : "",
+                item.planned_stay_minutes ? frameStay(item.planned_stay_minutes) : "",
+                glyphChipLabel(timelineGlyph(item)),
+              ]
+                .filter(Boolean)
+                .join(" · ")}
+            </span>
             {booked ? (
               <span className="tile-fill-3 rounded-full px-2 py-0.5 text-[13px] font-semibold text-nexttime">
                 Booked
@@ -452,7 +451,7 @@ export function TimelineEntry({
             onClick={() => setActionsOpen((o) => !o)}
             aria-expanded={actionsOpen}
             aria-label={`Actions for ${item.title}`}
-            className={`tap-44 grid size-9 shrink-0 place-items-center rounded-full bg-elevated text-foreground transition-colors ${
+            className={`tap-44 grid size-8 shrink-0 place-items-center rounded-full text-foreground transition-colors ${
               actionsOpen ? "bg-primary-soft text-primary" : ""
             }`}
           >
@@ -1084,7 +1083,7 @@ export function TimelineEntry({
         {!back && (
           <span
             aria-hidden
-            className={`tabular-nums text-foreground ${folded ? "pt-[14px] text-[14px] leading-[1.4]" : "pt-4 text-[14px] font-semibold"}`}
+            className={`tl-hour tabular-nums text-foreground ${folded ? "pt-[14px] text-[14px] leading-[1.4]" : "pt-3 text-[14px] font-semibold"}`}
           >
             {rail}
           </span>
