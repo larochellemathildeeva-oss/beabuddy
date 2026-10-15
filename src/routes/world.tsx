@@ -13,6 +13,7 @@ import {
   Plus,
   Quote,
   Upload,
+  ArrowRight,
 } from "@/components/icons";
 import { AppShell } from "@/components/AppShell";
 import { BeaGlobe } from "@/components/world/BeaGlobe";
@@ -651,7 +652,11 @@ function WorldPage() {
   };
 
   return (
-    <AppShell eyebrow={`World / ${WORLD_VIEW_WORDS[tab]}`} title="Your world.">
+    <AppShell
+      {...(tab === "map"
+        ? { homeHeader: true }
+        : { eyebrow: `World / ${WORLD_VIEW_WORDS[tab]}`, title: "Your world." })}
+    >
       <div className="bea-world space-y-3">
         {places.length > 0 && (
           <p className="sr-only">
@@ -666,12 +671,114 @@ function WorldPage() {
           </p>
         )}
 
-        <div data-guide="world-tabs" className="relative z-[1]">
-          <WorldTabs active={tab} onChange={setTab} className="mx-0" />
-        </div>
+        {tab !== "map" && (
+          <div data-guide="world-tabs" className="relative z-[1]">
+            <WorldTabs active={tab} onChange={setTab} className="mx-0" />
+          </div>
+        )}
 
         {tab === "map" && (
           <>
+            {/* The Figma "World" frame: an intro card, the map, the bucket list. */}
+            <section className="fw-hero">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.06em]">World</p>
+                  <h1 className="mt-3 text-[32px] font-semibold leading-[1.12]">
+                    Everywhere you&apos;ve been and everywhere you want to go.
+                  </h1>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setTab("bucket")}
+                  aria-label="Open your bucket list"
+                  className="fw-round"
+                >
+                  <ArrowRight className="size-4" aria-hidden />
+                </button>
+              </div>
+              <p className="mt-4 text-[11px] font-semibold uppercase tracking-[0.04em]">
+                Map · Bucket list · Been there · Stats
+              </p>
+            </section>
+
+            <section className="fw-card">
+              <div className="flex items-baseline justify-between">
+                <h2 className="text-[18px] font-semibold">World map</h2>
+                <button
+                  type="button"
+                  onClick={() => setGlobeOpen(true)}
+                  className="text-[12px] font-medium"
+                >
+                  Search →
+                </button>
+              </div>
+              <div className="mt-3 flex gap-2">
+                <button type="button" onClick={() => setGlobeOpen(true)} className="fw-search">
+                  <MapPin className="size-4 shrink-0" aria-hidden />
+                  <span className="truncate text-muted-foreground">
+                    Search countries, provinces, cities
+                  </span>
+                </button>
+                <button type="button" onClick={() => setGlobeOpen(true)} className="fw-filter">
+                  Filter
+                </button>
+              </div>
+              <div data-guide="globe" className="world-atlas mt-3">
+                <WorldFlatMap
+                  atlas
+                  pins={show.cities ? globeCities : []}
+                  visitedCountries={show.countries ? shadedCountries : noCountries}
+                  regions={show.provinces ? provinces : []}
+                />
+              </div>
+            </section>
+
+            <section className="fw-card">
+              <div className="flex items-baseline justify-between">
+                <h2 className="text-[18px] font-semibold">Bucket list</h2>
+                <button
+                  type="button"
+                  onClick={() => setTab("bucket")}
+                  className="text-[12px] font-medium"
+                >
+                  See all →
+                </button>
+              </div>
+              {bucketLocations.length > 0 ? (
+                <ul className="mt-3 grid grid-cols-3 gap-2">
+                  {bucketLocations.slice(0, 3).map((place) => (
+                    <li key={place.key}>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setOpenLocation({
+                            name: place.name,
+                            city: place.city,
+                            country: place.country,
+                            rows: place.rows,
+                          })
+                        }
+                        className="fw-mini"
+                      >
+                        <span className="text-[12px] font-semibold">{place.name}</span>
+                        <span className="text-[11px] text-muted-foreground">
+                          {countryDisplayName(place.country) || ""}
+                        </span>
+                        <span className="text-[11px] text-muted-foreground">Saved</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="mt-2 text-[12px] text-muted-foreground">{bucketEmpty}</p>
+              )}
+            </section>
+
+            <div data-guide="world-tabs" className="relative z-[1]">
+              <WorldTabs active={tab} onChange={setTab} className="mx-0" />
+            </div>
+
             {places.length === 0 && !photo.loading && !vault.loading && (
               <div className="plain-card flex items-center gap-3 p-4">
                 <img
@@ -689,15 +796,6 @@ function WorldPage() {
                 </div>
               </div>
             )}
-
-            <div data-guide="globe" className="world-atlas">
-              <WorldFlatMap
-                atlas
-                pins={show.cities ? globeCities : []}
-                visitedCountries={show.countries ? shadedCountries : noCountries}
-                regions={show.provinces ? provinces : []}
-              />
-            </div>
 
             {moduleRows(worldModules, (k) => WORLD_SMALL.has(k)).map((row) =>
               "full" in row ? (

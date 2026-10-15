@@ -838,7 +838,7 @@ await flow("recs: the design's blocks; Save a place holds every way in; Filters 
   const text = async () => page.locator("body").innerText();
   for (const word of ["Recs / saved", "Places worth keeping.", "Search or add a place", "Recently saved", "Save a place", "Filters"])
     if (!(await text()).includes(word)) throw new Error(`Recs lost "${word}"`);
-  const tabs = await page.getByRole("tablist", { name: "Recs views" }).getByRole("tab").allInnerTexts();
+  const tabs = await page.getByRole("tablist", { name: "Recs sections" }).getByRole("tab").allInnerTexts();
   if (tabs.join("|") !== "Saved|Nearby|Map") throw new Error(`Recs tabs are ${tabs.join(", ")}`);
   for (const word of ["Nearby map", "More ways", "Explore nearby"])
     if ((await text()).includes(word)) throw new Error(`"${word}" is still on Recs`);

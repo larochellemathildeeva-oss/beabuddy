@@ -5527,3 +5527,262 @@ main [class*="rounded-2xl"] {
 .tf-tabs-only .trip-views.trip-views--top.trip-views--pill button > span {
   width: auto;
 }
+
+/* Header buttons, as every Figma frame draws them: a bordered box. */
+.hdr-btn {
+  min-height: 40px;
+  min-width: 56px;
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+  background: var(--card);
+  font-weight: 500;
+}
+
+/* You, as the Figma frame draws it. */
+.fy-card {
+  display: block;
+  width: 100%;
+  padding: 16px;
+  text-align: left;
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+  background: var(--card);
+}
+.fy-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.fy-h {
+  margin: 4px 0 8px;
+  font-size: 15px;
+  font-weight: 600;
+}
+.fy-avatar {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 9999px;
+  background: var(--muted);
+  font-size: 22px;
+  font-weight: 600;
+}
+.fy-edit {
+  flex: none;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+}
+.fy-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  text-align: center;
+}
+.fy-tiles {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.fy-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 72px;
+  padding: 12px;
+  text-align: left;
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+  background: var(--card);
+}
+.fy-tile-t {
+  font-size: 14px;
+  font-weight: 600;
+}
+.fy-tile-n {
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
+.fy-shot {
+  position: relative;
+  display: block;
+  height: 104px;
+  overflow: hidden;
+  border-radius: var(--r-card);
+}
+.fy-shot > div {
+  height: 100%;
+}
+.fy-shot-pill {
+  position: absolute;
+  left: 8px;
+  bottom: 8px;
+  max-width: calc(100% - 16px);
+  overflow: hidden;
+  padding: 3px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: #fff;
+  border-radius: 6px;
+  background: rgb(0 0 0 / 0.6);
+}
+
+/* Recs, as the Figma frame draws it. */
+.fr-seg {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 9999px;
+  background: var(--card);
+}
+.fr-seg button {
+  min-height: 40px;
+  border-radius: 9999px;
+  font-size: 13px;
+}
+.fr-seg button[aria-selected="true"] {
+  background: var(--muted);
+  font-weight: 600;
+}
+.fr-filters {
+  display: flex;
+  gap: 16px;
+  padding: 12px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+  background: var(--card);
+}
+.fr-tiles {
+  display: flex;
+  gap: 8px;
+  margin-inline: -16px;
+  padding-inline: 16px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.fr-tile {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: 4px;
+  width: 104px;
+  padding: 10px;
+  text-align: left;
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+  background: var(--card);
+}
+.fr-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.fr-chips button {
+  padding: 6px 14px;
+  font-size: 13px;
+  border: 1px solid var(--border);
+  border-radius: 9999px;
+  background: var(--card);
+}
+.fr-chips button.is-on {
+  background: var(--muted);
+  font-weight: 600;
+}
+.fr-break {
+  flex-basis: 100%;
+  height: 0;
+}
+.fr-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px;
+  text-align: left;
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+  background: var(--card);
+}
+.fr-note {
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+  background: var(--muted);
+}
+.fr-plan {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+  background: var(--card);
+}
+
+/* World, as the Figma frame draws it. */
+.fw-hero {
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+  background: var(--muted);
+}
+.fw-round {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--border);
+  border-radius: 9999px;
+  background: var(--card);
+}
+.fw-card {
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+  background: var(--card);
+}
+.fw-search {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 10px 14px;
+  font-size: 12px;
+  text-align: left;
+  border: 1px solid var(--border);
+  border-radius: 9999px;
+  background: var(--muted);
+}
+.fw-filter {
+  flex: none;
+  padding: 10px 16px;
+  font-size: 12px;
+  border: 1px solid var(--border);
+  border-radius: 9999px;
+  background: var(--muted);
+}
+.fw-mini {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  min-height: 96px;
+  padding: 8px;
+  text-align: left;
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+  background: var(--muted);
+}

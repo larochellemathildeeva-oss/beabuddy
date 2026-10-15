@@ -3,7 +3,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { friendlyError } from "@/lib/friendly-error";
 import { formatTripLocation } from "@/lib/place-label";
 import { useQueryClient } from "@tanstack/react-query";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { rememberedProfileName, rememberProfileName, shownName } from "@/lib/profile-name";
@@ -27,6 +27,11 @@ import { listSavedDirectionTripIds } from "@/hooks/useOfflineDirections";
 
 import { useTrips } from "@/hooks/useTrips";
 import { useCountriesVisited } from "@/hooks/useCountriesVisited";
+import { usePhotoMemories } from "@/hooks/usePhotoMemories";
+import { useRecommendations } from "@/hooks/useRecommendations";
+import { useThemeName } from "@/hooks/useThemeName";
+import { isVisitedPin, visitedCities } from "@/lib/world-visits";
+import { TripPicture } from "@/components/HomeTripCard";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { hasDismissedSampleCta } from "@/lib/auto-seed";
@@ -217,15 +222,28 @@ function ProfilePage() {
   const tripCount = t.trips.length;
   // The same figure as World: places been there and trips started.
   const countryCount = useCountriesVisited(t.trips);
+  const photoMemories = usePhotoMemories();
+  const vault = useRecommendations();
+  const cityCount = useMemo(
+    () => visitedCities([...photoMemories.pins, ...vault.pins].filter(isVisitedPin)).length,
+    [photoMemories.pins, vault.pins],
+  );
+  const savedCount = vault.rows.length;
+  const themeName = useThemeName();
 
   const replayTour = () => {
     resumeOrReplayTour();
     void navigate({ to: "/" });
   };
 
+  const recent = [...t.trips]
+    .filter((trip) => trip.start_date)
+    .sort((x, y) => (y.start_date ?? "").localeCompare(x.start_date ?? ""))
+    .slice(0, 2);
+
   return (
-    <AppShell eyebrow="You / menu" title="Your settings.">
-      <div className="you-page space-y-6">
+    <AppShell homeHeader>
+      <div className="you-page space-y-4">
         {!loading && !user && (
           <div data-guide="profile-account" className={`${PLAIN} p-4`}>
             <p className="font-display text-[21px] leading-snug">
@@ -241,78 +259,170 @@ function ProfilePage() {
           </div>
         )}
 
-        {/* The rows of the Figma "You / menu" frame, in its order. */}
-        <div data-guide={user ? "profile-account" : undefined}>
-          {user ? (
-            <YouRow
-              title="Profile settings"
-              note="Name and home city"
-              onClick={() => setPanel("settings")}
-              guide="profile-settings"
-            />
-          ) : null}
-          {user ? (
-            <YouRow
-              title="Travel preferences"
-              note="How you like to travel"
-              to="/preferences"
-              guide="travel-preferences"
-            />
-          ) : null}
-          {user ? (
-            <YouRow
-              title="Packing lists"
-              note="Reusable templates"
-              onClick={() => setPanel("packing")}
-              guide="packing-lists"
-            />
-          ) : null}
-          <YouRow title="Photos & memories" note="Your travels kept together" to="/photos" />
-          <YouRow
-            title="Work travel"
-            note="Receipts and expenses"
-            to="/expenses"
-            guide="work-travel"
-          />
-          <YouRow
-            title="Trip documents"
-            note="Bookings and references"
-            href="/profile/documents"
-            guide="trip-documents"
-          />
-          <YouRow
-            title="Appearance"
-            note="Calm, Colorful and Dark"
-            onClick={() => setPanel("appearance")}
-            guide="your-bea"
-          />
-          {user ? (
-            <YouRow
-              title="Data & imports"
-              note="Bring your travel history"
-              onClick={() => setPanel("data")}
-              guide="offline-options"
-            />
-          ) : null}
-          <YouRow
-            title="Privacy & legal"
-            note="Your data and choices"
-            onClick={() => setPanel("legal")}
-            guide="legal"
-          />
-          <YouRow title="Help & FAQ" note="A little guidance" to="/help" />
-          <YouRow title="Feedback" note="Tell Béa something" onClick={() => setPanel("feedback")} />
-          <YouRow
-            title="About Béa"
-            note="Your travel buddy"
-            onClick={() => setPanel("about")}
-            guide="replay-tour"
-          />
+        {/* The Figma "You" frame, top to bottom. */}
+        {user ? (
+          <section data-guide="profile-account" className="fy-card">
+            <div className="flex items-center gap-4">
+              <span aria-hidden className="fy-avatar">
+                {(signedInName || "B").slice(0, 1).toUpperCase()}
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[20px] font-semibold leading-tight">
+                  {signedInName || "Traveller"}
+                </p>
+                {homeCity ? (
+                  <p className="truncate text-[13px] text-muted-foreground">{homeCity}</p>
+                ) : null}
+                {interests.length > 0 ? (
+                  <p className="truncate text-[12px] text-muted-foreground">
+                    {interestLine(interests)}
+                  </p>
+                ) : null}
+              </div>
+              <button
+                type="button"
+                onClick={() => setPanel("settings")}
+                data-guide="profile-settings"
+                className="fy-edit"
+              >
+                Edit ›
+              </button>
+            </div>
+            <p className="mt-3 text-[13px] text-muted-foreground">Your travels, your way.</p>
+            <dl className="fy-stats">
+              {(
+                [
+                  [countryCount, "Countries"],
+                  [cityCount, "Cities"],
+                  [savedCount, "Saved"],
+                  [tripCount, "Trips"],
+                ] as const
+              ).map(([n, label]) => (
+                <div key={label}>
+                  <dt className="sr-only">{label}</dt>
+                  <dd className="text-[20px] font-semibold leading-none">{n}</dd>
+                  <dd className="mt-1 text-[11px] text-muted-foreground" aria-hidden>
+                    {label}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </section>
+        ) : null}
+
+        <div>
+          <h2 className="fy-h">Your travel essentials</h2>
+          <div className="fy-tiles">
+            {user ? (
+              <Link to="/preferences" data-guide="travel-preferences" className="fy-tile">
+                <span className="fy-tile-t">Travel prefs ›</span>
+                <span className="fy-tile-n">Styles, budget, pace, interests</span>
+              </Link>
+            ) : null}
+            {user ? (
+              <button
+                type="button"
+                onClick={() => setPanel("packing")}
+                data-guide="packing-lists"
+                className="fy-tile"
+              >
+                <span className="fy-tile-t">Packing lists ›</span>
+                <span className="fy-tile-n">Reusable lists for your next trip</span>
+              </button>
+            ) : null}
+            <Link to="/photos" className="fy-tile">
+              <span className="fy-tile-t">Photos ›</span>
+              <span className="fy-tile-n">City memories and travel stories</span>
+            </Link>
+            <a href="/profile/documents" data-guide="trip-documents" className="fy-tile">
+              <span className="fy-tile-t">Trip docs ›</span>
+              <span className="fy-tile-n">Bookings and protected docs</span>
+            </a>
+          </div>
         </div>
 
-        <Link to="/" className="btn-primary flex w-full items-center justify-center px-4">
-          Done
-        </Link>
+        {recent.length > 0 ? (
+          <section className="fy-card">
+            <h2 className="fy-h !mb-2 !mt-0">Recent highlights</h2>
+            <div className="grid grid-cols-2 gap-2">
+              {recent.map((trip) => (
+                <Link
+                  key={trip.id}
+                  to="/trips/$tripId"
+                  params={{ tripId: trip.id }}
+                  className="fy-shot"
+                >
+                  <TripPicture trip={trip} photos={[]} cities={[trip.city ?? ""]} />
+                  <span className="fy-shot-pill">
+                    {[trip.city, monthYear(trip.start_date)].filter(Boolean).join(" · ")}
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
+        <button
+          type="button"
+          onClick={() => setPanel("appearance")}
+          data-guide="your-bea"
+          className="fy-card fy-row"
+        >
+          <span className="min-w-0">
+            <span className="block text-[15px] font-semibold">Appearance</span>
+            <span className="block text-[12px] text-muted-foreground">
+              {themeName.charAt(0).toUpperCase() + themeName.slice(1)} mode · Default reading
+            </span>
+          </span>
+          <span className="text-[13px] text-muted-foreground">Change ›</span>
+        </button>
+
+        <section className="fy-card">
+          <h2 className="fy-h !mb-2 !mt-0">Work &amp; data</h2>
+          <div className="grid grid-cols-2 gap-2">
+            <Link to="/expenses" data-guide="work-travel" className="fy-tile !min-h-0">
+              <span className="fy-tile-t">Work travel ›</span>
+              <span className="fy-tile-n">Receipts, expenses, export</span>
+            </Link>
+            {user ? (
+              <button
+                type="button"
+                onClick={() => setPanel("data")}
+                data-guide="offline-options"
+                className="fy-tile !min-h-0"
+              >
+                <span className="fy-tile-t">Data &amp; imports ›</span>
+                <span className="fy-tile-n">Photos, calendar, offline trips</span>
+              </button>
+            ) : null}
+          </div>
+        </section>
+
+        <section className="fy-card">
+          <button
+            type="button"
+            onClick={() => setPanel("legal")}
+            data-guide="legal"
+            className="fy-tile-t text-left"
+          >
+            Settings &amp; help ›
+          </button>
+          <p className="mt-2 text-[12px] text-muted-foreground">
+            <button type="button" onClick={() => setPanel("legal")}>
+              Privacy
+            </button>
+            {" · "}
+            <Link to="/help">Help &amp; FAQ</Link>
+            {" · "}
+            <button type="button" onClick={() => setPanel("feedback")}>
+              Feedback
+            </button>
+            {" · "}
+            <button type="button" onClick={() => setPanel("about")} data-guide="replay-tour">
+              About Béa
+            </button>
+          </p>
+        </section>
       </div>
 
       <Sheet
@@ -718,6 +828,15 @@ function ProfilePage() {
       </Sheet>
     </AppShell>
   );
+}
+
+/** "Apr 2025" from a trip's start date. */
+function monthYear(date: string | null): string {
+  if (!date) return "";
+  const d = new Date(`${date}T12:00:00`);
+  return Number.isNaN(d.getTime())
+    ? ""
+    : d.toLocaleDateString("en", { month: "short", year: "numeric" });
 }
 
 /** A field in a hairline box with its label inside, as the Figma forms draw it. */
