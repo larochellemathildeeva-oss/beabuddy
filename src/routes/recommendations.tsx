@@ -16,6 +16,7 @@ import {
   MapPinned,
   Search,
   Share2,
+  ArrowRight,
 } from "@/components/icons";
 import { AppShell } from "@/components/AppShell";
 import { RecoListImport } from "@/components/RecoListImport";
@@ -1448,7 +1449,7 @@ function RecommendationsPage() {
                   onClick={() => setScreen({ kind: "saved", list: "all" })}
                   className="text-[12px] font-medium"
                 >
-                  See all →
+                  See all <ArrowRight className="inline size-3.5 align-[-2px]" aria-hidden />
                 </button>
               </div>
               {vault.loading && vault.rows.length === 0 && <RowListSkeleton />}
@@ -1642,9 +1643,7 @@ function FilterSelect({
       >
         <span>{label}:</span>
         <span className="truncate">{on ? value : allLabel}</span>
-        <span aria-hidden className="text-[9px]">
-          ▾
-        </span>
+        <ChevronDown className="size-3 shrink-0" aria-hidden />
         <select
           value={value}
           onChange={(e) => onChange(e.target.value)}

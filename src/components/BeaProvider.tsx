@@ -16,7 +16,7 @@ export function BeaProvider({ children }: { children: ReactNode }) {
 }
 
 /**
- * Béa's typography is self-hosted now (DM Sans, imported by styles.css), so
+ * Béa's typography is self-hosted now (Inter, imported by styles.css), so
  * there is nothing to link. Kept so existing imports and the library export
  * keep working.
  */

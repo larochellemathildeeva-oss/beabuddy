@@ -5,6 +5,7 @@ import { hasPendingOAuthResultInWindow } from "@/lib/auth-redirect";
 import { SignedInHomeNext } from "@/components/next/HomeNextPage";
 import { AppShell } from "@/components/AppShell";
 import { useAuth } from "@/hooks/useAuth";
+import { ChevronRight } from "@/components/icons";
 
 export const Route = createFileRoute("/")({
   staticData: { plane: "tab" },
@@ -111,7 +112,7 @@ function LandingPage() {
               Sign in or create an account
             </span>
           </span>
-          <span aria-hidden>›</span>
+          <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
         </Link>
         <Link to="/auth" className={row}>
           <span className="lp-dot" aria-hidden />
@@ -121,7 +122,7 @@ function LandingPage() {
               Continue with your existing account
             </span>
           </span>
-          <span aria-hidden>›</span>
+          <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
         </Link>
         <Link to="/how-it-works" className={row}>
           <span className="lp-dot" aria-hidden />
@@ -131,7 +132,7 @@ function LandingPage() {
               Learn how trips, invites, and privacy work
             </span>
           </span>
-          <span aria-hidden>›</span>
+          <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
         </Link>
         <Link to="/auth" search={{ mode: "signup", redirect: "/trips" }} className={row}>
           <span className="lp-dot" aria-hidden />
@@ -141,7 +142,7 @@ function LandingPage() {
               Enter an invite code after signup, then Trips
             </span>
           </span>
-          <span aria-hidden>›</span>
+          <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
         </Link>
 
         <nav aria-label="More about Béa" className="flex flex-col items-center gap-1 pt-2">

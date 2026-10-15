@@ -57,10 +57,25 @@ export function scaledDeclaration(property: (typeof SCALED)[number], px: number)
   };
 }
 
+/**
+ * Béa's type sits on three steps, 12px for captions, 14px for controls and
+ * 16px for body copy: anything under 12px is read at 12, the sizes between 12
+ * and 14 at 14, and those between 14 and 16 (15px text) at 16. Larger sizes are untouched,
+ * so each role keeps its own size and the hierarchy stays predictable.
+ */
+export function typeStep(px: number): number {
+  if (px < 12) return 12;
+  if (px > 12 && px < 14) return 14;
+  if (px > 14 && px < 16) return 16;
+  return px;
+}
+
 function scale(property: (typeof SCALED)[number]) {
   return (decl: Declaration): Declaration | undefined => {
     const px = plainPx(decl as LengthDeclaration);
-    return px === null ? undefined : (scaledDeclaration(property, px) as unknown as Declaration);
+    if (px === null) return undefined;
+    const size = property === "font-size" ? typeStep(px) : px;
+    return scaledDeclaration(property, size) as unknown as Declaration;
   };
 }
 

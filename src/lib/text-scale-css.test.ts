@@ -13,8 +13,8 @@ function run(css: string): string {
 }
 
 test("pixel font sizes and line heights follow --text-scale", () => {
-  const out = run(".a{font-size:13px;line-height:22px}");
-  assert.match(out, /font-size:calc\(13px \* var\(--text-scale,\s*1\)\)/);
+  const out = run(".a{font-size:16px;line-height:22px}");
+  assert.match(out, /font-size:calc\(16px \* var\(--text-scale,\s*1\)\)/);
   assert.match(out, /line-height:calc\(22px \* var\(--text-scale,\s*1\)\)/);
 });
 
@@ -23,4 +23,16 @@ test("other values are left as they are", () => {
   assert.doesNotMatch(out, /--text-scale/);
   assert.match(out, /font-size:1rem/);
   assert.match(out, /width:13px/);
+});
+
+test("small sizes sit on the 12px and 14px steps", () => {
+  const sizeOf = (px: string) =>
+    run(`.a{font-size:${px}}`).match(/font-size:calc\((\d+(?:\.\d+)?)px/)?.[1];
+  assert.equal(sizeOf("10px"), "12");
+  assert.equal(sizeOf("11.5px"), "12");
+  assert.equal(sizeOf("12px"), "12");
+  assert.equal(sizeOf("13px"), "14");
+  assert.equal(sizeOf("14px"), "14");
+  assert.equal(sizeOf("15px"), "16");
+  assert.equal(sizeOf("17px"), "17");
 });

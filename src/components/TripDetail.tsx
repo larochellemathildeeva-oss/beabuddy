@@ -119,6 +119,7 @@ import {
 } from "@/lib/trip-days";
 import { dropMove, rearrange, stepMove, timeFit, tripDays, type StopMove } from "@/lib/stop-move";
 import { MoveStopSheet } from "@/components/day/MoveStopSheet";
+import { PastTripCards, PastTripTop } from "@/components/day/PastTrip";
 import { ReviewChangesSheet } from "@/components/day/ReviewChangesSheet";
 import { useScheduleReview } from "@/hooks/useScheduleReview";
 import type { TravelLeg } from "@/lib/itinerary-change";
@@ -891,6 +892,9 @@ export function TripDetail({
     return () => clearInterval(tick);
   }, []);
   const todayKey = toLocalISODate(new Date());
+  const isPastTrip =
+    Boolean(trip.end_date ?? trip.start_date) &&
+    todayKey > (trip.end_date ?? trip.start_date ?? "");
   /** Day the add form should land on, set by the per-day "Add here" buttons. */
   const [addDay, setAddDay] = useState("");
   /** Which kind the Bookings tab shows. */
@@ -1664,6 +1668,14 @@ export function TripDetail({
       data-bar-position={barPosition}
       className="trip-shell overflow-clip sm:mx-4 sm:mt-3 sm:rounded-3xl sm:border sm:border-border sm:bg-card"
     >
+      {perspective === "overview" && isPastTrip ? (
+        <div className="px-4 pt-3">
+          <PastTripTop
+            country={trip.country}
+            dates={tripDateLine(trip.start_date, trip.end_date)}
+          />
+        </div>
+      ) : null}
       {perspective === "companion" ? (
         <div className="tf-tabs-only">{headTabs}</div>
       ) : (
@@ -1807,6 +1819,26 @@ export function TripDetail({
               jumpToStop(peekStop.id);
             }}
           />
+        )}
+        {perspective === "overview" && isPastTrip && (
+          <div className="mb-4 space-y-3">
+            <PastTripCards
+              city={trip.city}
+              country={trip.country}
+              onImportPhotos={() => {
+                setSettingsOpen(true);
+                setSheetSection("photos");
+              }}
+              onRevisit={() => setPerspective("timeline")}
+              onAgain={() => {
+                setSettingsOpen(true);
+                setSheetSection("again");
+              }}
+            />
+            <p className="pt-2 text-[12px] font-semibold uppercase tracking-[0.04em] text-muted-foreground">
+              Everything on this trip
+            </p>
+          </div>
         )}
         {perspective === "overview" && (
           <TripOverview
@@ -2074,16 +2106,31 @@ export function TripDetail({
           ) : null}
           <div data-guide="trip-timeline" className="pb-3 pt-2">
             {editingTimeline && (
-              <div className="mb-3 flex items-center justify-between gap-2 rounded-2xl bg-primary-soft px-3 py-2">
-                <p className="text-[13px] font-semibold text-primary">Editing every stop at once</p>
-                <button
-                  type="button"
-                  onClick={() => setEditingTimeline(false)}
-                  className="inline-flex min-h-9 items-center gap-1 rounded-full bg-primary px-3 text-[13px] font-semibold text-primary-foreground"
-                >
-                  <Check className="size-4" aria-hidden />
-                  Done editing
-                </button>
+              <div className="mb-3 space-y-3">
+                <div>
+                  <p className="text-[11px] uppercase tracking-[0.04em] text-muted-foreground">
+                    {headTitle} · Timeline
+                  </p>
+                  <h2 className="mt-1 text-[32px] font-bold leading-[1.1]">Edit timeline</h2>
+                  <p className="mt-1 text-[13px]">Reorder stops, times and transfers</p>
+                </div>
+                <p className="rounded-[var(--r-card)] border border-border bg-muted px-3 py-3 text-[12px]">
+                  Drag the handle to reorder. Tap a stop to change it or its transfer. Changes save
+                  as you make them.
+                </p>
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-[12px] text-muted-foreground">
+                    {stopItems.length} {stopItems.length === 1 ? "stop" : "stops"}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setEditingTimeline(false)}
+                    className="inline-flex min-h-11 items-center gap-1 rounded-[var(--r-card)] border border-border bg-muted px-5 text-[14px] font-semibold"
+                  >
+                    <Check className="size-4" aria-hidden />
+                    Done editing
+                  </button>
+                </div>
               </div>
             )}
 
@@ -2776,56 +2823,75 @@ export function TripDetail({
         open={addOpen}
         onClose={() => setAddOpen(false)}
         page
-        title="Add to this trip"
-        hint={`${trip.title} / Add`}
+        title="Add a stop"
+        hint={`${trip.title} · Timeline`}
         crumb={trip.title}
       >
-        <div>
-          <button
-            type="button"
-            onClick={() => {
-              setAddOpen(false);
-              setPerspective("timeline");
-              setTimelineOpen(true);
-              setAddDay(addToDay ?? "");
-              setAddingTimeline(true);
-            }}
-            className="menu-row"
-          >
-            <span>
-              <span className="menu-row-title block">A stop on the itinerary</span>
-              <span className="menu-row-note block">
-                A place, meal or activity, in the Timeline.
+        <div className="space-y-3">
+          <p className="text-[13px]">Choose a place for {addToDayLabel || "this trip"}.</p>
+          <section className="tm-group">
+            <h2 className="text-[15px] font-semibold">Choose a source</h2>
+            <button
+              type="button"
+              onClick={() => {
+                setAddOpen(false);
+                setSavedOpen(true);
+              }}
+              className="tm-row"
+            >
+              <span className="min-w-0 flex-1">
+                <span className="block text-[14px] font-semibold">Your saved places</span>
+                <span className="block text-[12px] text-muted-foreground">
+                  Choose a place from Recs
+                </span>
               </span>
-            </span>
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setAddOpen(false);
-              setSavedOpen(true);
-            }}
-            className="menu-row"
-          >
-            <span>
-              <span className="menu-row-title block">From Saved</span>
-              <span className="menu-row-note block">
-                A place you kept, with its address and map pin.
+              <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setAddOpen(false);
+                setPerspective("timeline");
+                setTimelineOpen(true);
+                setAddDay(addToDay ?? "");
+                setAddingTimeline(true);
+              }}
+              className="tm-row"
+            >
+              <span className="min-w-0 flex-1">
+                <span className="block text-[14px] font-semibold">Search nearby</span>
+                <span className="block text-[12px] text-muted-foreground">
+                  Find places around {trip.city?.split(",")[0] || "your stop"}, or add a custom stop
+                  with a name, time and address
+                </span>
               </span>
-            </span>
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setAddOpen(false);
-              setCitySignal((n) => n + 1);
-            }}
-            className="menu-row"
-          >
-            <span>
-              <span className="menu-row-title block">Another city or location</span>
-              <span className="menu-row-note block">Add a city to the trip's route.</span>
-            </span>
+              <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setAddOpen(false);
+                setCitySignal((n) => n + 1);
+              }}
+              className="tm-row"
+            >
+              <span className="min-w-0 flex-1">
+                <span className="block text-[14px] font-semibold">Another city or location</span>
+                <span className="block text-[12px] text-muted-foreground">
+                  Add a city to the trip's route
+                </span>
+              </span>
+              <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+            </button>
+          </section>
+          <section className="fr-note">
+            <p className="text-[14px] font-semibold">Next: schedule your stop</p>
+            <p className="mt-1 text-[12px] text-muted-foreground">
+              Choose a start time, duration and position in the day.
+            </p>
+          </section>
+          <button type="button" onClick={() => setAddOpen(false)} className="tm-close !bg-card">
+            Cancel · return to editing
           </button>
         </div>
       </Sheet>

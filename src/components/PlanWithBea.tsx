@@ -1,5 +1,5 @@
 import type { ComponentType } from "react";
-import { Sparkles, Sun, Users } from "@/components/icons";
+import { Sparkles, Sun, Users, ChevronRight } from "@/components/icons";
 
 /*
  * Plan with Béa, as the minimalist frame draws it: four rows (build, import,
@@ -74,9 +74,7 @@ export function PlanCards({
               {row.note}
             </span>
           </span>
-          <span aria-hidden className="text-[16px]">
-            ›
-          </span>
+          <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
         </button>
       ))}
     </div>
