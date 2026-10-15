@@ -1,4 +1,4 @@
-import { createFileRoute, Link, Navigate } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { AppShell } from "@/components/AppShell";
 import { HomeYourTrips } from "@/components/HomeTripCard";
@@ -9,10 +9,11 @@ import { HomeWeather, WeatherCredit } from "@/components/HomeWeather";
 import {
   HomeNextNoTrip,
   HomeNextOnTrip,
+  HomeNextContinue,
   HomeNextStats,
   HomeNextUpcoming,
-} from "@/components/next/HomeNext";
-import { CustomizeHomeNext, HomeNextModule } from "@/components/next/HomeNextModules";
+} from "./HomeNext";
+import { CustomizeHomeNext, HomeNextModule } from "./HomeNextModules";
 import { laterTrips, pastTrips, pickActiveTrip } from "@/lib/home-trip";
 import { savedCities } from "@/lib/home-now";
 import { homeState } from "@/lib/home-next-layout";
@@ -41,26 +42,11 @@ import { rememberedProfileName, rememberProfileName, shownName } from "@/lib/pro
 import { isAreaPlace } from "@/lib/reco-place";
 
 /**
- * Home, redesigned (UI revamp step 8, the "three moods" references), on its
- * own address so `/` keeps working exactly as today until the owner swaps
- * them. Every read, module and link is the current Home's (`index.tsx`);
- * only the hero and the module tiles are new, and each trip state keeps its
- * own module list.
+ * Home as the Figma "Home" frame and the three-moods references draw it:
+ * the hero, the at-a-glance tiles and the module tiles, with each trip state
+ * keeping its own module list.
  */
-export const Route = createFileRoute("/next")({
-  staticData: { plane: "tab" },
-  head: () => ({ meta: [{ title: "Home (new) — Béa" }] }),
-  component: NextHomePage,
-});
-
-function NextHomePage() {
-  const { user, loading } = useAuth();
-  // The welcome page stays at `/`.
-  if (!user && !loading) return <Navigate to="/" />;
-  return <SignedInHomeNext />;
-}
-
-function SignedInHomeNext() {
+export function SignedInHomeNext() {
   const { user } = useAuth();
   const [displayName, setDisplayName] = useState(() =>
     user ? rememberedProfileName(safeStorage(), user.id) : "",
@@ -245,6 +231,7 @@ function SignedInHomeNext() {
               <HomeNextUpcoming trip={trip} photos={photos} />
             )}
             <HomeNextStats trip={trip} glance={glances[trip.id]} overlap={!underway} />
+            {!underway && <HomeNextContinue trip={trip} />}
             <HomeWhereNext />
             {on("suggested") && <HomeSuggested trip={trip} here={tripModules.here} />}
           </div>

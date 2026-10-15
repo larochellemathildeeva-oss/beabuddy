@@ -2514,6 +2514,19 @@
   color: var(--foreground);
   box-shadow: var(--hn-card-shadow);
 }
+.tn-chip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  border: 1px solid var(--hn-card-border);
+  background: var(--card);
+  color: var(--foreground);
+  font-size: 15px;
+  font-weight: 600;
+}
 .tn-action-icon {
   display: grid;
   place-items: center;

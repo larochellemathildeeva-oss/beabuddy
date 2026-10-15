@@ -354,6 +354,25 @@ export function HomeNextStats({
   );
 }
 
+/** The frame's "Continue trip" card: one door to the trip's four working views. */
+export function HomeNextContinue({ trip }: { trip: TripRow }) {
+  return (
+    <Link
+      to="/trips/$tripId"
+      params={{ tripId: trip.id }}
+      className="hn-card flex min-h-[64px] flex-col justify-center gap-0.5 px-4 py-3"
+    >
+      <span className="flex items-center gap-1.5 text-[16px] font-bold leading-tight">
+        Continue trip
+        <ArrowRight className="size-4" aria-hidden />
+      </span>
+      <span className="text-[13px] text-muted-foreground">
+        Overview · Itinerary · To-do · Packing
+      </span>
+    </Link>
+  );
+}
+
 function Stat({ big, small }: { big: string; small: string }) {
   return (
     <span className="block min-w-0">

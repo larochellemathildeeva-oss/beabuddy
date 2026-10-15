@@ -1,29 +1,31 @@
-import {
-  readTripDraft,
-  writeTripDraft,
-  forgetTripDraft,
-  hasTripDraftInput,
-  tripDraftFingerprint,
-  type TripDraft,
-} from "@/lib/trip-draft";
 import { tripsView, type TripsView } from "@/lib/trips-view";
-import { SaveAttempt } from "@/lib/save-attempt";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { friendlyError } from "@/lib/friendly-error";
 import type { PlannerTab } from "@/components/ItineraryImport";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { Plus, X } from "@/components/icons";
+import { CalendarDays, ChevronRight, FileText, Plus, Sparkles, Users, X } from "@/components/icons";
 import { Sheet } from "@/components/Sheet";
 import { AppShell } from "@/components/AppShell";
 import { DateRangeField } from "@/components/DateRangeField";
 import { PlaceSearchInput } from "@/components/PlaceSearchInput";
-import { TripFeature, TripListRow, TripsHero, TripsSection } from "@/components/TripsList";
+import { LayoutSwitch, PictureSwitch } from "@/components/TripsList";
+import {
+  PastNextTiles,
+  TripNextFeature,
+  TripNextRow,
+  TripsActionTile,
+  TripsNextHero,
+  TripsNextSection,
+} from "@/components/next/TripsNext";
+import { useTripPicture } from "@/hooks/useTripPicture";
+import { useTripsLayout } from "@/hooks/useTripsLayout";
+import { heroTrips } from "@/lib/trips-page";
 import { FollowedTripList } from "@/components/FollowedTripList";
 import { listFollowedTrips } from "@/lib/trip-follow.functions";
 import type { FollowedTrip } from "@/lib/trip-follow";
-import { knownToFollow, rememberFollows } from "@/lib/follow-hint";
-import { tripTabs } from "@/lib/home-trip";
+import { useTripGlances } from "@/hooks/useTripGlances";
+import { peopleOnTrip, tripTabs } from "@/lib/home-trip";
 import { toLocalISODate } from "@/lib/trip-dates";
 import { TripListSkeleton } from "@/components/Skeletons";
 import { useTripPhotos } from "@/hooks/useTripPhotos";
@@ -62,20 +64,13 @@ type TripsSearch = {
 
 const PLAN_AFTER_CREATE: readonly PlannerTab[] = ["build", "import"];
 
-/** How many past trips All shows before "See all". */
-const PAST_ON_ALL = 5;
-
-/** A secondary way in under the trips: a hairline box, words in the middle. */
-const moreWay =
-  "flex min-h-[52px] w-full items-center justify-center rounded-[var(--r-button)] border border-border bg-card px-4 text-[14px] font-medium";
-
 export const Route = createFileRoute("/trips")({
   staticData: { plane: "tab" },
   validateSearch: (search: Record<string, unknown>): TripsSearch => ({
     ...(tripsView(search["view"]) ? { view: tripsView(search["view"]) } : {}),
     ...(search["new"] === true || search["new"] === "true" ? { new: true } : {}),
     ...(PLAN_AFTER_CREATE.includes(search["plan"] as PlannerTab)
-      ? { plan: search["plan"] as "build" | "import" }
+      ? { plan: search["plan"] as PlannerTab }
       : {}),
     ...(typeof search["ask"] === "string" && search["ask"].trim()
       ? { ask: search["ask"].slice(0, 2000) }
@@ -102,6 +97,13 @@ export const Route = createFileRoute("/trips")({
   component: TripsPage,
 });
 
+/**
+ * Trips, redesigned (UI revamp step 7, the "Your trips." references), on its
+ * own address so `/trips` keeps working exactly as today until the owner
+ * swaps them. A copy of `trips.tsx`: every read, tab, sheet, form and link is
+ * the same; only the header, the action tiles, the next trip, the rows and
+ * the past tiles are drawn anew (`components/next/TripsNext.tsx`).
+ */
 function TripsPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -122,16 +124,9 @@ function TripsPage() {
   useEffect(() => {
     setView(search.view ?? "upcoming");
   }, [search.view]);
-  const {
-    trips: followed,
-    failed: followedFailed,
-    retry: retryFollowed,
-    forget: forgetFollowed,
-  } = useFollowedTrips(user?.id ?? null);
-  // The tab stays when the list could not be read but this phone knows of
-  // follows, so a failed read is not mistaken for "following nothing".
-  const showFollowing =
-    Boolean(followed?.length) || (followedFailed && !!user && knownToFollow(user.id));
+  const [layout, setLayout] = useTripsLayout();
+  const [picture, setPicture] = useTripPicture();
+  const { trips: followed, forget: forgetFollowed } = useFollowedTrips(user?.id ?? null);
   const [form, setForm] = useState({
     title: "",
     city: "",
@@ -166,114 +161,8 @@ function TripsPage() {
   // One trip per tap: on a slow connection, taps while the first save is on
   // its way each made another copy of the trip.
   const saving = useRef(false);
-  const createAttempt = useRef<SaveAttempt | null>(null);
   const [saveBusy, setSaveBusy] = useState(false);
-  const [createLocked, setCreateLocked] = useState(false);
-  const [draftOwner, setDraftOwner] = useState<string | null>(null);
-  const [draftNotice, setDraftNotice] = useState("");
-  const [draftContext, setDraftContext] = useState<Pick<TripDraft, "plan" | "ask">>({});
-  const activePlan =
-    search.plan === "build" || search.plan === "import" ? search.plan : draftContext.plan;
-  const activeAsk = search.ask ?? draftContext.ask;
-  const recoveryDraft = useRef<TripDraft | null>(null);
-  const lastSavedDraft = useRef<string | null>(null);
-  const activeAccount = useRef(user?.id);
-  activeAccount.current = user?.id;
-  useEffect(() => {
-    createAttempt.current = null;
-    recoveryDraft.current = null;
-    saving.current = false;
-    setSaveBusy(false);
-    setCreateLocked(false);
-    setError("");
-    const uid = user?.id;
-    let draft: TripDraft | null = null;
-    if (uid) {
-      try {
-        draft = readTripDraft(window.localStorage, uid);
-      } catch {
-        /* blocked storage */
-      }
-    }
-    lastSavedDraft.current = draft ? tripDraftFingerprint(draft) : null;
-    setForm(
-      draft?.form ?? {
-        title: "",
-        city: "",
-        country: "",
-        start_date: "",
-        end_date: "",
-        dates_status: "tentative",
-      },
-    );
-    setMultiCity(draft?.multiCity ?? false);
-    setCities(draft?.cities ?? [EMPTY_CITY, EMPTY_CITY]);
-    setDayTrips(draft?.dayTrips ?? []);
-    setWithBudget(draft?.withBudget ?? false);
-    setPackTemplateId(draft?.packTemplateId ?? "");
-    setDraftContext({
-      ...(draft?.plan ? { plan: draft.plan } : {}),
-      ...(draft?.ask ? { ask: draft.ask } : {}),
-    });
-    if (draft?.attempt) {
-      recoveryDraft.current = draft;
-      setCreateLocked(true);
-    }
-    setDraftNotice(
-      draft
-        ? draft.attempt
-          ? "Trip creation was interrupted. Retry checks what is already saved and finishes the same trip."
-          : "Béa restored your new-trip draft from this browser."
-        : "",
-    );
-    setDraftOwner(uid ?? null);
-  }, [user?.id]);
-  useEffect(() => {
-    const uid = user?.id;
-    if (!uid || draftOwner !== uid || createLocked || saveBusy) return;
-    const draft: TripDraft = {
-      form,
-      multiCity,
-      cities,
-      dayTrips,
-      withBudget,
-      packTemplateId,
-      ...(activePlan ? { plan: activePlan } : {}),
-      ...(activeAsk ? { ask: activeAsk } : {}),
-    };
-    const fingerprint = tripDraftFingerprint(draft);
-    if (fingerprint === lastSavedDraft.current) return;
-    try {
-      if (hasTripDraftInput(draft)) {
-        if (!writeTripDraft(window.localStorage, uid, draft)) {
-          setDraftNotice(
-            "This browser cannot keep the draft. Keep this page open until the trip is saved.",
-          );
-          return;
-        }
-      } else forgetTripDraft(window.localStorage, uid);
-      lastSavedDraft.current = fingerprint;
-    } catch {
-      setDraftNotice(
-        "This browser cannot keep the draft. Keep this page open until the trip is saved.",
-      );
-    }
-  }, [
-    user?.id,
-    draftOwner,
-    form,
-    multiCity,
-    cities,
-    dayTrips,
-    withBudget,
-    packTemplateId,
-    activePlan,
-    activeAsk,
-    createLocked,
-    saveBusy,
-  ]);
   const [code, setCode] = useState("");
-  const joiningNow = useRef(false);
   const [joinBusy, setJoinBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -282,102 +171,142 @@ function TripsPage() {
     user?.email?.split("@")[0] ??
     "Traveller";
   const { photos } = useTripPhotos(t.uid);
+  const { glances } = useTripGlances(t.trips.map((trip) => trip.id));
   const today = toLocalISODate(new Date());
   const lists = tripTabs(t.trips, today);
+  // The same array until the trips change, so the header map is not redrawn on every render.
+  const hero = useMemo(() => heroTrips(tripTabs(t.trips, today)), [t.trips, today]);
   const beaSettings = useBeaSettings();
   // Picked once per visit, in the traveller's mix.
   const [emptyTrips] = useState(() => emptyLine({ kind: "noTrips", settings: beaSettings }));
 
-  const clearNewDraft = () => {
-    if (saving.current) return;
-    recoveryDraft.current = null;
-    createAttempt.current = null;
-    setCreateLocked(false);
-    if (user?.id) {
-      try {
-        forgetTripDraft(window.localStorage, user.id);
-      } catch {
-        /* blocked storage */
-      }
-    }
-    setForm({
-      title: "",
-      city: "",
-      country: "",
-      start_date: "",
-      end_date: "",
-      dates_status: "tentative",
-    });
-    setMultiCity(false);
-    setCities([EMPTY_CITY, EMPTY_CITY]);
-    setDayTrips([]);
-    setWithBudget(false);
-    setPackTemplateId("");
-    setDraftContext({});
-    setDraftNotice("");
-    setError("");
-  };
   const openNew = () => {
     setError("");
     setCreating(true);
     setJoining(false);
   };
-  // As the design draws Upcoming: the next trip as a card, the rest as rows.
-  const featured = lists.upcoming[0];
-  const rest = lists.upcoming.slice(1);
-  const row = (trip: TripRow) => <TripListRow key={trip.id} trip={trip} />;
-  // All shows the latest few past trips; Past shows every one. Each row reads
-  // its own stops, so a long history is not opened all at once on All.
+  const featured = layout === "big" ? lists.upcoming[0] : undefined;
+  const rest = featured ? lists.upcoming.slice(1) : lists.upcoming;
+  const live = !!(featured?.start_date && featured.start_date <= today);
+  const row = (trip: TripRow) => (
+    <TripNextRow
+      key={trip.id}
+      trip={trip}
+      photos={photos}
+      glance={glances[trip.id]}
+      peopleCount={peopleOnTrip(t.members, trip.id, t.uid)}
+      people={t.members.filter((m) => m.trip_id === trip.id)}
+      me={{ id: t.uid, name: myName }}
+      picture={picture}
+    />
+  );
+  const switches = (withLayout: boolean) => (
+    <div className="flex flex-wrap items-center gap-2">
+      {withLayout ? <LayoutSwitch layout={layout} onLayout={setLayout} /> : null}
+      <PictureSwitch picture={picture} onPicture={setPicture} />
+    </div>
+  );
   const pastSection = (all: boolean) =>
     lists.past.length > 0 ? (
-      <TripsSection title="Past trips">
-        {(all ? lists.past : lists.past.slice(0, PAST_ON_ALL)).map(row)}
-        {!all && lists.past.length > PAST_ON_ALL ? (
-          <button
-            type="button"
-            onClick={() => setView("past")}
-            className="flex min-h-12 w-full items-center text-[14px] font-medium"
-          >
-            See all {lists.past.length} past trips
-          </button>
-        ) : null}
-      </TripsSection>
+      <TripsNextSection
+        title="Past trips"
+        aside={
+          all ? (
+            switches(false)
+          ) : (
+            <button
+              type="button"
+              onClick={() => setView("past")}
+              className="flex min-h-11 shrink-0 items-center gap-0.5 text-[15px] font-semibold text-foreground"
+            >
+              See all
+              <ChevronRight className="size-4 text-primary" aria-hidden />
+            </button>
+          )
+        }
+      >
+        {all ? (
+          <div className="space-y-3">{lists.past.map(row)}</div>
+        ) : (
+          <PastNextTiles trips={lists.past.slice(0, 3)} photos={photos} picture={picture} />
+        )}
+      </TripsNextSection>
     ) : null;
-  const draftsSection =
+  const draftsSection = (withSwitch: boolean) =>
     lists.drafts.length > 0 ? (
-      <TripsSection title="Dates to set">{lists.drafts.map(row)}</TripsSection>
+      <TripsNextSection title="Drafts" aside={withSwitch ? switches(false) : undefined}>
+        <div className="space-y-3">{lists.drafts.map(row)}</div>
+      </TripsNextSection>
     ) : null;
   const ahead = (
     <>
-      {featured ? (
-        <TripFeature trip={featured} photos={photos} />
+      {lists.upcoming.length > 0 ? (
+        featured ? (
+          <TripsNextSection title={live ? "Happening now" : "Next up"} aside={switches(true)}>
+            <TripNextFeature
+              trip={featured}
+              photos={photos}
+              glance={glances[featured.id]}
+              peopleCount={peopleOnTrip(t.members, featured.id, t.uid)}
+              picture={picture}
+            />
+          </TripsNextSection>
+        ) : (
+          <TripsNextSection title="Upcoming trips" aside={switches(true)}>
+            <div className="space-y-3">{rest.map(row)}</div>
+          </TripsNextSection>
+        )
       ) : !t.loading && t.trips.length > 0 ? (
-        <NothingAhead
-          title="No trip on the calendar."
-          body="Nothing ahead yet. Béa keeps the next one here once it has dates."
-          onPlan={openNew}
-        />
+        <TripsNextSection title="Upcoming trips" aside={switches(true)}>
+          <NothingAhead
+            title="No trip on the calendar."
+            body="Nothing ahead yet. Béa keeps the next one here once it has dates."
+            onPlan={openNew}
+          />
+        </TripsNextSection>
       ) : null}
-      {rest.length > 0 ? <TripsSection title="Later">{rest.map(row)}</TripsSection> : null}
+      {featured && rest.length > 0 ? (
+        <TripsNextSection
+          title="Later"
+          aside={
+            <span className="text-[14px] text-muted-foreground">
+              {rest.length} {rest.length === 1 ? "trip" : "trips"}
+            </span>
+          }
+        >
+          <div className="space-y-3">{rest.map(row)}</div>
+        </TripsNextSection>
+      ) : null}
     </>
   );
 
   return (
     <AppShell>
-      <div className="space-y-3">
-        <TripsHero section={t.signedIn ? view : undefined} />
+      <div className="space-y-6">
+        <TripsNextHero
+          trips={hero}
+          today={today}
+          actions={
+            t.signedIn ? (
+              <span className="pt-2 text-[14px] font-semibold">
+                {t.trips.length} {t.trips.length === 1 ? "trip" : "trips"}
+              </span>
+            ) : null
+          }
+        />
         {t.signedIn ? (
           <>
             <div
               role="tablist"
               aria-label="Which trips"
-              className="trips-tabs trips-tabs--minimal relative z-[1]"
+              className="trips-tabs tn-tabs relative z-[3] -mt-2"
             >
               {(
                 [
                   ["upcoming", "Upcoming"],
                   ["past", "Past"],
-                  ...(showFollowing ? ([["following", "Following"]] as const) : []),
+                  ["drafts", "Drafts"],
+                  ...(followed?.length ? ([["following", "Following"]] as const) : []),
                   ["all", "All"],
                 ] as const
               ).map(([value, label]) => (
@@ -394,17 +323,62 @@ function TripsPage() {
             </div>
 
             {view !== "past" && view !== "following" ? (
+              <div className="grid grid-cols-2 gap-2.5">
+                {/* Plan with Béa: build, import, optimize or compare, from one place. */}
+                <TripsActionTile
+                  icon={Sparkles}
+                  title="Plan with Béa"
+                  sub="Build, import, optimize or compare"
+                  tone={1}
+                >
+                  {(content, className) => (
+                    <Link to="/trips/plan" data-guide="plan-with-bea" className={className}>
+                      {content}
+                    </Link>
+                  )}
+                </TripsActionTile>
+                <TripsActionTile
+                  icon={Users}
+                  title="Join with a code"
+                  sub="Trips with friends"
+                  tone={3}
+                >
+                  {(content, className) => (
+                    <button
+                      type="button"
+                      data-guide="join-trip"
+                      aria-expanded={joining}
+                      onClick={() => {
+                        setError("");
+                        setJoining(true);
+                        setCreating(false);
+                      }}
+                      className={`${className} text-left`}
+                    >
+                      {content}
+                    </button>
+                  )}
+                </TripsActionTile>
+              </div>
+            ) : null}
+
+            <div className="grid grid-cols-3 gap-2.5">
               <button
                 type="button"
                 data-guide="new-trip"
-                aria-label="New trip"
                 aria-expanded={creating}
                 onClick={openNew}
-                className="trips-create"
+                className="tn-chip"
               >
                 Create trip
               </button>
-            ) : null}
+              <Link to="/calendar" className="tn-chip">
+                Calendar
+              </Link>
+              <Link to="/profile/documents" data-guide="document-vault" className="tn-chip">
+                Documents
+              </Link>
+            </div>
 
             {error && !creating && !joining && (
               <p role="alert" className="text-[14px] text-destructive">
@@ -412,15 +386,47 @@ function TripsPage() {
               </p>
             )}
 
-            <div data-guide="trip-list" className="space-y-3">
+            <div data-guide="trip-list" className="space-y-7">
               {t.loading && t.trips.length === 0 && <TripListSkeleton />}
 
               {view === "upcoming" && (
                 <>
                   {ahead}
-                  {draftsSection}
+                  {lists.drafts.length > 0 ? (
+                    <button
+                      type="button"
+                      onClick={() => setView("drafts")}
+                      className="plain-card flex w-full items-center gap-3 px-4 py-3 text-left"
+                    >
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-[16px] font-semibold">
+                          {lists.drafts.length} {lists.drafts.length === 1 ? "draft" : "drafts"}{" "}
+                          with dates to set
+                        </span>
+                        <span className="block text-[14px] text-muted-foreground">
+                          {lists.drafts
+                            .slice(0, 3)
+                            .map((d) => d.title)
+                            .join(" · ")}
+                        </span>
+                      </span>
+                      <ChevronRight className="size-5 shrink-0 text-muted-foreground" aria-hidden />
+                    </button>
+                  ) : null}
+                  {pastSection(false)}
                 </>
               )}
+
+              {view === "drafts" &&
+                (lists.drafts.length > 0 ? (
+                  draftsSection(true)
+                ) : !t.loading && t.trips.length > 0 ? (
+                  <NothingAhead
+                    title="No drafts."
+                    body="A trip with dates still to set waits here until it has them."
+                    onPlan={openNew}
+                  />
+                ) : null)}
 
               {view === "past" &&
                 (lists.past.length > 0 ? (
@@ -434,26 +440,14 @@ function TripsPage() {
               {view === "all" && t.trips.length > 0 && (
                 <>
                   {ahead}
-                  {draftsSection}
+                  {draftsSection(false)}
                   {pastSection(false)}
                 </>
               )}
 
-              {view === "following" &&
-                (followedFailed ? (
-                  <p className="py-6 text-center text-[14.5px] text-muted-foreground">
-                    The trips you follow didn't load.{" "}
-                    <button
-                      type="button"
-                      onClick={retryFollowed}
-                      className="-my-3 inline-flex min-h-11 items-center font-semibold text-primary underline underline-offset-2"
-                    >
-                      Try again
-                    </button>
-                  </p>
-                ) : (
-                  <FollowedTripList trips={followed ?? []} onRemoved={forgetFollowed} />
-                ))}
+              {view === "following" && (
+                <FollowedTripList trips={followed ?? []} onRemoved={forgetFollowed} />
+              )}
 
               {t.trips.length === 0 && !t.loading && view !== "following" && (
                 <div className="tile-fill-3 flex items-center gap-4 rounded-[var(--r-card)] p-4">
@@ -495,41 +489,27 @@ function TripsPage() {
           </div>
         )}
 
-        {/* The other ways in, as the design lists them under the trips. The vault
-            moved into Trip documents (its Protected section). */}
-        {t.signedIn ? (
-          <div className="space-y-3">
-            {view !== "past" && view !== "following" ? (
-              <button
-                type="button"
-                data-guide="join-trip"
-                aria-expanded={joining}
-                onClick={() => {
-                  setError("");
-                  setJoining(true);
-                  setCreating(false);
-                }}
-                className={moreWay}
-              >
-                Join with a code
-              </button>
-            ) : null}
-            {/* The calendar covers every trip, so it shows under every tab. */}
-            <Link to="/calendar" className={moreWay}>
-              Calendar
+        {/* The vault moved into Trip documents (its Protected section). */}
+        {t.signedIn && view === "upcoming" ? (
+          <TripsNextSection title="Trip documents">
+            <Link
+              to="/profile/documents"
+              className="hn-card flex min-h-[72px] items-center gap-3 p-4"
+            >
+              <span className="tile-fill-3 grid size-11 shrink-0 place-items-center rounded-full text-primary">
+                <FileText className="size-5" aria-hidden />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-[17px] font-semibold leading-tight">
+                  Bookings and tickets
+                </span>
+                <span className="block text-[14px] text-muted-foreground">
+                  And Protected files, encrypted on this device
+                </span>
+              </span>
+              <ChevronRight className="size-5 shrink-0 text-muted-foreground" aria-hidden />
             </Link>
-            {view !== "past" && view !== "following" ? (
-              <>
-                {/* Plan with Béa: build, import, optimize or compare, from one place. */}
-                <Link to="/trips/plan" data-guide="plan-with-bea" className={moreWay}>
-                  Plan with Béa
-                </Link>
-                <Link to="/profile/documents" data-guide="document-vault" className={moreWay}>
-                  Trip documents
-                </Link>
-              </>
-            ) : null}
-          </div>
+          </TripsNextSection>
         ) : null}
       </div>
 
@@ -538,7 +518,6 @@ function TripsPage() {
         // shows the sign-in card, not a form that cannot save.
         open={creating && t.signedIn}
         onClose={() => {
-          if (saving.current) return;
           setError("");
           setCreating(false);
         }}
@@ -546,303 +525,247 @@ function TripsPage() {
         hint="Where, when, and who. All of it can change later."
       >
         <div className="space-y-2">
-          <p className="text-[12px] text-muted-foreground">
-            New-trip drafts are saved in this browser for this account and available for 7 days.
-            They do not sync between devices.
-          </p>
-          {draftNotice && (
-            <p role="status" className="text-[14px]">
-              {draftNotice}
+          <input
+            value={form.title}
+            onChange={(e) => setForm({ ...form, title: e.target.value })}
+            placeholder={suggestedName || "Trip name"}
+            aria-label="Trip name"
+            className="w-full rounded-xl border border-[var(--field-border)] bg-card px-3 py-2.5 text-[15px]"
+          />
+          {!form.title.trim() && suggestedName && (
+            <p className="px-1 text-[12px] text-muted-foreground">
+              No name needed — Béa will file this as “{suggestedName}”. Type over it whenever you
+              like.
             </p>
           )}
-          {!createLocked && !saveBusy && (
-            <button
-              type="button"
-              className="min-h-12 px-3 text-[14px] font-semibold text-primary"
-              onClick={clearNewDraft}
-            >
-              Clear draft
-            </button>
+          <div
+            role="radiogroup"
+            aria-label="Where is this trip going?"
+            className="flex gap-1 rounded-xl bg-elevated p-1"
+          >
+            {(
+              [
+                [false, "One place"],
+                [true, "Several cities"],
+              ] as const
+            ).map(([value, label]) => (
+              <button
+                key={label}
+                type="button"
+                role="radio"
+                aria-checked={multiCity === value}
+                onClick={() => setMultiCity(value)}
+                className={`flex-1 rounded-lg px-3 py-1.5 text-[13.5px] font-semibold ${
+                  multiCity === value
+                    ? "bg-card text-foreground shadow-2xs"
+                    : "text-muted-foreground"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          {!multiCity && (
+            <PlaceSearchInput
+              value={form.city}
+              onChange={(v) => setForm({ ...form, city: v })}
+              onPick={(p) => {
+                const loc = locationFromParsedPlace(p);
+                setForm({
+                  ...form,
+                  city: loc.city,
+                  country: loc.country || form.country,
+                });
+              }}
+              placeholder="Where to — search it"
+              areas
+            />
           )}
-          <fieldset disabled={saveBusy || createLocked} className="space-y-2">
-            <input
-              value={form.title}
-              onChange={(e) => setForm({ ...form, title: e.target.value })}
-              placeholder={suggestedName || "Trip name"}
-              aria-label="Trip name"
-              className="w-full rounded-xl border border-[var(--field-border)] bg-card px-3 py-2.5 text-[15px]"
-            />
-            {!form.title.trim() && suggestedName && (
-              <p className="px-1 text-[12px] text-muted-foreground">
-                No name needed — Béa will file this as “{suggestedName}”. Type over it whenever you
-                like.
-              </p>
-            )}
-            <div
-              role="radiogroup"
-              aria-label="Where is this trip going?"
-              className="flex gap-1 rounded-xl bg-elevated p-1"
-            >
-              {(
-                [
-                  [false, "One place"],
-                  [true, "Several cities"],
-                ] as const
-              ).map(([value, label]) => (
-                <button
-                  key={label}
-                  type="button"
-                  role="radio"
-                  aria-checked={multiCity === value}
-                  onClick={() => setMultiCity(value)}
-                  className={`flex-1 rounded-lg px-3 py-1.5 text-[13.5px] font-semibold ${
-                    multiCity === value
-                      ? "bg-card text-foreground shadow-2xs"
-                      : "text-muted-foreground"
-                  }`}
-                >
-                  {label}
-                </button>
+          <DateRangeField
+            start={form.start_date}
+            end={form.end_date}
+            onChange={(start_date, end_date) => setForm({ ...form, start_date, end_date })}
+            datesStatus={form.dates_status}
+            onDatesStatusChange={(dates_status) => setForm({ ...form, dates_status })}
+            placeholder={
+              multiCity && cityDates.start ? "Trip dates — from the cities below" : "Dates"
+            }
+          />
+          {!multiCity && form.city.trim() && (
+            <div className="space-y-2">
+              {dayTrips.map((trip, index) => (
+                <DayTripRow
+                  key={index}
+                  trip={trip}
+                  base={form.city}
+                  min={form.start_date}
+                  max={form.end_date}
+                  outside={cityOutsideTrip(
+                    { ...trip, end: trip.start },
+                    form.start_date,
+                    form.end_date,
+                  )}
+                  onChange={(patch) => setDayTrip(index, patch)}
+                  onRemove={() => setDayTrips((list) => list.filter((_, i) => i !== index))}
+                />
               ))}
+              <button
+                type="button"
+                onClick={() => setDayTrips((list) => [...list, EMPTY_DAY_TRIP])}
+                className="flex w-full items-center justify-center gap-1 rounded-xl border border-dashed border-border px-3 py-2 text-[13.5px] font-semibold text-primary"
+              >
+                <Plus className="size-4" aria-hidden />
+                Add a day trip from {shortCity(form.city)}
+              </button>
             </div>
-            {!multiCity && (
-              <PlaceSearchInput
-                value={form.city}
-                onChange={(v) => setForm({ ...form, city: v })}
-                onPick={(p) => {
-                  const loc = locationFromParsedPlace(p);
-                  setForm({
-                    ...form,
-                    city: loc.city,
-                    country: loc.country || form.country,
-                  });
-                }}
-                placeholder="Where to — search it"
-                areas
-              />
-            )}
-            <DateRangeField
-              start={form.start_date}
-              end={form.end_date}
-              onChange={(start_date, end_date) => setForm({ ...form, start_date, end_date })}
-              datesStatus={form.dates_status}
-              onDatesStatusChange={(dates_status) => setForm({ ...form, dates_status })}
-              placeholder={
-                multiCity && cityDates.start ? "Trip dates — from the cities below" : "Dates"
-              }
-            />
-            {!multiCity && form.city.trim() && (
-              <div className="space-y-2">
-                {dayTrips.map((trip, index) => (
-                  <DayTripRow
+          )}
+          {multiCity && (
+            <div className="space-y-2">
+              <p className="px-1 text-[12px] text-muted-foreground">
+                Each city in order, with the days you're there. Add layovers too, and day trips from
+                a city you're sleeping in.
+              </p>
+              {cities.map((city, index) =>
+                city.dayTrip ? (
+                  <div key={index} className="ml-7">
+                    <DayTripRow
+                      trip={city}
+                      base={baseOf(cities, index)?.city ?? ""}
+                      min={baseOf(cities, index)?.start ?? ""}
+                      max={baseOf(cities, index)?.end ?? ""}
+                      outside={dayTripOutsideBase(cities, index)}
+                      onChange={(patch) => setCity(index, patch)}
+                      onRemove={() => setCities((list) => list.filter((_, i) => i !== index))}
+                    />
+                  </div>
+                ) : (
+                  <div
                     key={index}
-                    trip={trip}
-                    base={form.city}
-                    min={form.start_date}
-                    max={form.end_date}
-                    outside={cityOutsideTrip(
-                      { ...trip, end: trip.start },
-                      form.start_date,
-                      form.end_date,
-                    )}
-                    onChange={(patch) => setDayTrip(index, patch)}
-                    onRemove={() => setDayTrips((list) => list.filter((_, i) => i !== index))}
-                  />
-                ))}
-                <button
-                  type="button"
-                  onClick={() => setDayTrips((list) => [...list, EMPTY_DAY_TRIP])}
-                  className="flex min-h-12 w-full items-center justify-center gap-1 rounded-xl border border-dashed border-border px-3 py-2 text-[13.5px] font-semibold text-primary"
-                >
-                  <Plus className="size-4" aria-hidden />
-                  Add a day trip from {shortCity(form.city)}
-                </button>
-              </div>
-            )}
-            {multiCity && (
-              <div className="space-y-2">
-                <p className="px-1 text-[12px] text-muted-foreground">
-                  Each city in order, with the days you're there. Add layovers too, and day trips
-                  from a city you're sleeping in.
-                </p>
-                {cities.map((city, index) =>
-                  city.dayTrip ? (
-                    <div key={index} className="ml-7">
-                      <DayTripRow
-                        trip={city}
-                        base={baseOf(cities, index)?.city ?? ""}
-                        min={baseOf(cities, index)?.start ?? ""}
-                        max={baseOf(cities, index)?.end ?? ""}
-                        outside={dayTripOutsideBase(cities, index)}
-                        onChange={(patch) => setCity(index, patch)}
-                        onRemove={() => setCities((list) => list.filter((_, i) => i !== index))}
-                      />
-                    </div>
-                  ) : (
-                    <div
-                      key={index}
-                      className="space-y-1.5 rounded-xl border border-border bg-elevated p-2"
-                    >
-                      <div className="flex items-center gap-1.5">
-                        <span className="grid size-6 shrink-0 place-items-center rounded-full bg-primary text-[12px] font-bold text-primary-foreground">
-                          {cities.slice(0, index + 1).filter((c) => !c.dayTrip).length}
-                        </span>
-                        <div className="min-w-0 flex-1">
-                          <PlaceSearchInput
-                            value={city.city}
-                            onChange={(v) =>
-                              setCity(index, { city: v, lat: undefined, lon: undefined })
-                            }
-                            onPick={(p) => {
-                              const loc = locationFromParsedPlace(p);
-                              setCity(index, {
-                                city: loc.city,
-                                country: loc.country,
-                                lat: p.lat,
-                                lon: p.lon,
-                              });
-                            }}
-                            placeholder={`City ${index + 1} — search it`}
-                            areas
-                          />
-                        </div>
-                        {cities.length > 1 && (
-                          <button
-                            type="button"
-                            aria-label={`Remove city ${index + 1}`}
-                            onClick={() =>
-                              // Its day trips go with it: they sleep there.
-                              setCities((list) => {
-                                const end = dayTripInsertAt(list, index);
-                                return list.filter((_, i) => i < index || i >= end);
-                              })
-                            }
-                            className="grid size-12 shrink-0 place-items-center rounded-full text-muted-foreground"
-                          >
-                            <X className="size-4" aria-hidden />
-                          </button>
-                        )}
+                    className="space-y-1.5 rounded-xl border border-border bg-elevated p-2"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span className="grid size-6 shrink-0 place-items-center rounded-full bg-primary text-[12px] font-bold text-primary-foreground">
+                        {cities.slice(0, index + 1).filter((c) => !c.dayTrip).length}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <PlaceSearchInput
+                          value={city.city}
+                          onChange={(v) =>
+                            setCity(index, { city: v, lat: undefined, lon: undefined })
+                          }
+                          onPick={(p) => {
+                            const loc = locationFromParsedPlace(p);
+                            setCity(index, {
+                              city: loc.city,
+                              country: loc.country,
+                              lat: p.lat,
+                              lon: p.lon,
+                            });
+                          }}
+                          placeholder={`City ${index + 1} — search it`}
+                          areas
+                        />
                       </div>
-                      <DateRangeField
-                        start={city.start}
-                        end={city.end}
-                        onChange={(start, end) => setCity(index, { start, end })}
-                        title={
-                          city.city.trim()
-                            ? `Dates in ${city.city.split(",")[0]}`
-                            : "Dates in this city"
-                        }
-                        placeholder="Dates in this city"
-                        month={cities[index - 1]?.end || form.start_date || undefined}
-                      />
-                      {cityOutsideTrip(city, form.start_date, form.end_date) && (
-                        <p role="alert" className="px-1 text-[14px] font-medium text-destructive">
-                          These dates fall outside the trip's.
-                        </p>
-                      )}
-                      {city.city.trim() && (
+                      {cities.length > 1 && (
                         <button
                           type="button"
+                          aria-label={`Remove city ${index + 1}`}
                           onClick={() =>
+                            // Its day trips go with it: they sleep there.
                             setCities((list) => {
-                              const at = dayTripInsertAt(list, index);
-                              return [...list.slice(0, at), EMPTY_DAY_TRIP, ...list.slice(at)];
+                              const end = dayTripInsertAt(list, index);
+                              return list.filter((_, i) => i < index || i >= end);
                             })
                           }
-                          className="flex min-h-12 min-w-12 items-center gap-1 px-1 text-[12.5px] font-semibold text-primary"
+                          className="grid size-11 shrink-0 place-items-center rounded-full text-muted-foreground"
                         >
-                          <Plus className="size-3.5" aria-hidden />
-                          Day trip from {shortCity(city.city)}
+                          <X className="size-4" aria-hidden />
                         </button>
                       )}
                     </div>
-                  ),
-                )}
-                <button
-                  type="button"
-                  onClick={() => setCities((list) => [...list, EMPTY_CITY])}
-                  className="flex min-h-12 w-full items-center justify-center gap-1 rounded-xl border border-dashed border-border px-3 py-2 text-[13.5px] font-semibold text-primary"
-                >
-                  <Plus className="size-4" aria-hidden />
-                  Add another city
-                </button>
-              </div>
-            )}
-            {form.start_date && form.end_date && form.end_date < form.start_date && (
-              <p role="alert" className="px-1 text-[14px] font-medium text-destructive">
-                End date can't be earlier than the start date.
-              </p>
-            )}
-            {packing.packs.length > 0 && (
-              <label className="block px-1 py-1 text-[13px] text-muted-foreground">
-                Attach a copy of a packing list
-                <select
-                  value={packTemplateId}
-                  onChange={(e) => setPackTemplateId(e.target.value)}
-                  className="mt-1 w-full rounded-xl border border-[var(--field-border)] bg-card px-3 py-2.5 text-[15px] text-foreground"
-                >
-                  <option value="">No packing list</option>
-                  {packing.packs.map((pack) => (
-                    <option key={pack.id} value={pack.id}>
-                      {pack.emoji} {pack.name}
-                    </option>
-                  ))}
-                </select>
-                <span className="mt-1 block text-[12px]">
-                  You get a copy — ticking things off only affects this trip.
-                </span>
-              </label>
-            )}
-            <label className="flex items-center gap-2 px-1 py-1 text-[14.5px]">
-              <input
-                type="checkbox"
-                checked={withBudget}
-                onChange={(e) => setWithBudget(e.target.checked)}
-                className="size-5"
-              />
-              Track a budget for this trip
-            </label>
-            <p className="px-1 text-[12px] text-muted-foreground">{tripStillEditableNote()}</p>
-          </fieldset>
-          {createLocked && (
-            <p role="status" className="text-[14px]">
-              Finish creating this trip before changing its details. Retry continues the same trip.
-            </p>
-          )}
-          {createLocked && !saveBusy && (
-            <details className="text-[13px]">
-              <summary className="flex min-h-12 cursor-pointer items-center font-semibold text-primary">
-                Recovery options
-              </summary>
-              {recoveryDraft.current?.attempt &&
-                t.trips.some((trip) => trip.id === recoveryDraft.current?.attempt?.tripId) && (
-                  <Link
-                    to="/trips/$tripId"
-                    params={{ tripId: recoveryDraft.current.attempt.tripId }}
-                    className="flex min-h-12 items-center font-semibold text-primary"
-                  >
-                    Open the saved trip
-                  </Link>
-                )}
-              <p>
-                Some parts may already be saved in Trips. Discarding local recovery details does not
-                delete those parts. Retry finishes the original trip; starting again creates a
-                separate trip.
-              </p>
+                    <DateRangeField
+                      start={city.start}
+                      end={city.end}
+                      onChange={(start, end) => setCity(index, { start, end })}
+                      title={
+                        city.city.trim()
+                          ? `Dates in ${city.city.split(",")[0]}`
+                          : "Dates in this city"
+                      }
+                      placeholder="Dates in this city"
+                      month={cities[index - 1]?.end || form.start_date || undefined}
+                    />
+                    {cityOutsideTrip(city, form.start_date, form.end_date) && (
+                      <p role="alert" className="px-1 text-[14px] font-medium text-destructive">
+                        These dates fall outside the trip's.
+                      </p>
+                    )}
+                    {city.city.trim() && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setCities((list) => {
+                            const at = dayTripInsertAt(list, index);
+                            return [...list.slice(0, at), EMPTY_DAY_TRIP, ...list.slice(at)];
+                          })
+                        }
+                        className="flex items-center gap-1 px-1 text-[12.5px] font-semibold text-primary"
+                      >
+                        <Plus className="size-3.5" aria-hidden />
+                        Day trip from {shortCity(city.city)}
+                      </button>
+                    )}
+                  </div>
+                ),
+              )}
               <button
                 type="button"
-                className="min-h-12 px-3 font-semibold text-destructive"
-                onClick={clearNewDraft}
+                onClick={() => setCities((list) => [...list, EMPTY_CITY])}
+                className="flex w-full items-center justify-center gap-1 rounded-xl border border-dashed border-border px-3 py-2 text-[13.5px] font-semibold text-primary"
               >
-                Discard local recovery details
+                <Plus className="size-4" aria-hidden />
+                Add another city
               </button>
-            </details>
+            </div>
           )}
+          {form.start_date && form.end_date && form.end_date < form.start_date && (
+            <p role="alert" className="px-1 text-[14px] font-medium text-destructive">
+              End date can't be earlier than the start date.
+            </p>
+          )}
+          {packing.packs.length > 0 && (
+            <label className="block px-1 py-1 text-[13px] text-muted-foreground">
+              Attach a copy of a packing list
+              <select
+                value={packTemplateId}
+                onChange={(e) => setPackTemplateId(e.target.value)}
+                className="mt-1 w-full rounded-xl border border-[var(--field-border)] bg-card px-3 py-2.5 text-[15px] text-foreground"
+              >
+                <option value="">No packing list</option>
+                {packing.packs.map((pack) => (
+                  <option key={pack.id} value={pack.id}>
+                    {pack.emoji} {pack.name}
+                  </option>
+                ))}
+              </select>
+              <span className="mt-1 block text-[12px]">
+                You get a copy — ticking things off only affects this trip.
+              </span>
+            </label>
+          )}
+          <label className="flex items-center gap-2 px-1 py-1 text-[14.5px]">
+            <input
+              type="checkbox"
+              checked={withBudget}
+              onChange={(e) => setWithBudget(e.target.checked)}
+              className="size-5"
+            />
+            Track a budget for this trip
+          </label>
+          <p className="px-1 text-[12px] text-muted-foreground">{tripStillEditableNote()}</p>
           <button
-            aria-busy={saveBusy}
             disabled={
               saveBusy ||
-              draftOwner !== user?.id ||
               (!form.title.trim() && !suggestedName) ||
               !!(form.start_date && form.end_date && form.end_date < form.start_date)
             }
@@ -850,182 +773,67 @@ function TripsPage() {
               if (saving.current) return;
               saving.current = true;
               setSaveBusy(true);
-              setCreateLocked(true);
               setError("");
-              const uid = user?.id;
-              if (!uid || draftOwner !== uid) {
+              try {
+                const id = await t.createTrip({
+                  ...form,
+                  ...(multiCity
+                    ? {
+                        city: firstCity?.city ?? "",
+                        country: firstCity?.country ?? "",
+                        stops: citiesToStops(cities),
+                      }
+                    : {
+                        stops: onePlaceStops(
+                          {
+                            city: form.city,
+                            country: form.country,
+                            start: tripStart,
+                            end: tripEnd,
+                          },
+                          dayTrips,
+                        ),
+                      }),
+                  start_date: tripStart,
+                  end_date: tripEnd,
+                  title: form.title.trim() || suggestedName,
+                  budget_enabled: withBudget,
+                });
+                if (packTemplateId) await packing.attachToTrip(packTemplateId, id);
+                setPackTemplateId("");
+                await navigate({
+                  to: "/trips/$tripId",
+                  params: { tripId: id },
+                  // Started from Plan with Béa: its planner opens on
+                  // the new trip, with anything already typed.
+                  search: search.plan
+                    ? { plan: search.plan, ...(search.ask ? { ask: search.ask } : {}) }
+                    : {},
+                  viewTransition: true,
+                });
+                setForm({
+                  title: "",
+                  city: "",
+                  country: "",
+                  start_date: "",
+                  end_date: "",
+                  dates_status: "tentative",
+                });
+                setMultiCity(false);
+                setCities([EMPTY_CITY, EMPTY_CITY]);
+                setDayTrips([]);
+                setWithBudget(false);
+                setCreating(false);
+              } catch (e) {
+                setError(friendlyError(e, "Couldn't create the trip"));
+              } finally {
                 saving.current = false;
                 setSaveBusy(false);
-                setCreateLocked(false);
-                setError("Sign in again before creating the trip.");
-                return;
-              }
-              if (!recoveryDraft.current) {
-                const stops = multiCity
-                  ? citiesToStops(cities)
-                  : onePlaceStops(
-                      { city: form.city, country: form.country, start: tripStart, end: tripEnd },
-                      dayTrips,
-                    );
-                const source = packing.packs.find((pack) => pack.id === packTemplateId);
-                if (packTemplateId && (!source || packing.loading)) {
-                  saving.current = false;
-                  setSaveBusy(false);
-                  setCreateLocked(false);
-                  setError("Wait for the packing list to load, or choose No packing list.");
-                  return;
-                }
-                const snapshot: TripDraft = {
-                  form: {
-                    ...form,
-                    start_date: tripStart,
-                    end_date: tripEnd,
-                    title: form.title.trim() || suggestedName,
-                  },
-                  multiCity,
-                  cities,
-                  dayTrips,
-                  withBudget,
-                  packTemplateId,
-                  ...(activePlan ? { plan: activePlan } : {}),
-                  ...(activeAsk ? { ask: activeAsk } : {}),
-                  attempt: {
-                    ownerId: uid,
-                    tripId: crypto.randomUUID(),
-                    stopIds: stops.map(() => crypto.randomUUID()),
-                    ...(source
-                      ? {
-                          packing: {
-                            ownerId: uid,
-                            id: crypto.randomUUID(),
-                            name: source.name,
-                            emoji: source.emoji,
-                            items: packing.items
-                              .filter((item) => item.list_id === source.id)
-                              .sort((a, b) => a.position - b.position)
-                              .map((item) => ({
-                                id: crypto.randomUUID(),
-                                label: item.label,
-                                section: item.section,
-                                quantity: item.quantity,
-                              })),
-                          },
-                        }
-                      : {}),
-                  },
-                };
-                let stored = false;
-                try {
-                  stored = writeTripDraft(window.localStorage, uid, snapshot);
-                } catch {
-                  /* blocked storage */
-                }
-                if (!stored) {
-                  recoveryDraft.current = null;
-                  saving.current = false;
-                  setSaveBusy(false);
-                  setCreateLocked(false);
-                  setError(
-                    "Béa has not started creating this trip because this browser could not save its recovery details. Free some browser storage and try again.",
-                  );
-                  return;
-                }
-                recoveryDraft.current = snapshot;
-              }
-              const snapshot = recoveryDraft.current;
-              const attempt = (createAttempt.current ??= new SaveAttempt());
-              try {
-                await attempt.run(async () => {
-                  const id = await attempt.step("trip", () =>
-                    t.createTrip({
-                      ...snapshot.form,
-                      ...(snapshot.attempt ? { recovery: snapshot.attempt } : {}),
-                      ...(snapshot.multiCity
-                        ? {
-                            city: snapshot.cities.find((city) => city.city.trim())?.city ?? "",
-                            country:
-                              snapshot.cities.find((city) => city.city.trim())?.country ?? "",
-                            stops: citiesToStops(snapshot.cities),
-                          }
-                        : {
-                            stops: onePlaceStops(
-                              {
-                                city: snapshot.form.city,
-                                country: snapshot.form.country,
-                                start: snapshot.form.start_date,
-                                end: snapshot.form.end_date,
-                              },
-                              snapshot.dayTrips,
-                            ),
-                          }),
-                      start_date: snapshot.form.start_date,
-                      end_date: snapshot.form.end_date,
-                      title: snapshot.form.title.trim() || suggestedName,
-                      budget_enabled: snapshot.withBudget,
-                    }),
-                  );
-                  if (activeAccount.current !== uid)
-                    throw new Error(
-                      "The signed-in account changed. Return to the original account to finish this trip.",
-                    );
-                  if (snapshot.attempt?.packing)
-                    await attempt.step("packing", () =>
-                      packing.attachToTrip(snapshot.packTemplateId, id, snapshot.attempt?.packing),
-                    );
-                  if (activeAccount.current !== uid) return;
-                  try {
-                    forgetTripDraft(window.localStorage, uid);
-                  } catch {
-                    /* blocked storage */
-                  }
-                  recoveryDraft.current = null;
-                  setDraftNotice("");
-                  setDraftContext({});
-                  setPackTemplateId("");
-                  await navigate({
-                    to: "/trips/$tripId",
-                    params: { tripId: id },
-                    // Started from Plan with Béa: its planner opens on
-                    // the new trip, with anything already typed.
-                    search: snapshot.plan
-                      ? { plan: snapshot.plan, ...(snapshot.ask ? { ask: snapshot.ask } : {}) }
-                      : {},
-                    viewTransition: true,
-                  });
-                  if (activeAccount.current !== uid) return;
-                  setForm({
-                    title: "",
-                    city: "",
-                    country: "",
-                    start_date: "",
-                    end_date: "",
-                    dates_status: "tentative",
-                  });
-                  setMultiCity(false);
-                  setCities([EMPTY_CITY, EMPTY_CITY]);
-                  setDayTrips([]);
-                  setWithBudget(false);
-                  setCreating(false);
-                });
-                if (activeAccount.current !== uid) return;
-                createAttempt.current = null;
-                setCreateLocked(false);
-              } catch (e) {
-                if (activeAccount.current !== uid) return;
-                // Keep the original IDs and payload even when the server response is lost.
-                setError(
-                  friendlyError(e, "Could not finish creating the trip. Retry to continue."),
-                );
-              } finally {
-                if (activeAccount.current === uid) {
-                  saving.current = false;
-                  setSaveBusy(false);
-                }
               }
             }}
             className="w-full rounded-xl bg-primary px-4 py-2 text-[14.5px] font-semibold text-primary-foreground disabled:opacity-50"
           >
-            {saveBusy ? "Creating…" : createLocked ? "Retry creating this trip" : "Create trip"}
+            {saveBusy ? "Creating…" : "Create trip"}
           </button>
           {error && creating && (
             <p role="alert" className="text-[14px] text-destructive">
@@ -1038,7 +846,6 @@ function TripsPage() {
       <Sheet
         open={joining}
         onClose={() => {
-          if (joiningNow.current) return;
           setError("");
           setJoining(false);
         }}
@@ -1047,21 +854,18 @@ function TripsPage() {
       >
         <div className="space-y-2">
           <input
-            disabled={joinBusy}
-            aria-label="Invite code"
             value={code}
             onChange={(e) => setCode(e.target.value.toUpperCase())}
             placeholder="Invite code"
+            aria-label="Invite code"
             className="w-full rounded-xl border border-[var(--field-border)] bg-card px-3 py-2.5 text-[15px] tracking-widest"
           />
           <button
-            aria-busy={joinBusy}
-            disabled={joinBusy || code.length < 4}
+            disabled={code.length < 4 || joinBusy}
             onClick={async () => {
-              setError("");
-              if (joiningNow.current) return;
-              joiningNow.current = true;
+              if (joinBusy) return;
               setJoinBusy(true);
+              setError("");
               try {
                 const id = await t.joinTrip(code, myName);
                 await navigate({
@@ -1074,13 +878,12 @@ function TripsPage() {
               } catch (e) {
                 setError(friendlyError(e, "That code didn't work"));
               } finally {
-                joiningNow.current = false;
                 setJoinBusy(false);
               }
             }}
             className="w-full rounded-xl bg-primary px-4 py-2 text-[14.5px] font-semibold text-primary-foreground disabled:opacity-50"
           >
-            {joinBusy ? "Joining…" : "Join trip"}
+            Join trip
           </button>
           {error && joining && (
             <p role="alert" className="text-[14px] text-destructive">
@@ -1165,7 +968,7 @@ function DayTripRow({
           type="button"
           aria-label="Remove this day trip"
           onClick={onRemove}
-          className="grid size-12 shrink-0 place-items-center rounded-full text-muted-foreground"
+          className="grid size-11 shrink-0 place-items-center rounded-full text-muted-foreground"
         >
           <X className="size-4" aria-hidden />
         </button>
@@ -1198,49 +1001,30 @@ function DayTripRow({
 
 /**
  * The trips this traveller follows, read when Trips opens and again for
- * another account; null until read and while following is not set up (its
- * migration). A read that fails says so (`failed`), with `retry`, instead
- * of looking like an empty list. A list belongs to the account it was read
- * for, so another account never sees it, even for a moment.
+ * another account; null until read, while following is not set up (its
+ * migration), or when the read fails — the tab simply does not show. A
+ * list belongs to the account it was read for, so another account never
+ * sees it, even for a moment.
  */
 function useFollowedTrips(userId: string | null): {
   trips: FollowedTrip[] | null;
-  /** The read failed; the tab shows with a way to try again when this phone knows of follows. */
-  failed: boolean;
-  retry: () => void;
   /** A trip the traveller just stopped following leaves the list for good this visit. */
   forget: (token: string) => void;
 } {
   const list = useServerFn(listFollowedTrips);
-  const [read, setRead] = useState<{
-    userId: string;
-    trips: FollowedTrip[] | null;
-    failed?: boolean;
-  } | null>(null);
-  const [attempt, setAttempt] = useState(0);
+  const [read, setRead] = useState<{ userId: string; trips: FollowedTrip[] | null } | null>(null);
   useEffect(() => {
     if (!userId) return;
-    // A retry, another account or leaving Trips cancels the read in flight.
-    const request = new AbortController();
-    list({ signal: request.signal })
-      .then((trips) => {
-        if (request.signal.aborted) return;
-        if (trips) rememberFollows(userId, trips.length > 0);
-        setRead({ userId, trips });
-      })
-      .catch(() => !request.signal.aborted && setRead({ userId, trips: null, failed: true }));
-    return () => request.abort();
-  }, [userId, list, attempt]);
+    let alive = true;
+    list()
+      .then((trips) => alive && setRead({ userId, trips }))
+      .catch(() => alive && setRead({ userId, trips: null }));
+    return () => {
+      alive = false;
+    };
+  }, [userId, list]);
   const forget = useCallback((token: string) => {
-    setRead((r) => {
-      if (!r?.trips) return r;
-      const trips = r.trips.filter((t) => t.token !== token);
-      // The last one removed: a later failed read must not bring the tab back.
-      if (trips.length === 0) rememberFollows(r.userId, false);
-      return { ...r, trips };
-    });
+    setRead((r) => (r?.trips ? { ...r, trips: r.trips.filter((t) => t.token !== token) } : r));
   }, []);
-  const retry = useCallback(() => setAttempt((n) => n + 1), []);
-  const mine = userId && read?.userId === userId ? read : null;
-  return { trips: mine?.trips ?? null, failed: mine?.failed === true, retry, forget };
+  return { trips: userId && read?.userId === userId ? read.trips : null, forget };
 }
