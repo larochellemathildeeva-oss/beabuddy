@@ -57,10 +57,24 @@ export function scaledDeclaration(property: (typeof SCALED)[number], px: number)
   };
 }
 
+/**
+ * Béa's small type sits on two steps, 12px for captions and 14px for what is
+ * read or tapped: anything under 12px is read at 12, and the sizes between 12
+ * and 14 (13px labels, notes and controls) at 14. Larger sizes are untouched,
+ * so each role keeps its own size and the hierarchy stays predictable.
+ */
+export function typeStep(px: number): number {
+  if (px < 12) return 12;
+  if (px > 12 && px < 14) return 14;
+  return px;
+}
+
 function scale(property: (typeof SCALED)[number]) {
   return (decl: Declaration): Declaration | undefined => {
     const px = plainPx(decl as LengthDeclaration);
-    return px === null ? undefined : (scaledDeclaration(property, px) as unknown as Declaration);
+    if (px === null) return undefined;
+    const size = property === "font-size" ? typeStep(px) : px;
+    return scaledDeclaration(property, size) as unknown as Declaration;
   };
 }
 

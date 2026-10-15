@@ -450,7 +450,7 @@ export function TripMenuSheet({
                       <span className="block text-[14px] font-semibold">{row.title}</span>
                       <span className="block text-[12px] text-muted-foreground">{row.note}</span>
                     </span>
-                    <span aria-hidden>›</span>
+                    <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
                   </button>
                 ))}
               </div>

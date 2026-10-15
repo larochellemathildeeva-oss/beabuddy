@@ -11,7 +11,7 @@ function tsxFiles(dir: string): string[] {
   });
 }
 
-// DM Sans is the only family the app ships; a screen that names a retired one
+// Inter is the only family the app ships; a screen that names a retired one
 // shows the traveller a label or sample in a fallback font.
 test("no component names a font the app no longer loads", () => {
   const stale = /Manrope|Bodoni|Instrument Serif/;

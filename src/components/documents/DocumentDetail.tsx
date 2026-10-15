@@ -2,7 +2,14 @@ import { useEffect, useState } from "react";
 import { friendlyError } from "@/lib/friendly-error";
 import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
-import { Check, Download, ExternalLink, MoreHorizontal, Share2 } from "@/components/icons";
+import {
+  Check,
+  Download,
+  ExternalLink,
+  MoreHorizontal,
+  Share2,
+  ChevronRight,
+} from "@/components/icons";
 import { BookingFacts } from "@/components/documents/BookingDetail";
 import {
   DocumentIcon,
@@ -194,9 +201,7 @@ export function DocumentDetail({
           <span className="min-w-0 flex-1 text-[14px] font-semibold">
             {busy === a.key ? "…" : a.label}
           </span>
-          <span aria-hidden className="text-muted-foreground">
-            ›
-          </span>
+          <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
         </button>
       ))}
 

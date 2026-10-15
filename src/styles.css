@@ -1,7 +1,7 @@
 @import "tailwindcss" source(none);
 @source "../src";
 @import "tw-animate-css";
-@import "@fontsource-variable/dm-sans/wght.css";
+@import "@fontsource-variable/inter/wght.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -79,12 +79,12 @@
   --color-tile-5: var(--tile-5);
   --color-inverse-accent: var(--inverse-accent);
 
-  /* DM Sans is self-hosted (the @import above): one family for every role, no
+  /* Inter, the Figma frames' typeface, is self-hosted (the @import above): one family for every role, no
      third-party font request. The reading-font options (data-font, below)
      still override these three. */
-  --font-sans: "DM Sans Variable", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "DM Sans Variable", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "DM Sans Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
 }
 
 /* The owner's six accent tokens. Blush and danger remain independent. */

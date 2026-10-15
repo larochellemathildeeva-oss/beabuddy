@@ -46,6 +46,7 @@ import { deleteMyAccount, eraseMyData } from "@/lib/account.functions";
 import { clearLocalUserData } from "@/lib/clear-local-user-data";
 import { safeStorage } from "@/lib/tour-state";
 import { clearStoredVaultKeys } from "@/lib/vaultCrypto";
+import { ChevronRight } from "@/components/icons";
 
 export const Route = createFileRoute("/profile")({
   staticData: { plane: "tab" },
@@ -285,7 +286,7 @@ function ProfilePage() {
                 data-guide="profile-settings"
                 className="fy-edit"
               >
-                Edit ›
+                Edit <ChevronRight className="inline size-3.5 align-[-2px]" aria-hidden />
               </button>
             </div>
             <p className="mt-3 text-[13px] text-muted-foreground">Your travels, your way.</p>
@@ -315,7 +316,9 @@ function ProfilePage() {
           <div className="fy-tiles">
             {user ? (
               <Link to="/preferences" data-guide="travel-preferences" className="fy-tile">
-                <span className="fy-tile-t">Travel prefs ›</span>
+                <span className="fy-tile-t">
+                  Travel prefs <ChevronRight className="inline size-3.5 align-[-2px]" aria-hidden />
+                </span>
                 <span className="fy-tile-n">Styles, budget, pace, interests</span>
               </Link>
             ) : null}
@@ -326,16 +329,23 @@ function ProfilePage() {
                 data-guide="packing-lists"
                 className="fy-tile"
               >
-                <span className="fy-tile-t">Packing lists ›</span>
+                <span className="fy-tile-t">
+                  Packing lists{" "}
+                  <ChevronRight className="inline size-3.5 align-[-2px]" aria-hidden />
+                </span>
                 <span className="fy-tile-n">Reusable lists for your next trip</span>
               </button>
             ) : null}
             <Link to="/photos" className="fy-tile">
-              <span className="fy-tile-t">Photos ›</span>
+              <span className="fy-tile-t">
+                Photos <ChevronRight className="inline size-3.5 align-[-2px]" aria-hidden />
+              </span>
               <span className="fy-tile-n">City memories and travel stories</span>
             </Link>
             <a href="/profile/documents" data-guide="trip-documents" className="fy-tile">
-              <span className="fy-tile-t">Trip docs ›</span>
+              <span className="fy-tile-t">
+                Trip docs <ChevronRight className="inline size-3.5 align-[-2px]" aria-hidden />
+              </span>
               <span className="fy-tile-n">Bookings and protected docs</span>
             </a>
           </div>
@@ -374,14 +384,18 @@ function ProfilePage() {
               {themeName.charAt(0).toUpperCase() + themeName.slice(1)} mode · Default reading
             </span>
           </span>
-          <span className="text-[13px] text-muted-foreground">Change ›</span>
+          <span className="text-[13px] text-muted-foreground">
+            Change <ChevronRight className="inline size-3.5 align-[-2px]" aria-hidden />
+          </span>
         </button>
 
         <section className="fy-card">
           <h2 className="fy-h !mb-2 !mt-0">Work &amp; data</h2>
           <div className="grid grid-cols-2 gap-2">
             <Link to="/expenses" data-guide="work-travel" className="fy-tile !min-h-0">
-              <span className="fy-tile-t">Work travel ›</span>
+              <span className="fy-tile-t">
+                Work travel <ChevronRight className="inline size-3.5 align-[-2px]" aria-hidden />
+              </span>
               <span className="fy-tile-n">Receipts, expenses, export</span>
             </Link>
             {user ? (
@@ -391,7 +405,10 @@ function ProfilePage() {
                 data-guide="offline-options"
                 className="fy-tile !min-h-0"
               >
-                <span className="fy-tile-t">Data &amp; imports ›</span>
+                <span className="fy-tile-t">
+                  Data &amp; imports{" "}
+                  <ChevronRight className="inline size-3.5 align-[-2px]" aria-hidden />
+                </span>
                 <span className="fy-tile-n">Photos, calendar, offline trips</span>
               </button>
             ) : null}
@@ -405,7 +422,8 @@ function ProfilePage() {
             data-guide="legal"
             className="fy-tile-t text-left"
           >
-            Settings &amp; help ›
+            Settings &amp; help{" "}
+            <ChevronRight className="inline size-3.5 align-[-2px]" aria-hidden />
           </button>
           <p className="mt-2 text-[12px] text-muted-foreground">
             <button type="button" onClick={() => setPanel("legal")}>

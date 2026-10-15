@@ -2845,7 +2845,7 @@ export function TripDetail({
                   Choose a place from Recs
                 </span>
               </span>
-              <span aria-hidden>›</span>
+              <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
             </button>
             <button
               type="button"
@@ -2865,7 +2865,7 @@ export function TripDetail({
                   with a name, time and address
                 </span>
               </span>
-              <span aria-hidden>›</span>
+              <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
             </button>
             <button
               type="button"
@@ -2881,7 +2881,7 @@ export function TripDetail({
                   Add a city to the trip's route
                 </span>
               </span>
-              <span aria-hidden>›</span>
+              <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
             </button>
           </section>
           <section className="fr-note">

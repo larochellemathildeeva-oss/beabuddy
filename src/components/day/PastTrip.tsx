@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { useFutureNotes, cityKey } from "@/hooks/useFutureNotes";
 import { formatTripLocation } from "@/lib/place-label";
+import { ChevronLeft } from "@/components/icons";
 
 /**
  * A trip that is over, as the Figma "A trip to remember" frame draws it: what
@@ -11,7 +12,7 @@ export function PastTripTop({ country, dates }: { country: string | null; dates:
     <div className="space-y-3">
       <div>
         <Link to="/trips" className="text-[12px] text-muted-foreground">
-          ‹ Trips · Past
+          <ChevronLeft className="inline size-3.5 align-[-2px]" aria-hidden /> Trips · Past
         </Link>
         <h1 className="mt-2 text-[32px] font-bold leading-[1.1]">A trip to remember</h1>
       </div>

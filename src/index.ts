@@ -1,7 +1,7 @@
 /**
  * Béa design system — entry point.
  *
- * Importing this entry point brings the stylesheet, which self-hosts DM Sans: no
+ * Importing this entry point brings the stylesheet, which self-hosts Inter: no
  * font links are needed in the consuming app's <head>.
  */
 import "./styles.css";

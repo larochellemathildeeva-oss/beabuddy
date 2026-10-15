@@ -710,7 +710,7 @@ function WorldPage() {
                   onClick={() => setGlobeOpen(true)}
                   className="text-[12px] font-medium"
                 >
-                  Search →
+                  Search <ArrowRight className="inline size-3.5 align-[-2px]" aria-hidden />
                 </button>
               </div>
               <div className="mt-3 flex gap-2">
@@ -742,7 +742,7 @@ function WorldPage() {
                   onClick={() => setTab("bucket")}
                   className="text-[12px] font-medium"
                 >
-                  See all →
+                  See all <ArrowRight className="inline size-3.5 align-[-2px]" aria-hidden />
                 </button>
               </div>
               {bucketLocations.length > 0 ? (

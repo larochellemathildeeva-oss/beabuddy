@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { Sheet } from "@/components/Sheet";
 import { PlanCards } from "@/components/PlanWithBea";
-import { Check } from "@/components/icons";
+import { Check, ChevronLeft } from "@/components/icons";
 import type { PlannerTab } from "@/components/ItineraryImport";
 import { useTrips, type TripRow } from "@/hooks/useTrips";
 import { planTripChoices, startsNewTrip } from "@/lib/plan-trip-choices";
@@ -119,7 +119,7 @@ function PlanPage() {
       <div className="space-y-3">
         <div>
           <Link to="/trips" className="text-[12px] text-muted-foreground">
-            ‹ Trips
+            <ChevronLeft className="inline size-3.5 align-[-2px]" aria-hidden /> Trips
           </Link>
           <h1 className="mt-2 text-[32px] font-bold leading-[1.1]">Plan with Béa</h1>
           <p className="mt-2 text-[13px]">
