@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { Sheet } from "@/components/Sheet";
@@ -38,6 +38,13 @@ function PlanPage() {
   const t = useTrips();
   const today = toLocalISODate(new Date());
   const [asking, setAsking] = useState<Ask | null>(null);
+  /** The trip the planning context shows: the first one ahead until another is chosen. */
+  const [contextId, setContextId] = useState<string | null>(null);
+  const contextChoices = useMemo(
+    () => planTripChoices(t.trips, today, "optimize"),
+    [t.trips, today],
+  );
+  const contextTrip = contextChoices.find((c) => c.id === contextId) ?? contextChoices[0] ?? null;
   /** Trips the sheet offers for the card that opened it (`plan-trip-choices.ts`). */
   const choices = useMemo(
     () => (asking ? planTripChoices(t.trips, today, asking.tab) : []),
@@ -63,6 +70,12 @@ function PlanPage() {
    * While the list is still loading nothing is decided: the sheet waits.
    */
   const start = (ask: Ask) => {
+    // A trip chosen in the planning context answers "which journey?".
+    const chosen = ask.tab === "build" || ask.tab === "import" ? null : contextTrip;
+    if (chosen && planTripChoices(t.trips, today, ask.tab).some((c) => c.id === chosen.id)) {
+      openTrip(chosen, ask);
+      return;
+    }
     if (
       !t.loading &&
       startsNewTrip(ask.tab) &&
@@ -102,8 +115,38 @@ function PlanPage() {
   };
 
   return (
-    <AppShell eyebrow="Build / import / optimize / compare" title="Plan with Béa.">
+    <AppShell homeHeader>
       <div className="space-y-3">
+        <div>
+          <Link to="/trips" className="text-[12px] text-muted-foreground">
+            ‹ Trips
+          </Link>
+          <h1 className="mt-2 text-[32px] font-bold leading-[1.1]">Plan with Béa</h1>
+          <p className="mt-2 text-[13px]">
+            Turn places you&apos;ve collected into a workable trip.
+          </p>
+        </div>
+        {contextTrip ? (
+          <section className="lp-card">
+            <h2 className="text-[13px] font-semibold">Planning context</h2>
+            <label className="mt-3 block text-[12px] text-muted-foreground">
+              Existing trip
+              <select
+                value={contextTrip.id}
+                onChange={(e) => setContextId(e.target.value)}
+                className="mt-1 block w-full rounded-[var(--r-card)] border border-border bg-card px-3 py-3 text-[14px] text-foreground"
+              >
+                {contextChoices.map((trip) => (
+                  <option key={trip.id} value={trip.id}>
+                    {[trip.title, tripDateLine(trip.start_date, trip.end_date)]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </section>
+        ) : null}
         <PlanCards
           onBuild={() => start({ tab: "build" })}
           onImport={() => start({ tab: "import" })}
@@ -114,10 +157,16 @@ function PlanPage() {
           type="button"
           onClick={() => newTrip({ tab: "build" })}
           data-guide="plan-start"
-          className="btn-primary flex w-full items-center justify-center px-4"
+          className="flex min-h-11 w-full items-center justify-center rounded-[var(--r-card)] border border-border bg-card px-4 text-[14px] font-medium"
         >
           Start a new plan
         </button>
+        <section className="fr-note">
+          <p className="text-[13px] font-semibold">You review. You approve. Then we save.</p>
+          <p className="mt-1 text-[12px] text-muted-foreground">
+            Nothing changes just by viewing a preview. Béa does not book or check availability.
+          </p>
+        </section>
       </div>
 
       <Sheet

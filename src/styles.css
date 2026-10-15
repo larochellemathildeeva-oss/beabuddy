@@ -5840,3 +5840,47 @@ main [class*="rounded-2xl"] {
   border: 1px solid var(--border);
   border-radius: 9999px;
 }
+
+/* Welcome (signed out), as the Figma frame draws it. */
+.lp-hero {
+  position: relative;
+  padding: 16px;
+  border-radius: var(--r-card);
+  background: var(--muted);
+}
+.lp-pill {
+  position: absolute;
+  right: 16px;
+  top: 40%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px 6px 6px;
+  border: 1px solid var(--border);
+  border-radius: 9999px;
+  background: var(--card);
+}
+.lp-dot {
+  display: block;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--border);
+  border-radius: 9999px;
+  background: var(--muted);
+}
+.lp-card {
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+  background: var(--card);
+}
+.lp-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+  background: var(--card);
+}

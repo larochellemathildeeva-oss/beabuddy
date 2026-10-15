@@ -149,8 +149,8 @@ export const WALKS: Walk[] = [
         selector: "[data-guide='plan-with-bea']",
       },
       {
-        title: "Build a new trip",
-        body: "Build a new trip drafts the days. The other rows read a plan you already have, put a trip's stops in a better order, or compare two plans. Nothing saves until you approve it.",
+        title: "Plan from saved places",
+        body: "Plan from saved places drafts the days. The other rows read a plan you already have, put a trip's stops in a better order, or compare two plans. Nothing saves until you approve it.",
         to: "/trips/plan",
         selector: "[data-guide='plan-cards']",
       },
@@ -180,14 +180,14 @@ export const WALKS: Walk[] = [
     hint: "From a friend, a PDF, an email or another assistant.",
     steps: [
       {
-        title: "Import your plan",
-        body: "On Plan with Béa, Import your plan reads pasted text, a photo, a PDF or a calendar file and turns it into a trip, pinning each stop she can find.",
+        title: "Import bookings",
+        body: "On Plan with Béa, Import bookings reads pasted text, a photo, a PDF or a calendar file and turns it into a trip, pinning each stop she can find.",
         to: "/trips/plan",
         selector: "[data-guide='plan-cards']",
       },
       {
         title: "Planning somewhere else?",
-        body: "After the tour, open Plan a trip here, or Get the AI prompt under Import your plan: a prompt for the assistant you use, asking for the shape Béa reads best, so its plan comes in cleanly when you paste the answer back.",
+        body: "After the tour, open Plan a trip here, or Get the AI prompt under Import bookings: a prompt for the assistant you use, asking for the shape Béa reads best, so its plan comes in cleanly when you paste the answer back.",
         to: "/help",
         selector: "[data-guide='plan-prompt']",
       },
