@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
-import { MoreHorizontal } from "@/components/icons";
+import { MapIcon, MoreHorizontal } from "@/components/icons";
+import { Button } from "@/components/ui/button";
 import { frameDateRange, frameDayCount, frameDaysLabel } from "@/lib/trip-frame";
 import type { TripPerspective } from "@/lib/trip-perspective";
 
@@ -84,10 +85,16 @@ export function TripFrameHeader({
                 {[country, dated].filter(Boolean).join(" · ")}
               </p>
             </div>
-            <button type="button" onClick={onOpenMap} className="tf-mapbtn">
-              <span className="text-[12px] text-muted-foreground">Map</span>
-              <span className="text-[14px] font-semibold">Open</span>
-            </button>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={onOpenMap}
+              className="shrink-0"
+            >
+              <MapIcon aria-hidden />
+              Map
+            </Button>
           </div>
           {photo}
         </>

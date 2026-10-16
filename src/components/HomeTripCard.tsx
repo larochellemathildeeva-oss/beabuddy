@@ -22,19 +22,25 @@ import { timeForRail } from "@/lib/timeline-kind";
 import { toLocalISODate } from "@/lib/trip-dates";
 import { dueLine, heroTags, nextOnPlan, routeLine } from "@/lib/trip-glance";
 import { isUnderway } from "@/lib/trip-card";
+import { Heading } from "@/components/ui/heading";
 
-/** A serif heading with one quiet link beside it, as on the master Home. */
+/** A section heading with one quiet link beside it, as on the master Home. */
 export function HomeSectionTitle({ title, aside }: { title: string; aside?: ReactNode }) {
   return (
-    <div className="mb-3 flex items-baseline justify-between gap-3">
-      <h2 className="text-[20px] font-semibold leading-[1.4]">{title}</h2>
-      {aside ? (
-        <div className="flex shrink-0 items-center gap-0.5 text-[14px] font-semibold text-primary">
-          {aside}
-          <ChevronRight className="size-4" aria-hidden />
-        </div>
-      ) : null}
-    </div>
+    <Heading
+      level="section"
+      className="mb-3"
+      aside={
+        aside ? (
+          <span className="flex items-center gap-0.5">
+            {aside}
+            <ChevronRight className="size-4" aria-hidden />
+          </span>
+        ) : undefined
+      }
+    >
+      {title}
+    </Heading>
   );
 }
 

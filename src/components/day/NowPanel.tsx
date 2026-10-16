@@ -306,7 +306,9 @@ export function NowPanel({
     </>
   );
 
-  const destination = phase === "at" ? next : phase === "between" ? null : rowNext;
+  // Before the day starts the next stop is already listed under "First up",
+  // so only a traveller at a stop gets the card saying where to go next.
+  const destination = phase === "at" ? next : null;
   const destinationLine = destination
     ? [
         "Next stop",

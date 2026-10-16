@@ -16,8 +16,10 @@ import {
   MoreHorizontal,
   Pencil,
   Plus,
+  Sparkles,
   X,
 } from "@/components/icons";
+import { ActionBar } from "@/components/ui/action-bar";
 import { TripBudget } from "@/components/TripBudget";
 import { CurrencySheet } from "@/components/CurrencySheet";
 import { TripStops } from "@/components/TripStops";
@@ -1521,12 +1523,9 @@ export function TripDetail({
   const showDayTracker = perspective === "overview" || !companionDay;
   const cityOn = (day: string) =>
     routeCityOn(cities.stops, day)?.split(",")[0]?.trim() || trip.city || "Trip";
-  // The head card's words (Figma "Trip overview", "Trip map", "Trip timeline"):
-  // the Timeline names the day's city, the other views the trip.
-  const headTitle =
-    perspective === "timeline" && timelineByDay && chosenDay && chosenDay !== ALL_DAYS
-      ? cityOn(chosenDay)
-      : trip.title;
+  // The head card always names the trip, so the title does not change
+  // under the traveller as they switch views or days.
+  const headTitle = trip.title;
   const headKicker = trip.country ? trip.country.toUpperCase() : "";
   const headPlaces = (() => {
     const names = [
@@ -3738,7 +3737,7 @@ function fullDayLabel(key: string): string {
   return date.toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" });
 }
 
-/** The Figma timeline's four doors: plan, add, to-do and the trip menu. */
+/** The timeline's four actions: plan, add, to-do and the trip menu. */
 function TimelineTiles({
   todos,
   onPlan,
@@ -3752,27 +3751,30 @@ function TimelineTiles({
   onTodo: () => void;
   onMenu: () => void;
 }) {
-  const face = (top: string, bottom: string) => (
-    <>
-      <span className="text-[12px] text-muted-foreground">{top}</span>
-      <span className="text-[14px] font-semibold">{bottom}</span>
-    </>
-  );
   return (
-    <div className="tl-tiles" role="group" aria-label="Trip actions">
-      <button type="button" onClick={onPlan} data-guide="bea-plan">
-        {face("Plan with", "Béa")}
-      </button>
-      <button type="button" onClick={onAdd} data-guide="add-stop">
-        {face("Add", "stop")}
-      </button>
-      <button type="button" onClick={onTodo} data-guide="trip-prep">
-        {face("To do", String(todos))}
-      </button>
-      <button type="button" onClick={onMenu} data-guide="trip-menu">
-        {face("Trip", "menu")}
-      </button>
-    </div>
+    <ActionBar
+      label="Trip actions"
+      className="tl-actions"
+      items={[
+        { key: "plan", label: "Plan with Béa", icon: Sparkles, onClick: onPlan, guide: "bea-plan" },
+        { key: "add", label: "Add stop", icon: Plus, onClick: onAdd, guide: "add-stop" },
+        {
+          key: "todo",
+          label: "To do",
+          icon: ListChecks,
+          onClick: onTodo,
+          guide: "trip-prep",
+          badge: todos > 0 ? todos : undefined,
+        },
+        {
+          key: "menu",
+          label: "Trip menu",
+          icon: MoreHorizontal,
+          onClick: onMenu,
+          guide: "trip-menu",
+        },
+      ]}
+    />
   );
 }
 

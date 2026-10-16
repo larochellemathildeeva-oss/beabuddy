@@ -38,6 +38,9 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Design drift
+        run: npm run check:drift
+
       - name: Test
         run: npm test
 

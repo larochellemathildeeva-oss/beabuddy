@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { Link } from "@tanstack/react-router";
 import { PlacePicture } from "@/components/PlacePicture";
+import { ChevronRight, Sparkles } from "@/components/icons";
 import type { ItineraryRow } from "@/hooks/useTrips";
 import { useRecommendations } from "@/hooks/useRecommendations";
 import { useTripGlances } from "@/hooks/useTripGlances";
@@ -262,14 +263,6 @@ export function TripOverview({
   const sequenceBlock = (
     <>
       <RuleLabel>Itinerary sequence</RuleLabel>
-      {onFindCities && names.length === 0 ? (
-        <RowButton
-          title={findingCities ? "Finding cities…" : "Find the cities"}
-          note="This trip has no cities yet. Béa can find them from your stops."
-          onClick={onFindCities}
-          disabled={findingCities}
-        />
-      ) : null}
       {sequence.length === 0 && extras.length === 0 ? (
         <p className="trip-row-empty">
           Nothing planned yet. Add stops, or let Béa draft the days from a plan you already have.
@@ -287,6 +280,16 @@ export function TripOverview({
           ))}
         </ol>
       )}
+      {/* The days above are already drawn from the stops, so this names their
+          cities rather than claiming the trip has none. */}
+      {onFindCities && names.length === 0 ? (
+        <RowButton
+          title={findingCities ? "Naming the cities…" : "Name the cities"}
+          note="Béa can work out which city each day is in from your stops."
+          onClick={onFindCities}
+          disabled={findingCities}
+        />
+      ) : null}
     </>
   );
   const [host, setHost] = useState<HTMLElement | null>(null);
@@ -296,9 +299,19 @@ export function TripOverview({
     <div className="trip-overview">
       {host ? createPortal(sequenceBlock, host) : sequenceBlock}
       {onPlan ? (
-        <button type="button" onClick={onPlan} className="trip-primary ov-continue">
-          <span className="ov-continue-title">Continue planning</span>
-          <span className="ov-continue-note">Open assistant</span>
+        <button
+          type="button"
+          onClick={onPlan}
+          className="flex min-h-(--h-row) w-full cursor-pointer items-center gap-3 rounded-[var(--r-md)] border border-border bg-card px-4 py-3 text-left"
+        >
+          <Sparkles className="size-5 shrink-0" aria-hidden />
+          <span className="min-w-0 flex-1">
+            <span className="block text-body font-semibold">Continue planning</span>
+            <span className="block truncate text-small text-muted-foreground">
+              Ask Béa to draft or change days
+            </span>
+          </span>
+          <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
         </button>
       ) : null}
 
@@ -319,7 +332,7 @@ export function TripOverview({
           </button>
           {onOpenSettings ? (
             <button type="button" onClick={onOpenSettings} className="ov-tile">
-              <span className="ov-tile-title">Trip menu / Settings</span>
+              <span className="ov-tile-title">Trip settings</span>
               <span className="ov-tile-note">People, photos, details</span>
             </button>
           ) : null}

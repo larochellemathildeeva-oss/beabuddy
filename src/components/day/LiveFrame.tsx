@@ -36,7 +36,6 @@ export function LiveStatus({
         </p>
       </div>
       <div className="shrink-0 text-right">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.04em]">Live companion</p>
         <DayWeather items={stops} />
       </div>
     </section>
