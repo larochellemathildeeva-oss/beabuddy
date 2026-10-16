@@ -39,6 +39,8 @@ const declared = new Set<string>();
 for (const m of markup.matchAll(/data-guide="([a-z0-9-]+)"/g)) declared.add(m[1]!);
 // `<Section guide="…">` and the like pass it through as a prop.
 for (const m of markup.matchAll(/\bguide="([a-z0-9-]+)"/g)) declared.add(m[1]!);
+// An ActionBar item carries it as `guide: "…"`.
+for (const m of markup.matchAll(/\bguide: "([a-z0-9-]+)"/g)) declared.add(m[1]!);
 
 /** Everything the tour and the page guides ask for. */
 function selectorsIn(file: string): string[] {

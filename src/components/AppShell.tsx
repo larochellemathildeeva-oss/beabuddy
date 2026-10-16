@@ -15,7 +15,7 @@ import { COMPRESS_AT, measureHeaderHeights, nextCompressed } from "../lib/page-h
 import { planeFromMatches, planeIsUndeclared, travelDirection } from "../lib/route-plane";
 import { BrandMark, PageHeader } from "./PageHeader";
 
-import { ArrowLeft, Columns2, Globe2, Heart, Home, User } from "@/components/icons";
+import { ArrowLeft, Columns2, Globe2, Heart, Home, Menu, Search, User } from "@/components/icons";
 import logo from "../assets/bea-logo.png";
 
 const APP_VERSION = typeof __APP_VERSION__ === "string" ? __APP_VERSION__ : "1.0.0";
@@ -223,18 +223,18 @@ export function AppShell({
         className="relative mx-auto flex h-dvh w-full max-w-[520px] flex-col overflow-hidden border-x border-border/70 bg-transparent md:max-w-[680px] xl:max-w-[780px]"
       >
         {homeHeader ? (
-          <header className="z-20 flex shrink-0 items-center justify-between bg-background px-5 pb-1 pt-2">
+          <header className="z-20 flex shrink-0 items-center justify-between gap-2 bg-background px-4 py-2.5">
             <Link to="/" aria-label={`Béa, version ${APP_VERSION}`} title={`v${APP_VERSION}`}>
-              <BrandMark large version={APP_VERSION} />
+              <BrandMark />
             </Link>
             <div className="flex items-center gap-3">
               <Link
                 to="/recommendations"
                 search={{ find: true }}
                 aria-label="Search your places"
-                className="hdr-btn flex items-center justify-center text-[12px] text-foreground"
+                className="hdr-btn"
               >
-                Search
+                <Search className="size-5" aria-hidden />
               </Link>
               {user && <PageGuide round hideToggle />}
               {user && (
@@ -243,15 +243,15 @@ export function AppShell({
                   onClick={() => setMenuOpen(true)}
                   aria-haspopup="dialog"
                   aria-label="Menu"
-                  className="hdr-btn flex items-center justify-center text-[12px] text-foreground"
+                  className="hdr-btn"
                 >
-                  Menu
+                  <Menu className="size-5" aria-hidden />
                 </button>
               )}
             </div>
           </header>
         ) : (
-          <header className="tab-rule group/hdr z-20 flex shrink-0 items-center justify-between gap-2 bg-background/35 px-4 py-2.5 backdrop-blur-xl">
+          <header className="group/hdr z-20 flex shrink-0 items-center justify-between gap-2 bg-background/35 px-4 py-2.5 backdrop-blur-xl">
             <div className="flex shrink-0 items-center gap-2">
               {showBack &&
                 (canGoBack ? (
@@ -278,9 +278,11 @@ export function AppShell({
                 ))}
               <Link
                 to="/"
+                aria-label={`Béa, version ${APP_VERSION}`}
+                title={`v${APP_VERSION}`}
                 className="flex items-center gap-2 group-has-[#app-header-slot:not(:empty)]/hdr:hidden"
               >
-                <BrandMark version={APP_VERSION} />
+                <BrandMark />
               </Link>
             </div>
 
@@ -292,9 +294,9 @@ export function AppShell({
                   search={{ find: true }}
                   aria-label="Search your places"
                   // A trip's own actions take this row; Search stays on every other page.
-                  className="hdr-btn flex items-center justify-center text-[12px] text-foreground group-has-[#app-header-slot:not(:empty)]/hdr:hidden"
+                  className="hdr-btn group-has-[#app-header-slot:not(:empty)]/hdr:hidden"
                 >
-                  Search
+                  <Search className="size-5" aria-hidden />
                 </Link>
               )}
               {user && (
@@ -303,9 +305,9 @@ export function AppShell({
                   onClick={() => setMenuOpen(true)}
                   aria-haspopup="dialog"
                   aria-label="Menu"
-                  className="hdr-btn flex items-center justify-center text-[12px] text-foreground"
+                  className="hdr-btn"
                 >
-                  Menu
+                  <Menu className="size-5" aria-hidden />
                 </button>
               )}
               {!user && (

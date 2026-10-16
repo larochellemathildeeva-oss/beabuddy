@@ -13,7 +13,8 @@ import { friendlyError } from "@/lib/friendly-error";
 import type { PlannerTab } from "@/components/ItineraryImport";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { ChevronRight, FileText, Plus, Sparkles, Users, X } from "@/components/icons";
+import { CalendarDays, ChevronRight, FileText, Plus, Sparkles, Users, X } from "@/components/icons";
+import { Button } from "@/components/ui/button";
 import { Sheet } from "@/components/Sheet";
 import { AppShell } from "@/components/AppShell";
 import { DateRangeField } from "@/components/DateRangeField";
@@ -438,13 +439,34 @@ function TripsPage() {
       <div className="space-y-6">
         <header
           data-guide="trips-header"
-          className="flex items-baseline justify-between border-b border-border pb-3"
+          className="flex items-center justify-between gap-3 border-b border-border pb-3"
         >
           <h1 className="text-[26px] font-semibold leading-tight">Your trips</h1>
           {t.signedIn ? (
-            <span className="text-[14px] font-semibold">
-              {t.trips.length} {t.trips.length === 1 ? "trip" : "trips"}
-            </span>
+            <div className="flex shrink-0 items-center gap-1">
+              <Button asChild variant="ghost" size="icon">
+                <Link to="/calendar" aria-label="Calendar">
+                  <CalendarDays className="!size-5" aria-hidden />
+                </Link>
+              </Button>
+              <Button asChild variant="ghost" size="icon">
+                <Link to="/profile/documents" data-guide="document-vault" aria-label="Documents">
+                  <FileText className="!size-5" aria-hidden />
+                </Link>
+              </Button>
+              <Button
+                type="button"
+                variant="primary"
+                size="sm"
+                data-guide="new-trip"
+                aria-expanded={creating}
+                onClick={openNew}
+                className="ml-1"
+              >
+                <Plus aria-hidden />
+                New trip
+              </Button>
+            </div>
           ) : null}
         </header>
         {t.signedIn ? (
@@ -510,24 +532,6 @@ function TripsPage() {
                 </TripsActionTile>
               </div>
             ) : null}
-
-            <div className="grid grid-cols-3 gap-2.5">
-              <button
-                type="button"
-                data-guide="new-trip"
-                aria-expanded={creating}
-                onClick={openNew}
-                className="tn-chip"
-              >
-                Create trip
-              </button>
-              <Link to="/calendar" className="tn-chip">
-                Calendar
-              </Link>
-              <Link to="/profile/documents" data-guide="document-vault" className="tn-chip">
-                Documents
-              </Link>
-            </div>
 
             {error && !creating && !joining && (
               <p role="alert" className="text-[14px] text-destructive">

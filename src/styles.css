@@ -2,6 +2,7 @@
 @source "../src";
 @import "tw-animate-css";
 @import "@fontsource-variable/inter/wght.css";
+@import "./tokens.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -26,7 +27,12 @@
   --text-base: calc(1rem * var(--text-scale, 1));
   --text-lg: calc(1.125rem * var(--text-scale, 1));
   --text-xl: calc(1.25rem * var(--text-scale, 1));
+  --text-hero: calc(40px * var(--text-scale, 1));
   --spacing-tap: 44px;
+  --spacing-gutter: 16px;
+  --spacing-card: 16px;
+  --spacing-stack: 12px;
+  --spacing-section: 32px;
 }
 
 @theme inline {
@@ -43,6 +49,20 @@
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  /* The tokens in tokens.css, for the ui/ primitives. */
+  --color-surface-0: var(--surface-0);
+  --color-surface-1: var(--surface-1);
+  --color-surface-2: var(--surface-2);
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--ink-muted);
+  --color-line: var(--line);
+  --color-field: var(--line-strong);
+  --color-action: var(--action);
+  --color-action-foreground: var(--action-ink);
+  --color-accent-mark: var(--accent-mark);
+  --color-accent-mark-soft: var(--accent-mark-soft);
+  --color-danger: var(--danger);
+  --color-link: var(--link);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
   --color-popover: var(--popover);
@@ -3619,25 +3639,10 @@ h2:not([class*="font-"]) {
 }
 /* The two ways to start a trip: flat, bordered, words only. */
 
-/* Map | Companion: two words, the chosen one underlined, like the tabs above. */
+/* Map | Now: a small Segmented at the right, a view switch rather than a second tab row. */
 .map-switch {
   display: flex;
-  gap: 20px;
-  border-bottom: 1px solid var(--border);
-}
-.map-switch button {
-  min-height: 44px;
-  border-bottom: 2px solid transparent;
-  color: var(--muted-foreground);
-  font-size: 14px;
-}
-.map-switch button[aria-pressed="true"] {
-  border-bottom-color: var(--foreground);
-  color: var(--foreground);
-  font-weight: 600;
-}
-[data-theme="colorful"]:not(.dark) .map-switch button[aria-pressed="true"] {
-  border-bottom-color: var(--acc);
+  justify-content: flex-end;
 }
 
 /* The small switches and tags are flat too. */
@@ -5227,19 +5232,6 @@ main [class*="rounded-2xl"] {
   background: var(--card);
   color: var(--foreground);
 }
-.tf-mapbtn {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-width: 64px;
-  min-height: 44px;
-  padding: 4px 12px;
-  border-radius: var(--r-card);
-  border: 1px solid var(--border);
-  background: var(--card);
-  line-height: 1.2;
-}
 .tf-photo {
   position: relative;
   height: 48px;
@@ -5276,32 +5268,6 @@ main [class*="rounded-2xl"] {
 }
 .tf-card .trip-views.trip-views--top.trip-views--pill button[aria-selected="true"],
 .tf-tabs-only .trip-views.trip-views--top.trip-views--pill button[aria-selected="true"] {
-  background: var(--muted);
-  color: var(--foreground);
-  font-weight: 600;
-}
-.tf-card .map-switch,
-.tf-tabs-only .map-switch {
-  display: flex;
-  gap: 2px;
-  margin: 0;
-  padding: 4px;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  background: var(--card);
-}
-.tf-card .map-switch button,
-.tf-tabs-only .map-switch button {
-  flex: 1;
-  min-height: 36px;
-  border: 0;
-  border-radius: 999px;
-  font-family: inherit;
-  font-size: 14px;
-}
-.tf-card .map-switch button[aria-pressed="true"],
-.tf-tabs-only .map-switch button[aria-pressed="true"] {
-  border: 0;
   background: var(--muted);
   color: var(--foreground);
   font-weight: 600;
@@ -5365,26 +5331,9 @@ main [class*="rounded-2xl"] {
   justify-content: center;
 }
 
-/* Figma timeline: day pills in one rounded box, four doors, a rail of times. */
-.tl-tiles {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 6px;
+/* Figma timeline: the action row's spacing, and a rail of times. */
+.tl-actions {
   margin: 12px 0 4px;
-  padding: 6px;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  background: var(--card);
-}
-.tl-tiles button {
-  display: flex;
-  min-height: 44px;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  border-radius: 999px;
-  background: var(--muted);
-  line-height: 1.2;
 }
 .tl-rail {
   position: relative;
@@ -5528,15 +5477,17 @@ main [class*="rounded-2xl"] {
   width: auto;
 }
 
-/* Header buttons, as every Figma frame draws them: a bordered box. */
+/* Header buttons: a round icon in a 44px tap area, no box. */
 .hdr-btn {
-  min-height: 40px;
-  min-width: 56px;
-  padding: 0 14px;
-  border: 1px solid var(--border);
-  border-radius: var(--r-card);
-  background: var(--card);
-  font-weight: 500;
+  display: grid;
+  place-items: center;
+  width: var(--tap);
+  height: var(--tap);
+  border-radius: 999px;
+  color: var(--foreground);
+}
+.hdr-btn:hover {
+  background: var(--muted);
 }
 
 /* You, as the Figma frame draws it. */

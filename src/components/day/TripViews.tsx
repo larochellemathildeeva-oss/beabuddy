@@ -4,6 +4,7 @@ import { Columns2, LocateFixed, MapIcon, ListOrdered } from "@/components/icons"
 import { TRIP_PERSPECTIVES, TRIP_TABS, tabOf, type TripPerspective } from "@/lib/trip-perspective";
 import { BAR_POSITIONS, type TripBarPosition } from "@/hooks/useTripBarPosition";
 import { TRIP_PICTURES, type TripPicture } from "@/lib/trip-picture";
+import { Segmented } from "@/components/ui/segmented";
 
 const icons = { overview: Columns2, companion: LocateFixed, map: MapIcon, timeline: ListOrdered };
 
@@ -188,9 +189,10 @@ export function TripPictureOptions({
 }
 
 /**
- * Live | Split, under the Map tab. Live is the companion card (where you
- * are, what is next, when to leave) with the day's map; Split is the map with
- * the day as a short timeline. The ids stay "companion" and "map".
+ * Map | Now, under the Map tab: two views of the same day, so a Segmented,
+ * not a second row of tabs. Now is the companion card (where you are, what
+ * is next, when to leave); Map is the map with the day as a short timeline.
+ * The ids stay "companion" and "map".
  */
 export function MapModeSwitch({
   value,
@@ -200,17 +202,16 @@ export function MapModeSwitch({
   onChange: (value: TripPerspective) => void;
 }) {
   return (
-    <div role="group" aria-label="Map or Companion" className="map-switch">
-      {(
-        [
+    <div className="map-switch">
+      <Segmented
+        label="Map or Now"
+        value={value === "companion" ? "companion" : "map"}
+        onChange={onChange}
+        options={[
           ["map", "Map"],
-          ["companion", "Companion"],
-        ] as const
-      ).map(([id, label]) => (
-        <button key={id} type="button" aria-pressed={value === id} onClick={() => onChange(id)}>
-          {label}
-        </button>
-      ))}
+          ["companion", "Now"],
+        ]}
+      />
     </div>
   );
 }

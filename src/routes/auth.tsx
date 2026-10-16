@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { BrandMark } from "@/components/PageHeader";
+import { Button } from "@/components/ui/button";
 import { CopyrightNotice } from "@/components/CopyrightNotice";
 import { PasswordCreationRules } from "@/components/PasswordCreationRules";
 import { assertNewPasswordAllowed, MIN_NEW_PASSWORD_LENGTH } from "@/lib/pwned-password";
@@ -334,18 +335,19 @@ function AuthPage() {
           </p>
         </div>
 
-        <button
+        {/* Google's own button colours and G, as its branding rules ask; the
+            filled button on this screen is the email form's. */}
+        <Button
           type="button"
+          variant="google"
+          size="lg"
           onClick={() => social("google")}
           disabled={busy}
-          className="flex h-[52px] w-full items-center justify-center gap-3 rounded-[var(--r-card)] bg-primary text-[14px] font-medium text-primary-foreground disabled:opacity-60"
+          className="gap-3 font-medium [&_svg]:size-5"
         >
-          {/* Google's own G, as its brand guidelines ask, on a white round. */}
-          <span className="grid size-7 place-items-center rounded-full bg-white">
-            <GoogleG />
-          </span>
+          <GoogleG />
           Continue with Google
-        </button>
+        </Button>
 
         <div role="radiogroup" aria-label="Google sign-in" className="space-y-2">
           <Choice

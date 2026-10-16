@@ -1,7 +1,7 @@
 import type { ReactNode, Ref } from "react";
 
 /** Shared identity row; the shell keeps the Home link and header actions. */
-export function BrandMark({ version, large = false }: { version?: string; large?: boolean }) {
+export function BrandMark({ large = false }: { large?: boolean }) {
   return (
     <span className="flex min-h-11 items-center gap-2.5">
       <img
@@ -12,15 +12,8 @@ export function BrandMark({ version, large = false }: { version?: string; large?
         height={32}
         className="size-8 shrink-0 rounded-[var(--r-card)] object-contain"
       />
-      <span className="leading-none">
-        <span className={`block font-bold ${large ? "text-[22px]" : "text-[20px]"} leading-[1.2]`}>
-          Béa
-        </span>
-        {version && (
-          <span className="mt-0.5 hidden text-[10px] text-muted-foreground min-[390px]:block">
-            v{version}
-          </span>
-        )}
+      <span className={`font-bold ${large ? "text-[22px]" : "text-[20px]"} leading-[1.2]`}>
+        Béa
       </span>
     </span>
   );
