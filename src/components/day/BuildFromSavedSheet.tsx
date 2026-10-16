@@ -37,6 +37,18 @@ const STEPS = [
   ["Save", "Final step"],
 ] as const;
 
+/** "Apr 12", with the year when asked. */
+function shortDate(iso: string, year = false): string {
+  const date = new Date(`${iso}T12:00:00`);
+  return Number.isNaN(date.getTime())
+    ? iso
+    : date.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        ...(year ? { year: "numeric" } : {}),
+      });
+}
+
 const asPick = (r: RecoRowDB): SavedPick => ({
   id: r.id,
   name: r.name,
@@ -110,7 +122,9 @@ export function BuildFromSavedSheet({
   const place = [trip.city, trip.country].filter(Boolean).join(", ");
   const dateLine = [
     trip.country && trip.city ? trip.country : "",
-    trip.start_date && trip.end_date ? `${trip.start_date} – ${trip.end_date}` : "",
+    trip.start_date && trip.end_date
+      ? `${shortDate(trip.start_date)} – ${shortDate(trip.end_date, true)}`
+      : "",
   ]
     .filter(Boolean)
     .join(" · ");
