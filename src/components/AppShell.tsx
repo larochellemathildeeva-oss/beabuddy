@@ -225,7 +225,7 @@ export function AppShell({
         {homeHeader ? (
           <header className="z-20 flex shrink-0 items-center justify-between bg-background px-5 pb-1 pt-2">
             <Link to="/" aria-label={`Béa, version ${APP_VERSION}`} title={`v${APP_VERSION}`}>
-              <BrandMark large />
+              <BrandMark large version={APP_VERSION} />
             </Link>
             <div className="flex items-center gap-3">
               <Link
