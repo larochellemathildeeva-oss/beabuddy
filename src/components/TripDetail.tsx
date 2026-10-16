@@ -118,6 +118,7 @@ import {
   type DayChoice,
 } from "@/lib/trip-days";
 import { dropMove, rearrange, stepMove, timeFit, tripDays, type StopMove } from "@/lib/stop-move";
+import { BuildFromSavedSheet } from "@/components/day/BuildFromSavedSheet";
 import { MoveStopSheet } from "@/components/day/MoveStopSheet";
 import { PastTripCards, PastTripTop } from "@/components/day/PastTrip";
 import { ReviewChangesSheet } from "@/components/day/ReviewChangesSheet";
@@ -1322,6 +1323,7 @@ export function TripDetail({
    * rather than all of them after the first anchor.
    */
   const [savedOpen, setSavedOpen] = useState(false);
+  const [buildSavedOpen, setBuildSavedOpen] = useState(false);
   /** "Add stop" chooser: a stop, a saved place, or another city. */
   const [addOpen, setAddOpen] = useState(false);
   /** Bumped by "Another city or location" to open the add-city form. */
@@ -2851,6 +2853,22 @@ export function TripDetail({
               type="button"
               onClick={() => {
                 setAddOpen(false);
+                setBuildSavedOpen(true);
+              }}
+              className="tm-row"
+            >
+              <span className="min-w-0 flex-1">
+                <span className="block text-[14px] font-semibold">Build from saved places</span>
+                <span className="block text-[12px] text-muted-foreground">
+                  Pick several places, preview the days, then save
+                </span>
+              </span>
+              <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setAddOpen(false);
                 setPerspective("timeline");
                 setTimelineOpen(true);
                 setAddDay(addToDay ?? "");
@@ -2895,6 +2913,18 @@ export function TripDetail({
           </button>
         </div>
       </Sheet>
+
+      <BuildFromSavedSheet
+        open={buildSavedOpen}
+        onClose={() => setBuildSavedOpen(false)}
+        trip={trip}
+        existingDays={stopItems.map((item) => item.day_date)}
+        onSave={board.addItems}
+        onViewTimeline={() => {
+          setPerspective("timeline");
+          setTimelineOpen(true);
+        }}
+      />
 
       <TripStops tripId={trip.id} uid={me.id} openSignal={citySignal} formOnly home={trip} />
 
