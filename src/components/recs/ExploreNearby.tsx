@@ -103,6 +103,7 @@ export function ExploreNearby({
   const lookup = useServerFn(lookupCoords);
   const search = useServerFn(searchPlaces);
   const boxRef = useRef<HTMLDivElement | null>(null);
+  const [settingsHelp, setSettingsHelp] = useState(false);
   const [width, setWidth] = useState(340);
   const [here, setHere] = useState<LatLon | null>(null);
   const [center, setCenter] = useState<LatLon | null>(null);
@@ -580,6 +581,21 @@ export function ExploreNearby({
             <button type="button" onClick={locate} className="tm-close mt-3 !bg-card">
               Retry location
             </button>
+            <button
+              type="button"
+              aria-expanded={settingsHelp}
+              onClick={() => setSettingsHelp((v) => !v)}
+              className="tm-close mt-2 !bg-card"
+            >
+              Open device settings
+            </button>
+            {settingsHelp ? (
+              <p className="mt-2 text-[13px]">
+                A web page can&apos;t open your device settings. Open Settings on your phone, find
+                your browser or Béa, and allow Location. In a desktop browser, use the lock icon
+                beside the address. Then tap Retry location.
+              </p>
+            ) : null}
           </section>
           <p className="px-1 text-[12px] text-muted-foreground">
             No distances or current weather are shown without a suitable location. A manually chosen
