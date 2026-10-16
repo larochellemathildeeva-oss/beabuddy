@@ -221,7 +221,7 @@ export function HomeNextStats({
         {flight ? (
           <Stat
             big={parts?.code ?? flight.title}
-            small={[parts?.route, shortDay(flight.day_date)].filter(Boolean).join(" · ")}
+            small={shortDay(flight.day_date) || "flight"}
             icon={<Plane className="size-4" aria-hidden />}
           />
         ) : (

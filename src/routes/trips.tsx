@@ -477,7 +477,7 @@ function TripsPage() {
                 <TripsActionTile
                   icon={Sparkles}
                   title="Plan with Béa"
-                  sub="Build, import, optimize or compare"
+                  sub="Build or import a plan"
                   tone={1}
                 >
                   {(content, className) => (
@@ -489,7 +489,7 @@ function TripsPage() {
                 <TripsActionTile
                   icon={Users}
                   title="Join with a code"
-                  sub="Trips with friends"
+                  sub="Add a trip with friends"
                   tone={3}
                 >
                   {(content, className) => (

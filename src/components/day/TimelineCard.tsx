@@ -1052,7 +1052,7 @@ export function TimelineEntry({
           <span className={`${actionBubble} bg-destructive/10`}>
             <Trash2 className="size-5 text-destructive" aria-hidden />
           </span>
-          <span className="flex-1">Delete stop</span>
+          <span className="flex-1">Remove from timeline</span>
         </button>
       </div>
     </>
@@ -1177,27 +1177,37 @@ export function TimelineEntry({
         <Sheet
           open={flipped}
           onClose={() => flip(false)}
-          title={item.title}
+          title="Edit stop"
           page
           tone={3}
-          hint={[
-            number != null ? `Stop ${number}` : "",
-            item.day_date ? formatTimelineDayLabel(item.day_date) : "",
-            rail,
-            glyphChipLabel(timelineGlyph(item)),
-            booked ? "Booked" : "",
-          ]
-            .filter(Boolean)
-            .join(" · ")}
+          hint="Timeline"
+          crumb="Back to editing timeline"
         >
-          {backBody}
-          <button
-            type="button"
-            onClick={() => flip(false)}
-            className="btn-primary mt-4 flex w-full items-center justify-center"
-          >
-            Done
-          </button>
+          <div className="space-y-3">
+            <p className="text-[14px]">
+              {[item.title, glyphChipLabel(timelineGlyph(item))].filter(Boolean).join(" · ")}
+            </p>
+            <section className="fe-summary">
+              <p className="text-[14px] font-semibold">
+                {[
+                  number != null ? `Stop ${number}` : "",
+                  item.day_date ? formatTimelineDayLabel(item.day_date) : "",
+                  rail ? stopTimeSpan(rail, item.planned_stay_minutes) : "",
+                  item.planned_stay_minutes ? frameStay(item.planned_stay_minutes) : "",
+                  booked ? "Booked" : "",
+                ]
+                  .filter(Boolean)
+                  .join(" · ") || "No set time"}
+              </p>
+              <p className="mt-1 text-[14px]">
+                Changes to times are checked for overlaps before they are saved.
+              </p>
+            </section>
+            {backBody}
+            <button type="button" onClick={() => flip(false)} className="fe-btn fe-btn-primary">
+              Done
+            </button>
+          </div>
         </Sheet>
       )}
       {onSaveBooking && bookingOpen && (

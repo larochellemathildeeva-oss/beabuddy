@@ -15,7 +15,7 @@ import { COMPRESS_AT, measureHeaderHeights, nextCompressed } from "../lib/page-h
 import { planeFromMatches, planeIsUndeclared, travelDirection } from "../lib/route-plane";
 import { BrandMark, PageHeader } from "./PageHeader";
 
-import { ArrowLeft, Bookmark, Globe2, Home, MapPinned, User } from "@/components/icons";
+import { ArrowLeft, Columns2, Globe2, Heart, Home, User } from "@/components/icons";
 import logo from "../assets/bea-logo.png";
 
 const APP_VERSION = typeof __APP_VERSION__ === "string" ? __APP_VERSION__ : "1.0.0";
@@ -32,8 +32,8 @@ import { useRestoreKeptOffline } from "../hooks/useRestoreKeptOffline";
 const tabs = [
   { to: "/", label: "Home", icon: Home },
   { to: "/world", label: "World", icon: Globe2 },
-  { to: "/trips", label: "Trips", icon: MapPinned },
-  { to: "/recommendations", label: "Recs", icon: Bookmark },
+  { to: "/trips", label: "Trips", icon: Columns2 },
+  { to: "/recommendations", label: "Recs", icon: Heart },
   { to: "/profile", label: "You", icon: User },
 ] as const;
 
@@ -225,7 +225,7 @@ export function AppShell({
         {homeHeader ? (
           <header className="z-20 flex shrink-0 items-center justify-between bg-background px-5 pb-1 pt-2">
             <Link to="/" aria-label={`Béa, version ${APP_VERSION}`} title={`v${APP_VERSION}`}>
-              <BrandMark large />
+              <BrandMark large version={APP_VERSION} />
             </Link>
             <div className="flex items-center gap-3">
               <Link
@@ -440,8 +440,8 @@ export function AppShell({
                     key={to}
                     to={to}
                     aria-current={active ? "page" : undefined}
-                    className={`flex min-h-14 flex-col items-center justify-center gap-1 transition-colors duration-(--t-tap) ease-(--ease-standard) ${
-                      active ? "text-foreground" : "text-muted-foreground"
+                    className={`mx-0.5 my-1 flex min-h-12 flex-col items-center justify-center gap-1 rounded-[var(--r-card)] transition-colors duration-(--t-tap) ease-(--ease-standard) ${
+                      active ? "bg-muted text-foreground" : "text-muted-foreground"
                     }`}
                   >
                     <Icon className="size-6" weight={active ? "fill" : "regular"} />
