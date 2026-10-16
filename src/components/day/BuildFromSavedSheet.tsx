@@ -372,6 +372,13 @@ export function BuildFromSavedSheet({
             ))}
           </ol>
         </section>
+        <section className="fe-summary">
+          <p className="text-[14px] font-semibold">Current stage</p>
+          <h2 className="mt-1 text-[24px] font-bold leading-tight">Choose places</h2>
+          <p className="mt-1 text-[14px] text-muted-foreground">
+            Select saved places, then review preferences before previewing.
+          </p>
+        </section>
         {tripBox}
 
         {local.length > 0 && local.length < places.length && (
