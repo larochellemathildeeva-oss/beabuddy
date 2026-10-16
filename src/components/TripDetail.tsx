@@ -106,6 +106,7 @@ import { ShareLinkCard } from "@/components/day/ShareLinkCard";
 import { TripPreferencesPanel } from "@/components/day/TripPreferencesPanel";
 import { useTripPreferences } from "@/hooks/useTripPreferences";
 import { isNetworkFailure } from "@/lib/ai-errors";
+import { useOnline } from "@/hooks/useOnline";
 import { forgetOfflineTrip, saveOfflineTrip } from "@/lib/offline-trip";
 import { calendarFileName, tripCalendar } from "@/lib/itinerary-ics-export";
 import {
@@ -338,6 +339,7 @@ export function TripDetail({
   };
   const dayMaps = useOfflineDayMaps(activeId);
   const offlineMap = useOfflineMap(activeId);
+  const online = useOnline();
   const directionStops = timelineStopsForDirections(board.items);
   const routeStops = stopsForDirections(cities.stops, board.items);
   /**
@@ -835,6 +837,13 @@ export function TripDetail({
    * now all appear at once, from one pencil in the section header.
    */
   const [editingTimeline, setEditingTimeline] = useState(false);
+  /** The frame's "Timeline changes saved" card, after a reviewed change is saved. */
+  const [timelineSaved, setTimelineSaved] = useState(false);
+  useEffect(() => {
+    if (!timelineSaved) return;
+    const timer = window.setTimeout(() => setTimelineSaved(false), 8000);
+    return () => window.clearTimeout(timer);
+  }, [timelineSaved]);
   /** The Directions row in the Timeline's ⋯ opens the directions sheet. */
   const [directionsOpen, setDirectionsOpen] = useState(false);
   const [directionsBusy, setDirectionsBusy] = useState(false);
@@ -965,7 +974,10 @@ export function TripDetail({
     travelChoice: travel,
     travelLegs: knownLegs,
     applySchedule: board.applySchedule,
-    onSaved: () => setLiveLegs(null),
+    onSaved: () => {
+      setLiveLegs(null);
+      setTimelineSaved(true);
+    },
     errorText: scheduleErrorText,
   });
   const movingStop = movingId ? (stopItems.find((item) => item.id === movingId) ?? null) : null;
@@ -1670,6 +1682,56 @@ export function TripDetail({
       data-bar-position={barPosition}
       className="trip-shell overflow-clip sm:mx-4 sm:mt-3 sm:rounded-3xl sm:border sm:border-border sm:bg-card"
     >
+      {!online ? (
+        <div className="space-y-3 px-4 pt-3">
+          <section role="status" className="fe-summary">
+            <p className="text-[14px] font-semibold">Offline · live services unavailable</p>
+            <p className="mt-1 text-[14px]">
+              Showing only what is already on this phone. It may be out of date.
+            </p>
+          </section>
+          <section className="fe-card">
+            <h2 className="text-[18px] font-semibold leading-tight">Available on this device</h2>
+            <ul className="mt-2 space-y-1 text-[14px]">
+              <li className="flex items-center gap-1.5">
+                <Check className="size-4" aria-hidden /> Itinerary
+              </li>
+              {dir.saved ? (
+                <li className="flex items-center gap-1.5">
+                  <Check className="size-4" aria-hidden /> Directions · kept{" "}
+                  {savedAgoLabel(dir.saved.savedAt)}
+                </li>
+              ) : null}
+              {offlineMap.saved ? (
+                <li className="flex items-center gap-1.5">
+                  <Check className="size-4" aria-hidden /> Map · downloaded
+                </li>
+              ) : null}
+            </ul>
+          </section>
+          <section className="fe-card">
+            <h2 className="text-[18px] font-semibold leading-tight">Needs a connection</h2>
+            <ul className="mt-2 space-y-1 text-[14px]">
+              <li>— Live directions, transport updates and weather</li>
+              <li>— Documents not downloaded to this phone</li>
+            </ul>
+            <p className="mt-2 text-[14px] text-muted-foreground">
+              Offline changes are not confirmed synced. Reconnect to review their sync status.
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                void fetch("/", { method: "HEAD", cache: "no-store" })
+                  .then(() => window.location.reload())
+                  .catch(() => toast("Still offline."));
+              }}
+              className="fe-btn mt-3"
+            >
+              Retry connection
+            </button>
+          </section>
+        </div>
+      ) : null}
       {perspective === "overview" && isPastTrip ? (
         <div className="px-4 pt-3">
           <PastTripTop
@@ -2107,6 +2169,15 @@ export function TripDetail({
             />
           ) : null}
           <div data-guide="trip-timeline" className="pb-3 pt-2">
+            {timelineSaved && !editingTimeline && (
+              <section role="status" className="fe-summary mb-3">
+                <p className="flex items-center gap-1.5 text-[16px] font-semibold">
+                  <Check className="size-4" aria-hidden />
+                  Timeline changes saved
+                </p>
+                <p className="mt-1 text-[14px]">Your change is saved. Other stops are unchanged.</p>
+              </section>
+            )}
             {editingTimeline && (
               <div className="mb-3 space-y-3">
                 <div>
