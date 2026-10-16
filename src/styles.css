@@ -5869,6 +5869,10 @@ main [class*="rounded-2xl"] {
   border-radius: 9999px;
   background: var(--muted);
 }
+.lp-dot.lp-icon {
+  display: grid;
+  place-items: center;
+}
 .lp-card {
   padding: 14px;
   border: 1px solid var(--border);

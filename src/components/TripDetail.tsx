@@ -121,7 +121,7 @@ import {
 import { dropMove, rearrange, stepMove, timeFit, tripDays, type StopMove } from "@/lib/stop-move";
 import { BuildFromSavedSheet } from "@/components/day/BuildFromSavedSheet";
 import { MoveStopSheet } from "@/components/day/MoveStopSheet";
-import { PastTripCards, PastTripTop } from "@/components/day/PastTrip";
+import { PastTripCards, PastTripNote, PastTripTop } from "@/components/day/PastTrip";
 import { ReviewChangesSheet } from "@/components/day/ReviewChangesSheet";
 import { useScheduleReview } from "@/hooks/useScheduleReview";
 import type { TravelLeg } from "@/lib/itinerary-change";
@@ -1734,10 +1734,7 @@ export function TripDetail({
       ) : null}
       {perspective === "overview" && isPastTrip ? (
         <div className="px-4 pt-3">
-          <PastTripTop
-            country={trip.country}
-            dates={tripDateLine(trip.start_date, trip.end_date)}
-          />
+          <PastTripTop />
         </div>
       ) : null}
       {perspective === "companion" ? (
@@ -1886,6 +1883,10 @@ export function TripDetail({
         )}
         {perspective === "overview" && isPastTrip && (
           <div className="mb-4 space-y-3">
+            <PastTripNote
+              country={trip.country}
+              dates={tripDateLine(trip.start_date, trip.end_date)}
+            />
             <PastTripCards
               city={trip.city}
               country={trip.country}

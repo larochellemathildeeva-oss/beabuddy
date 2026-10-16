@@ -7,7 +7,7 @@ import { ChevronLeft } from "@/components/icons";
  * A trip that is over, as the Figma "A trip to remember" frame draws it: what
  * the trip holds for remembering, in four cards, and two doors back into it.
  */
-export function PastTripTop({ country, dates }: { country: string | null; dates: string }) {
+export function PastTripTop() {
   return (
     <div className="space-y-3">
       <div>
@@ -16,14 +16,20 @@ export function PastTripTop({ country, dates }: { country: string | null; dates:
         </Link>
         <h1 className="mt-2 text-[32px] font-bold leading-[1.1]">A trip to remember</h1>
       </div>
-      <section className="fr-note">
-        <p className="text-[13px] font-semibold">Completed trip</p>
-        <p className="mt-2 text-[13px]">
-          {[country, dates].filter(Boolean).join(" · ")}. Revisit the plan, collect memories or use
-          it to plan another trip.
-        </p>
-      </section>
     </div>
+  );
+}
+
+/** The "Completed trip" note, under the header and its tabs as the frame has it. */
+export function PastTripNote({ country, dates }: { country: string | null; dates: string }) {
+  return (
+    <section className="fr-note">
+      <p className="text-[13px] font-semibold">Completed trip</p>
+      <p className="mt-2 text-[13px]">
+        {[country, dates].filter(Boolean).join(" · ")}. Revisit the plan, collect memories or use it
+        to plan another trip.
+      </p>
+    </section>
   );
 }
 

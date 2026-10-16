@@ -5,7 +5,7 @@ import { hasPendingOAuthResultInWindow } from "@/lib/auth-redirect";
 import { SignedInHomeNext } from "@/components/next/HomeNextPage";
 import { AppShell } from "@/components/AppShell";
 import { useAuth } from "@/hooks/useAuth";
-import { ChevronRight } from "@/components/icons";
+import { ChevronRight, Sparkles, User, Users } from "@/components/icons";
 
 export const Route = createFileRoute("/")({
   staticData: { plane: "tab" },
@@ -105,7 +105,9 @@ function LandingPage() {
         </section>
 
         <Link to="/auth" search={{ mode: "signup" }} className={row}>
-          <span className="lp-dot" aria-hidden />
+          <span className="lp-dot lp-icon" aria-hidden>
+            <Sparkles className="size-4" />
+          </span>
           <span className="min-w-0 flex-1">
             <span className="block text-[14px] font-semibold">Start free</span>
             <span className="block text-[12px] text-muted-foreground">
@@ -115,7 +117,9 @@ function LandingPage() {
           <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
         </Link>
         <Link to="/auth" className={row}>
-          <span className="lp-dot" aria-hidden />
+          <span className="lp-dot lp-icon" aria-hidden>
+            <Users className="size-4" />
+          </span>
           <span className="min-w-0 flex-1">
             <span className="block text-[14px] font-semibold">Sign in</span>
             <span className="block text-[12px] text-muted-foreground">
@@ -125,7 +129,9 @@ function LandingPage() {
           <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
         </Link>
         <Link to="/how-it-works" className={row}>
-          <span className="lp-dot" aria-hidden />
+          <span className="lp-dot lp-icon" aria-hidden>
+            <User className="size-4" />
+          </span>
           <span className="min-w-0 flex-1">
             <span className="block text-[14px] font-semibold">How Béa works</span>
             <span className="block text-[12px] text-muted-foreground">
@@ -135,7 +141,9 @@ function LandingPage() {
           <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
         </Link>
         <Link to="/auth" search={{ mode: "signup", redirect: "/trips" }} className={row}>
-          <span className="lp-dot" aria-hidden />
+          <span className="lp-dot lp-icon" aria-hidden>
+            <Users className="size-4" />
+          </span>
           <span className="min-w-0 flex-1">
             <span className="block text-[14px] font-semibold">Joining friends?</span>
             <span className="block text-[12px] text-muted-foreground">
