@@ -6,7 +6,7 @@ export function renderErrorPage(): string {
     <title>This page didn't load</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <style>
-      body { font: 14px/1.5 "Inter", system-ui, -apple-system, sans-serif; background: #fff; color: #111; margin: 0; }
+      body { font: 14px/1.5 system-ui, -apple-system, sans-serif; background: #fff; color: #111; margin: 0; }
       header { height: 64px; display: flex; align-items: center; padding: 0 16px; }
       header a { color: inherit; text-decoration: none; font-weight: 700; font-size: 20px; display: inline-flex; align-items: center; min-height: 44px; min-width: 44px; }
       p.body a, p.body a:visited { color: inherit; text-decoration: underline; text-underline-offset: 3px; display: inline-flex; align-items: center; min-height: 44px; min-width: 44px; }

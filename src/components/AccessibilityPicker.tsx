@@ -12,7 +12,12 @@ const SIZES: { id: TextSize; label: string }[] = [
 ];
 
 const FONTS: { id: ReadingFont; label: string; hint: string; family: string }[] = [
-  { id: "bea", label: "Béa", hint: "Inter", family: '"Inter Variable", sans-serif' },
+  {
+    id: "bea",
+    label: "Béa",
+    hint: "Schibsted Grotesk and Newsreader",
+    family: '"Schibsted Grotesk Variable", sans-serif',
+  },
   {
     id: "easy",
     label: "Easy to read",

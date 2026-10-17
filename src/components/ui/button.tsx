@@ -11,13 +11,15 @@ import { cn } from "../../lib/utils";
  * for the screens that still use them.
  */
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-[var(--r-button)] text-[16px] font-semibold cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--focus) disabled:pointer-events-none disabled:opacity-50 disabled:cursor-not-allowed aria-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-[var(--r-button)] text-[16px] font-semibold cursor-pointer transition-[background-color,border-color,color,opacity,box-shadow,scale] duration-(--t-shift) ease-(--ease-standard) focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--focus) disabled:pointer-events-none disabled:opacity-50 disabled:cursor-not-allowed aria-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
   {
     variants: {
       variant: {
-        primary: "bg-action text-action-foreground hover:opacity-90",
+        primary: "bg-action text-action-foreground hover:opacity-90 active:opacity-80",
+        // Flat (buttons carry no shadow): a 3:1 edge on the card fill, which
+        // steps to the raised fill on hover and press.
         secondary:
-          "border border-[var(--field-border)] bg-transparent text-foreground hover:bg-accent hover:text-accent-foreground",
+          "border border-[var(--field-border)] bg-surface-1 text-ink hover:bg-surface-2 active:bg-surface-2",
         ghost: "bg-transparent text-foreground hover:bg-accent hover:text-accent-foreground",
         danger: "bg-danger text-white hover:opacity-90",
         // Google's own sign-in button colours (its branding rules): the only

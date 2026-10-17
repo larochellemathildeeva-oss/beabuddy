@@ -13,6 +13,8 @@ action colours are written. Screens reach them through Tailwind utilities
 | Type   | `--fs-12/14/16/20/28/40` with line heights `--lh-*`, scaled by `--text-scale`; utilities `text-caption`, `text-small`, `text-body`, `text-title`, `text-display`, `text-hero` |
 | Radius | `--r-sm` 6, `--r-md` 8, `--r-lg` 20 (sheet tops), `--r-pill`                                                                                                                  |
 | Height | `--h-lg` 48 (the one primary, full width), `--h-md` 40, `--h-sm` 32, `--h-field` 44, `--tap` 44                                                                               |
+| Font   | `--font-display` Newsreader (titles, 500/600, optical sizes), `--font-sans` Schibsted Grotesk (everything read or tapped), `--font-mono` IBM Plex Mono (booking references and codes only)                     |
+| Depth  | `--shadow-xs` round icon buttons, `-sm` cards (never on a text button), `-md` controls over maps and pictures, `-lg` menus and dialogs; in Dark cards have none and separate by fill                                                      |
 | Colour | `--surface-0/1/2`, `--ink`, `--ink-muted`, `--line`, `--line-strong`, `--action`, `--action-ink`, `--accent-mark`, `--link`, `--danger`, `--focus`                            |
 
 `--accent-mark` is the traveller's accent used as a mark (active tab bar,
