@@ -1,7 +1,10 @@
 @import "tailwindcss" source(none);
 @source "../src";
 @import "tw-animate-css";
-@import "@fontsource-variable/inter/wght.css";
+@import "@fontsource-variable/schibsted-grotesk/wght.css";
+@import "@fontsource-variable/newsreader/opsz.css";
+@import "@fontsource/ibm-plex-mono/latin-400.css";
+@import "@fontsource/ibm-plex-mono/latin-500.css";
 @import "./tokens.css";
 
 @custom-variant dark (&:is(.dark *));
@@ -99,12 +102,15 @@
   --color-tile-5: var(--tile-5);
   --color-inverse-accent: var(--inverse-accent);
 
-  /* Inter, the Figma frames' typeface, is self-hosted (the @import above): one family for every role, no
-     third-party font request. The reading-font options (data-font, below)
-     still override these three. */
-  --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
+  /* Three self-hosted faces (the @imports above), no third-party font request:
+     Newsreader for titles (a text serif with optical sizes, so 16px stop names
+     and 40px heroes are each drawn for their size), Schibsted Grotesk for
+     everything read or tapped, IBM Plex Mono only for codes a traveller reads
+     off a screen (booking references, share codes), where 0/O and 1/l must
+     differ. The reading-font options (data-font, below) still override all three. */
+  --font-sans: "Schibsted Grotesk Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Newsreader Variable", ui-serif, Georgia, serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
 }
 
 /* The owner's six accent tokens. Blush and danger remain independent. */
@@ -154,7 +160,7 @@
   --foreground: #111111;
   --card: #ffffff;
   --card-foreground: #111111;
-  --elevated: #f4f4f4;
+  --elevated: #f5f4f1;
   --popover: #ffffff;
   --popover-foreground: #111111;
   --primary: var(--acc);
@@ -162,10 +168,10 @@
   /* Near-black meets body-text contrast on either exact accent fill. */
   --primary-foreground: #000000;
   --primary-soft: var(--acc-soft);
-  --secondary: #f4f4f4;
+  --secondary: #f5f4f1;
   --secondary-foreground: #111111;
-  --muted: #f4f4f4;
-  --muted-foreground: #666666;
+  --muted: #f5f4f1;
+  --muted-foreground: #5f5f5c;
   --accent: var(--acc-soft);
   --accent-foreground: #111111;
   --destructive: #c22a52;
@@ -194,11 +200,13 @@
   --tile-5: var(--card);
   --inverse-accent: var(--acc-done);
 
-  --shadow-xs: 0 1px 2px rgb(80 60 40 / 0.04);
-  --shadow-sm: 0 1px 10px rgb(80 60 40 / 0.07);
-  --shadow-md: 0 1px 10px rgb(80 60 40 / 0.07);
-  --shadow-lg: 0 6px 24px rgb(80 60 40 / 0.12);
-  --shadow-primary: 0 6px 18px -8px color-mix(in oklab, var(--acc) 45%, transparent);
+  /* Depth: short, warm and faint. A card barely lifts (sm), what floats over
+     a map or picture lifts more (md), menus and dialogs most (lg). */
+  --shadow-xs: 0 1px 2px rgb(28 25 20 / 0.05);
+  --shadow-sm: 0 1px 2px rgb(28 25 20 / 0.04), 0 2px 6px -2px rgb(28 25 20 / 0.06);
+  --shadow-md: 0 1px 2px rgb(28 25 20 / 0.05), 0 8px 20px -8px rgb(28 25 20 / 0.14);
+  --shadow-lg: 0 2px 6px rgb(28 25 20 / 0.05), 0 20px 40px -16px rgb(28 25 20 / 0.2);
+  --shadow-primary: none;
   --shadow-soft: var(--shadow-md);
   --gradient-clay: linear-gradient(142deg, var(--acc), var(--acc2));
   --wash-top: var(--background);
@@ -273,30 +281,33 @@
   --tile-5: var(--blush);
 }
 
-/* Dark keeps its existing near-black surfaces and the chosen accent. */
+/* Dark is mapped, not inverted: a warm near-black ground, surfaces that step
+   up in fill as they come forward (ground < card < raised), off-white ink so
+   white type does not bloom, and hairlines a step above the card. The same
+   values as tokens.css's --surface-0/1/2, --ink and --line. */
 .dark {
-  --background: #000000;
-  --foreground: #ffffff;
-  --card: #0d0d0d;
-  --card-foreground: #ffffff;
-  --elevated: #161616;
-  --popover: #161616;
-  --popover-foreground: #ffffff;
+  --background: #0a0a0a;
+  --foreground: #f2f2f0;
+  --card: #171716;
+  --card-foreground: #f2f2f0;
+  --elevated: #232321;
+  --popover: #232321;
+  --popover-foreground: #f2f2f0;
   --primary: var(--acc);
   --primary-ink: var(--acc-done);
   --primary-foreground: #000000;
   --primary-soft: color-mix(in oklab, var(--acc) 20%, var(--card));
-  --secondary: #161616;
-  --secondary-foreground: #ffffff;
-  --muted: #161616;
-  --muted-foreground: #b3b3b3;
-  --accent: #161616;
-  --accent-foreground: #ffffff;
+  --secondary: #232321;
+  --secondary-foreground: #f2f2f0;
+  --muted: #232321;
+  --muted-foreground: #a8a8a3;
+  --accent: #232321;
+  --accent-foreground: #f2f2f0;
   --destructive: #c22a52;
   --destructive-ink: #f08aa3;
   --destructive-foreground: #fefbf6;
-  --border: #2e2e2e;
-  --input: #2e2e2e;
+  --border: #2e2e2b;
+  --input: #2e2e2b;
   --field-border: #8a847e;
   --ring: var(--acc-done);
 
@@ -314,11 +325,12 @@
   /* Dark inverts to an off-white card, so its accent text goes darker. */
   --inverse-accent: var(--acc-ink);
 
-  --shadow-xs: 0 1px 2px oklch(0 0 0 / 0.3);
-  --shadow-sm: 0 1px 2px oklch(0 0 0 / 0.35), 0 3px 8px -4px oklch(0 0 0 / 0.5);
-  --shadow-md: 0 1px 2px oklch(0 0 0 / 0.35), 0 12px 28px -16px oklch(0 0 0 / 0.75);
-  --shadow-lg: 0 2px 4px oklch(0 0 0 / 0.4), 0 28px 56px -28px oklch(0 0 0 / 0.85);
-  --shadow-primary: 0 6px 18px -8px color-mix(in oklab, var(--acc) 35%, transparent);
+  /* Cards separate by fill here; only what floats casts a shadow. */
+  --shadow-xs: none;
+  --shadow-sm: none;
+  --shadow-md: 0 1px 0 rgb(255 255 255 / 0.04) inset, 0 12px 28px -12px rgb(0 0 0 / 0.7);
+  --shadow-lg: 0 1px 0 rgb(255 255 255 / 0.05) inset, 0 24px 48px -16px rgb(0 0 0 / 0.8);
+  --shadow-primary: none;
   --shadow-soft: var(--shadow-md);
 
   --gradient-clay: linear-gradient(142deg, var(--acc), var(--acc2));
@@ -359,12 +371,15 @@
       border-color var(--t-shift) var(--ease-standard),
       color var(--t-shift) var(--ease-standard),
       box-shadow var(--t-shift) var(--ease-standard),
-      transform var(--t-tap) var(--ease-standard);
+      opacity var(--t-shift) var(--ease-standard),
+      scale var(--t-tap) var(--ease-standard);
   }
 
-  button:active:not(:disabled),
+  /* The press: `scale`, not `transform`, so a control already placed
+     with a translate (a centred pin, a floating button) does not jump. */
+  button:active:not(:disabled):not([aria-disabled="true"]),
   [role="button"]:active {
-    transform: scale(0.975);
+    scale: 0.98;
   }
 
   /**
@@ -389,16 +404,21 @@
     }
 
     /* The press-down is motion for its own sake; drop it entirely. */
-    button:active:not(:disabled),
+    button:active:not(:disabled):not([aria-disabled="true"]),
     [role="button"]:active {
-      transform: none;
+      scale: none;
     }
   }
 
+  /* The ring follows the element's own corner (outlines do now), so focus
+     never reshapes a control. */
   *:focus-visible {
     outline: 2px solid var(--color-ring);
     outline-offset: 2px;
-    border-radius: var(--radius-sm, 4px);
+  }
+  :is(input, textarea, select):focus-visible {
+    outline-offset: 0;
+    border-color: var(--foreground);
   }
 
   /**
@@ -423,19 +443,24 @@
     font-variant-numeric: tabular-nums;
   }
 
-  /* Bodoni Moda's regular weight is thin on a phone: card titles and
-     numbers set in the display face start at 500, headings at 700. */
+  /* Newsreader: card titles at 500, headings at 600 (its 700 clots on a
+     phone). Large titles close up a little, as a serif set big should. */
   .font-display {
     font-weight: 500;
+    font-optical-sizing: auto;
   }
 
   h1,
   h2,
   h3 {
     font-family: var(--font-display);
-    font-weight: 700;
-    letter-spacing: 0;
+    font-weight: 600;
+    font-optical-sizing: auto;
+    letter-spacing: -0.01em;
     text-wrap: balance;
+  }
+  h1 {
+    letter-spacing: -0.02em;
   }
 }
 
@@ -1855,14 +1880,6 @@
   border: 1px solid var(--border);
   border-radius: 24px;
 }
-.trips-glass {
-  border-radius: 18px;
-  background: color-mix(in oklab, var(--card) 90%, transparent);
-  color: var(--foreground);
-  -webkit-backdrop-filter: blur(10px);
-  backdrop-filter: blur(10px);
-  box-shadow: 0 2px 12px rgb(0 0 0 / 0.12);
-}
 .trips-ribbon {
   position: relative;
   display: grid;
@@ -1989,25 +2006,6 @@
   --world-float-shadow: 0 4px 16px rgb(0 0 0 / 0.4);
   --world-place-fallback: #2b2723;
 }
-
-/* Trips header art (the owner's text-free hero illustrations, one per theme).
-   The coast stands behind the pins' tags; the relief map under them is hidden. */
-.trips-art {
-  background-color: var(--wash-top);
-  background-size: cover;
-  background-position: 50% 62%;
-  background-image: url("/art/coast-calm.webp");
-}
-[data-theme="colorful"] .trips-art {
-  background-image: url("/art/coast-colorful.webp");
-}
-.dark .trips-art {
-  background-image: url("/art/coast-dark.webp");
-}
-.trips-art .banner-map {
-  opacity: 0;
-}
-
 /*
  * Béa — Home (step 8) and Trips (step 7) redesign tokens and classes.
  * MERGE, don't overwrite: append to the end of src/styles.css (after world.css).
@@ -2250,9 +2248,9 @@
 }
 .hn-kicker {
   font-size: 13px;
-  font-weight: 650;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
   color: color-mix(in oklab, var(--foreground) 72%, transparent);
 }
 .hn-title {
@@ -2623,22 +2621,6 @@
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
-
-/* The signed-out landing's destination picture, one coast per mood. */
-.landing-art {
-  position: relative;
-  aspect-ratio: 4 / 3;
-  border-radius: 28px;
-  background: url("/art/coast-calm.webp") 50% 55% / cover no-repeat;
-  box-shadow: var(--shadow-md);
-  overflow: hidden;
-}
-[data-theme="colorful"] .landing-art {
-  background-image: url("/art/coast-colorful.webp");
-}
-.dark .landing-art {
-  background-image: url("/art/coast-dark.webp");
-}
 .landing-art-pill {
   position: absolute;
   inset-inline-end: 12px;
@@ -2751,10 +2733,6 @@ html:not(.dark)
 }
 
 /* ── Trip documents ─────────────────────────────────────────────────────── */
-.doc-intro {
-  position: relative;
-  min-height: 152px;
-}
 .doc-intro-art {
   position: absolute;
   inset: 10px 0 0 auto;
@@ -2777,10 +2755,6 @@ html:not(.dark)
   max-width: 56%;
   padding-top: 14px;
   line-height: 1.45;
-}
-.doc-seg {
-  border-bottom: 1px solid var(--border);
-  gap: 4px;
 }
 .doc-seg-tab {
   min-height: 44px;
@@ -2870,9 +2844,9 @@ html:not(.dark)
 .doc-hero-kind {
   margin-bottom: 2px;
   font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
   opacity: 0.9;
 }
 
@@ -2959,18 +2933,6 @@ html:not(.dark)
 }
 
 /* ===== companion restyle ===== */
-.companion-hero {
-  position: relative;
-  isolation: isolate;
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 12px;
-  min-height: 210px;
-  margin-inline: -12px;
-  padding: 14px 16px;
-  overflow: hidden;
-}
 .companion-hero-art {
   object-position: 75% 35%;
   position: absolute;
@@ -2980,30 +2942,12 @@ html:not(.dark)
   height: 100%;
   object-fit: cover;
 }
-.companion-hero::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  background: linear-gradient(
-    to right,
-    color-mix(in oklab, var(--background) 96%, transparent) 0%,
-    color-mix(in oklab, var(--background) 88%, transparent) 55%,
-    color-mix(in oklab, var(--background) 30%, transparent) 100%
-  );
-}
 .companion-hero-kicker {
   font-size: 13px;
   font-weight: 600;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--muted-foreground);
-}
-.companion-hero h2 {
-  margin-top: 2px;
-  font-size: 34px;
-  line-height: 1.02;
-  letter-spacing: -0.02em;
 }
 .companion-hero-date {
   flex-shrink: 0;
@@ -3210,9 +3154,9 @@ html:not(.dark)
 .now-upcoming-title {
   margin-bottom: 4px;
   font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--muted-foreground);
 }
 .now-upcoming ul {
@@ -3447,9 +3391,9 @@ html:not(.dark)
   color: var(--foreground);
   padding: 4px 10px;
   font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
 }
 .trip-strip-img {
   animation: trip-strip-in 0.8s ease both;
@@ -3485,26 +3429,20 @@ html:not(.dark)
 
 
 /* ===== Editorial skin =====
-   Flat boxes under 1px rules, square buttons, no shadows, no pills. Radii and
-   shadows come from tokens, so everything that reads them follows; the few
-   rounded-full text pills are squared below. */
+   Flat boxes under 1px rules, square buttons, no pills. Radii and shadows come
+   from tokens, so everything that reads them follows; the few rounded-full
+   text pills are squared below. */
 :root,
 [data-theme="calm"],
 [data-theme="colorful"],
 .dark {
-  --shadow-xs: none;
-  --shadow-sm: none;
-  --shadow-md: none;
-  --shadow-lg: none;
-  --shadow-soft: none;
-  --shadow-primary: none;
   --page-wash: none;
   --rule: var(--border);
 }
 :root:not(.dark),
 [data-theme="calm"]:not(.dark),
 [data-theme="colorful"]:not(.dark) {
-  --border: #dad6d0;
+  --border: #e5e2dc;
 }
 /* More contrast keeps its stronger lines over the pale editorial hairline. */
 :root:not(.dark)[data-contrast="more"],
@@ -3559,7 +3497,7 @@ a.bg-primary,
 h1:not([class*="font-"]),
 h2:not([class*="font-"]) {
   font-family: var(--font-display);
-  font-weight: 700;
+  font-weight: 600;
 }
 
 /* A box in the editorial system: a 1px edge, square, 16px inside. */
@@ -3654,7 +3592,7 @@ h2:not([class*="font-"]) {
 /* Tabs: small sentence-case words, as the minimalist design sets them. */
 .trips-tabs button,
 .trip-views button {
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-size: 12px;
   line-height: 16px;
   font-weight: 400;
@@ -3662,9 +3600,9 @@ h2:not([class*="font-"]) {
   text-transform: none;
 }
 .page-title-rule:not([data-compressed]) h1 {
-  font-weight: 700;
-  letter-spacing: 0;
-  line-height: 1.15;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
 }
 .home-subtitle {
   font-family: var(--font-display);
@@ -3696,11 +3634,11 @@ a.bg-primary {
 }
 .home-widget h2,
 .home-widget h3 {
-  font-family: var(--font-sans);
+  font-family: var(--font-display);
   font-weight: 600;
   font-size: 20px;
   line-height: 28px;
-  letter-spacing: 0;
+  letter-spacing: -0.01em;
 }
 /* Inside a module, 16px from its edge, as the design's panels sit. */
 .home-widget :is([data-guide="home-suggested"], [data-guide="home-near"]) {
@@ -3784,15 +3722,10 @@ a.bg-primary {
 }
 /* The trip's name on Home's card is the one 28px title in the grid. */
 .home-widget .home-trip-card h2 {
-  font-weight: 700;
+  font-weight: 600;
   font-size: 28px;
-  line-height: 1.2;
-}
-
-/* The trip box on Trips: joined square cells under the photo, one ink button. */
-.editorial-feature {
-  border: 1px solid var(--border);
-  background: var(--card);
+  line-height: 1.1;
+  letter-spacing: -0.02em;
 }
 .trips-chips {
   border-top: 1px solid var(--border);
@@ -3808,41 +3741,6 @@ a.bg-primary {
 }
 .trips-chips .trips-chip > span:first-child {
   display: none;
-}
-.editorial-feature a[class*="underline-offset"] {
-  background: var(--primary);
-  color: var(--primary-foreground);
-  justify-content: center;
-  width: 100%;
-  min-height: 52px;
-  font-family: var(--font-mono);
-  font-size: 14px;
-  letter-spacing: 0;
-  text-transform: none;
-  font-weight: 500;
-}
-.editorial-feature a[class*="underline-offset"] svg {
-  color: inherit;
-}
-
-.trips-section-title {
-  font-family: var(--font-mono) !important;
-  font-size: 12px !important;
-  line-height: 16px !important;
-  letter-spacing: 0 !important;
-  text-transform: none;
-  font-weight: 400 !important;
-}
-.editorial-feature > div:last-child {
-  flex-direction: column;
-  align-items: stretch;
-  gap: 0;
-  padding: 0;
-  margin-top: 0;
-  border-top: 0;
-}
-.editorial-feature > div:last-child > p {
-  padding: 12px 16px;
 }
 /* Trip rows: words on a hairline, as the design draws "Later". */
 .trips-row {
@@ -3873,22 +3771,6 @@ a.bg-primary {
 .editorial-feature {
   border-radius: var(--r-card);
 }
-:root:not([data-theme="colorful"]) .editorial-feature a[class*="underline-offset"],
-:root.dark .editorial-feature a[class*="underline-offset"] {
-  background: var(--foreground);
-  color: var(--background);
-}
-.editorial-feature .trips-ribbon + div,
-.editorial-feature .trips-ribbon {
-  border-radius: var(--r-card);
-}
-
-.editorial-strip .trip-strip-photo {
-  min-height: 96px;
-  height: 96px;
-  margin-inline: 16px;
-}
-
 /* Every card and box on a screen has the same 8px corner, whatever its own class says. */
 main .rounded-lg,
 main .rounded-xl,
@@ -3906,7 +3788,8 @@ main [class*="rounded-\\[var(--r-"] {
 .module-big {
   font-size: 28px;
   line-height: 1.2;
-  letter-spacing: 0;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
 }
 .home-widget-content > .module-card,
 .home-widget [data-guide^="home-module"] {
@@ -3924,9 +3807,9 @@ main [class*="rounded-\\[var(--r-"] {
   width: 100%;
   min-height: 52px !important;
   justify-content: center;
-  border: 1px solid var(--foreground);
+  border: 1px solid var(--field-border);
   border-radius: var(--r-card) !important;
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-size: 14px !important;
   letter-spacing: 0;
   text-transform: none;
@@ -3963,13 +3846,13 @@ main [class*="rounded-\\[var(--r-"] {
 .dark [data-accent="pink"],
 :root.dark[data-accent="periwinkle"],
 .dark [data-accent="periwinkle"] {
-  --acc: #ffffff;
-  --acc2: #ffffff;
-  --acc-soft: #1c1c1c;
-  --acc-done: #d0d0d0;
-  --acc-line: #333333;
-  --acc-track: #262626;
-  --acc-ink: #ffffff;
+  --acc: #f2f2f0;
+  --acc2: #f2f2f0;
+  --acc-soft: #232321;
+  --acc-done: #cfcfca;
+  --acc-line: #3a3a37;
+  --acc-track: #2a2a28;
+  --acc-ink: #f2f2f0;
 }
 :root[data-theme="colorful"]:not(.dark)[data-accent="pink"],
 :root[data-theme="colorful"]:not(.dark) [data-accent="pink"] {
@@ -4003,28 +3886,6 @@ main [class*="rounded-\\[var(--r-"] {
 [data-theme="colorful"]:not(.dark) .trips-row-tag:nth-of-type(2n) {
   background: var(--neon-2);
 }
-
-/* "Create trip": the black bar under the tabs, as the design sets it. */
-.trips-create {
-  display: flex;
-  width: 100%;
-  min-height: 52px;
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--r-button);
-  background: var(--foreground);
-  color: var(--background);
-  font-family: var(--font-mono);
-  font-size: 14px;
-  letter-spacing: 0;
-  text-transform: none;
-  font-weight: 500;
-}
-[data-theme="colorful"]:not(.dark) .trips-create {
-  background: var(--acc);
-  color: #111111;
-}
-
 :root:not([data-theme="colorful"]) .world-haze {
   opacity: 0;
 }
@@ -4056,16 +3917,16 @@ main [class*="rounded-\\[var(--r-"] {
 }
 .sub-page-title {
   font-size: 28px;
-  line-height: 1.15;
-  font-weight: 700;
-  letter-spacing: 0;
-  padding-bottom: 14px;
-  border-bottom: 0.5px solid var(--foreground);
+  line-height: 1.1;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
 }
 .menu-group-label {
   margin: 0;
   padding-block: 14px 6px;
-  border-top: 0.5px solid var(--foreground);
+  border-top: 1px solid var(--border);
 }
 .menu-group:first-child .menu-group-label {
   margin-top: 4px;
@@ -4096,7 +3957,7 @@ main [class*="rounded-\\[var(--r-"] {
   color: var(--muted-foreground);
 }
 .menu-footer {
-  border-top: 0.5px solid var(--foreground);
+  border-top: 1px solid var(--border);
   margin-top: 6px;
 }
 .menu-done {
@@ -4186,7 +4047,7 @@ main [class*="rounded-\\[var(--r-"] {
   color: var(--background);
   border-radius: var(--r-card);
   box-shadow: none;
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-size: 14px;
   font-weight: 500;
   letter-spacing: 0;
@@ -4250,7 +4111,7 @@ main [class*="rounded-\\[var(--r-"] {
   border-radius: 0;
   background: none !important;
   box-shadow: none !important;
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-size: 12px;
   font-weight: 400;
   letter-spacing: 0;
@@ -4291,9 +4152,9 @@ main [class*="rounded-2xl"] {
   border-radius: var(--r-card);
 }
 
-/* Form fields on a subpage: a hairline box, the value in serif. */
+/* Form fields on a subpage: a 3:1 edge (WCAG 1.4.11) that darkens when the field is in use. */
 .sub-page :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), textarea, select):not([class*="bg-transparent"]):not([class*="border-0"]) {
-  border: 0.5px solid var(--foreground);
+  border: 1px solid var(--field-border);
   border-radius: var(--r-card);
   background: transparent;
   min-height: 56px;
@@ -4304,8 +4165,8 @@ main [class*="rounded-2xl"] {
   color: var(--foreground);
 }
 .sub-page :is(input, textarea)::placeholder {
-  font-family: var(--font-mono);
-  font-size: 12px;
+  font-family: var(--font-sans);
+  font-size: 16px;
   letter-spacing: 0;
   text-transform: none;
   color: var(--muted-foreground);
@@ -4334,7 +4195,7 @@ main [class*="rounded-2xl"] {
   border-radius: 0;
   background: none !important;
   padding-inline: 14px;
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-size: 12px;
   letter-spacing: 0;
   text-transform: none;
@@ -4342,7 +4203,7 @@ main [class*="rounded-2xl"] {
   color: var(--muted-foreground);
 }
 [role="group"][aria-label="Lists"] > button span {
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-size: 12px;
 }
 [role="group"][aria-label="Lists"] > button[aria-pressed="true"],
@@ -4384,7 +4245,7 @@ main [class*="rounded-2xl"] {
 .sheet-panel {
   border-radius: 16px 16px 0 0 !important;
   border: 0;
-  border-top: 0.5px solid var(--foreground);
+  border-top: 1px solid var(--border);
   box-shadow: none;
 }
 @media (min-width: 640px) {
@@ -4395,8 +4256,8 @@ main [class*="rounded-2xl"] {
 .sheet-panel .sheet-title {
   font-size: 28px;
   line-height: 32px;
-  font-weight: 700;
-  letter-spacing: -0.5px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
 }
 .sheet-panel .rounded-full:is(button > span) {
   border-radius: var(--r-card);
@@ -4482,11 +4343,11 @@ main [class*="rounded-2xl"] {
   color: var(--foreground);
 }
 .trip-head-title {
-  font-family: var(--font-sans);
+  font-family: var(--font-display);
   font-size: 28px;
-  font-weight: 700;
-  line-height: 1.4;
-  letter-spacing: 0;
+  font-weight: 600;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
 }
 .trip-head-rule {
   display: block;
@@ -4579,8 +4440,9 @@ main [class*="rounded-2xl"] {
 .trip-figure {
   font-family: var(--font-sans);
   font-size: 28px;
-  font-weight: 700;
+  font-weight: 650;
   line-height: 1.4;
+  font-variant-numeric: tabular-nums;
 }
 .trip-figure-label,
 .trip-rule-label {
@@ -4687,16 +4549,6 @@ main [class*="rounded-2xl"] {
 .ov-city-note {
   font-size: 12px;
   color: var(--muted-foreground);
-}
-.ov-continue {
-  flex-direction: column;
-  height: auto;
-  min-height: 64px;
-  align-items: flex-start;
-  justify-content: center;
-  gap: 2px;
-  padding: 12px 16px;
-  text-align: start;
 }
 .ov-continue-title {
   font-size: 14px;
@@ -5208,8 +5060,8 @@ main [class*="rounded-2xl"] {
 .tf-kicker {
   font-size: 12px;
   font-weight: 500;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
 }
 .tf-title {
   font-size: 32px;
@@ -5312,15 +5164,12 @@ main [class*="rounded-2xl"] {
   border-top: 0;
   margin-top: 4px;
   font-size: 12px;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
 }
 .tf-seq .trip-row {
   padding: 8px 0;
   border-bottom: 0;
-}
-.trip-overview .ov-continue {
-  border-radius: var(--r-card);
 }
 .tf-card .trip-views.trip-views--top.trip-views--pill button > span,
 .tf-tabs-only .trip-views.trip-views--top.trip-views--pill button > span {

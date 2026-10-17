@@ -32,7 +32,7 @@ test("resolveTokens: Colorful follows the periwinkle accent into --primary", () 
 });
 
 test("resolveTokens: Dark merges the .dark block over :root", () => {
-  assert.equal(resolveTokens(css, "dark", "pink")["--background"], "#000000");
+  assert.equal(resolveTokens(css, "dark", "pink")["--background"], "#0a0a0a");
 });
 
 test("checkContrast: a muted text token that is too light is reported by name", () => {
@@ -82,12 +82,12 @@ test("resolveTokens: :not() and .dark selectors on the root decide by theme, and
   assert.equal(resolveTokens(fixture, "calm", "periwinkle")["--acc"], "#f6466e");
 });
 
-test("accent: Calm is black and Dark is white whichever accent is chosen; Colorful keeps the choice", () => {
+test("accent: Calm is black and Dark is off-white whichever accent is chosen; Colorful keeps the choice", () => {
   const acc = (theme, accent) => resolveTokens(css, theme, accent)["--acc"];
   assert.equal(acc("calm", "pink"), "#111111");
   assert.equal(acc("calm", "periwinkle"), "#111111");
-  assert.equal(acc("dark", "pink"), "#ffffff");
-  assert.equal(acc("dark", "periwinkle"), "#ffffff");
+  assert.equal(acc("dark", "pink"), "#f2f2f0");
+  assert.equal(acc("dark", "periwinkle"), "#f2f2f0");
   assert.equal(acc("colorful", "pink"), "#5df0bf");
   assert.equal(acc("colorful", "periwinkle"), "#6675ff");
 });
@@ -97,7 +97,7 @@ test("primary buttons: Calm and Dark buttons carry readable text on their fill",
   assert.equal(calm["--primary"], "#111111");
   assert.equal(calm["--primary-foreground"], "#ffffff");
   const dark = resolveTokens(css, "dark", "periwinkle");
-  assert.equal(dark["--primary"], "#ffffff");
+  assert.equal(dark["--primary"], "#f2f2f0");
   assert.equal(dark["--primary-foreground"], "#000000");
 });
 
