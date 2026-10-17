@@ -295,8 +295,12 @@ for (const tab of tabs) {
     try {
       if (info.label.startsWith("Drag to reorder ")) {
         await control.focus();
+        // At a person's pace: dnd-kit measures the rows between keys, and
+        // three presses in one frame can leave the move half-finished.
         await page.keyboard.press("Space");
+        await page.waitForTimeout(150);
         await page.keyboard.press("ArrowDown");
+        await page.waitForTimeout(150);
         await page.keyboard.press("Space");
       } else await control.click({ timeout: 2000 });
     } catch (e) {
