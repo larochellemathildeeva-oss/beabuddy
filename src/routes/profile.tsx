@@ -374,12 +374,12 @@ function ProfilePage() {
 
         <Link to="/profile/bea" className="fy-card fy-row">
           <span className="min-w-0">
-            <span className="block text-[15px] font-semibold">Béa's personality</span>
-            <span className="block text-[12px] text-muted-foreground">
+            <span className="block text-body font-semibold">Béa's personality</span>
+            <span className="block text-caption text-muted-foreground">
               {modeName(bea.mix)} · How much she suggests and helps
             </span>
           </span>
-          <span className="text-[13px] text-muted-foreground">
+          <span className="text-small text-muted-foreground">
             Change <ChevronRight className="inline size-3.5 align-[-2px]" aria-hidden />
           </span>
         </Link>
