@@ -372,6 +372,18 @@ function ProfilePage() {
           </section>
         ) : null}
 
+        <Link to="/profile/bea" className="fy-card fy-row">
+          <span className="min-w-0">
+            <span className="block text-[15px] font-semibold">Béa's personality</span>
+            <span className="block text-[12px] text-muted-foreground">
+              {modeName(bea.mix)} · How much she suggests and helps
+            </span>
+          </span>
+          <span className="text-[13px] text-muted-foreground">
+            Change <ChevronRight className="inline size-3.5 align-[-2px]" aria-hidden />
+          </span>
+        </Link>
+
         <button
           type="button"
           onClick={() => setPanel("appearance")}
@@ -823,17 +835,12 @@ function ProfilePage() {
         <YouRow title="Help & FAQ" note="Get a little guidance" to="/help" />
         <YouRow title="Privacy" note="What Béa keeps" to="/privacy" />
         <YouRow title="Version" note={`Béa ${APP_VERSION}`} />
-        {/* Not drawn on the About frame, and kept: the tour and Béa's personality. */}
+        {/* Not drawn on the About frame, and kept: the tour. */}
         <YouRow
           title="Show me around"
           note="A step-by-step walk of the app"
           onClick={replayTour}
           guide="replay-tour"
-        />
-        <YouRow
-          title="Béa's personality"
-          note={`${modeName(bea.mix)} · How much she suggests and helps`}
-          to="/profile/bea"
         />
         <CopyrightNotice className="px-0 pb-0 pt-3 text-left text-[12px] text-foreground" />
         <Link
