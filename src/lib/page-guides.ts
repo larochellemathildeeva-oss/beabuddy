@@ -314,7 +314,7 @@ export const guides: Record<string, Guide> = {
       "Packing lists, Data & imports, Privacy & legal, Help & FAQ, Feedback and About Béa, each a row",
       "Work travel: receipts and an expense spreadsheet",
       "Trip documents: bookings, confirmations and private files",
-      "Choose Béa's personality and how much she suggests (About Béa)",
+      "Choose Béa's personality and how much she suggests (You)",
       "Change the theme, text size, motion and pictures (Appearance)",
       "Import photos (Photos & memories)",
       "Sign out is in the Menu",
@@ -342,7 +342,7 @@ export const guides: Record<string, Guide> = {
       },
       {
         title: "Appearance",
-        body: "Calm, Colorful or Dark; text size and motion; how stops are pictured. Béa's personality is under About Béa.",
+        body: "Calm, Colorful or Dark; text size and motion; how stops are pictured. Béa's personality is on the You screen.",
         selector: "[data-guide='your-bea']",
       },
     ],
